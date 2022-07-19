@@ -1,0 +1,18 @@
+# Node artifact files
+node_modules/
+dist/
+
+# Compiled Python bytecode
+*.py[cod]
+
+# Log files
+*.log
+
+# JetBrains IDE
+.idea/
+
+
+**/__pycache__/
+*.pyc
+docker-compose.heroku.yml
+deploy_heroku.sh

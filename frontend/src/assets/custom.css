@@ -1,0 +1,62 @@
+.login-page .full-page > .content {
+  padding-top: 8vh;
+}
+
+/*.badge-default {*/
+/*  color: #fff;*/
+/*}*/
+/*.badge {*/
+/*  text-transform: uppercase;*/
+/*  display: inline-block;*/
+/*  padding: .35rem .375rem;*/
+/*  font-size: 66%;*/
+/*  font-weight: 600;*/
+/*  line-height: 1;*/
+/*  text-align: center;*/
+/*  white-space: nowrap;*/
+/*  vertical-align: baseline;*/
+/*  border-radius: .375rem;*/
+/*  transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;*/
+/*}*/
+
+/*.ck-editor__editable {*/
+/*  min-height: 200px;*/
+/*  width: auto;*/
+/*}*/
+.sidebar .nav .btn-danger,.sidebar .nav .btn-dark,.sidebar .nav .btn-info,.sidebar .nav .btn-neutral {
+  margin-bottom: .5rem;
+  margin-left: .5rem;
+  margin-right: .5rem;
+}
+.sidebar .nav .btn-danger a, .sidebar .nav .btn-info a, .sidebar .nav .btn-dark a, .sidebar .nav .btn-neutral a{
+  padding: 0px;
+  margin: 0px;
+  opacity: unset;
+}
+.sidebar .nav .btn-neutral a, .sidebar .nav .btn-neutral i{
+  color: black;
+}
+
+.sidebar .nav .example > a, .sidebar .nav .example > a i {
+  color: #3cab79 !important;
+  opacity: 1;
+}
+
+.login-page .footer-link {
+  color: #66615b;
+}
+
+.reset-container {
+  min-height: 70vh;
+}
+
+.wrapper .sidebar:before, .wrapper .sidebar:after {
+  display: block;
+  content: "";
+  opacity: 1;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}

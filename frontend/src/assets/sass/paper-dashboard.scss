@@ -1,0 +1,78 @@
+@import 'paper/variables';
+@import 'paper/mixins';
+
+// Plugins CSS
+@import 'paper/plugins/plugin-bootstrap-switch';
+@import 'paper/plugins/plugin-perfect-scrollbar';
+@import 'paper/plugins/plugin-sweetalert2';
+@import 'paper/plugins/plugin-card-wizard';
+@import 'paper/plugins/plugin-jquery.jvectormap';
+// @import 'paper/plugins/plugin-fullcalendar';
+@import 'paper/plugins/plugin-vue-notifyjs';
+@import 'paper/plugins/plugin-nprogress';
+
+// Element UI plugins
+@import "paper/plugins/element-ui/plugin-tags";
+@import "paper/plugins/element-ui/plugin-slider";
+@import "paper/plugins/element-ui/plugin-select";
+@import "paper/plugins/element-ui/plugin-inputs";
+@import "paper/plugins/element-ui/plugin-tables";
+
+// Core CSS
+@import 'paper/nucleo-outline';
+@import 'paper/buttons';
+@import 'paper/social-buttons';
+@import 'paper/inputs';
+@import 'paper/typography';
+@import 'paper/misc';
+@import 'paper/misc-extend';
+@import 'paper/navbar';
+@import 'paper/dropdown';
+@import 'paper/alerts';
+@import 'paper/images';
+@import 'paper/tables';
+@import 'paper/footers';
+
+// components
+@import 'paper/checkboxes-radio';
+@import 'paper/progress';
+@import 'paper/pagination';
+@import 'paper/info-areas';
+@import 'paper/pills';
+@import 'paper/tabs';
+@import 'paper/modals';
+@import 'paper/sidebar-and-main-panel';
+// @import 'paper/timeline';
+
+// cards
+@import 'paper/cards';
+@import "paper/cards/card-chart";
+@import "paper/cards/card-map";
+@import "paper/cards/card-user";
+
+@import "paper/cards/card-background";
+@import "paper/cards/card-collapse";
+@import "paper/cards/card-contributions";
+@import "paper/cards/card-info-area";
+@import "paper/cards/card-lock";
+@import "paper/cards/card-pricing";
+@import "paper/cards/card-profile";
+@import "paper/cards/card-plain";
+@import "paper/cards/card-signup";
+@import "paper/cards/card-stats-mini";
+@import "paper/cards/card-stats";
+@import "paper/cards/card-subcategories";
+@import "paper/cards/card-testimonials";
+@import "paper/cards/card-tasks";
+
+
+
+// example pages and sections
+@import 'paper/example-pages';
+@import 'paper/sections';
+
+
+@import 'paper/responsive';
+@import 'paper/media-queries';
+@import "paper/fixed-social-plugin";
+
