@@ -1,0 +1,20 @@
+{
+  "presets": [
+    [
+      "@vue/app",
+      {
+        "polyfills": ["es.object.entries", "es.promise"]
+      }
+    ]
+  ],
+  "plugins": [
+    [
+      "component",
+        {
+          "libraryName": "element-ui",
+          "styleLibraryName": "theme-chalk"
+        }
+    ]
+  ],
+  "comments": false
+}

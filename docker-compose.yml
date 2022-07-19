@@ -1,0 +1,121 @@
+version: '3.3'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/usr/src/
+      - ./config:/usr/src/config
+      - ./models:/usr/src/models
+    environment:
+      - BACKEND_SETTINGS=config.local
+    networks:
+      - api_bridge
+    restart: always
+    deploy:
+      replicas: 1
+    depends_on:
+      - redis
+      - db
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: python app.py run -h 0.0.0.0
+    volumes:
+      - ./api:/usr/src
+      - ./config:/usr/src/config
+      - ./models:/usr/src/models
+    ports:
+      - 5001:5000
+    environment:
+      - FLASK_ENV=development
+      - BACKEND_SETTINGS=config.local
+    networks:
+      - api_bridge
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+  migrate:
+    image: queds_api
+    command: bash -c "cd models && alembic upgrade head"
+    volumes:
+      - ./config:/usr/src/config
+      - ./models:/usr/src/models
+    environment:
+      - BACKEND_SETTINGS=config.local
+    networks:
+      - api_bridge
+    depends_on:
+      - db
+      - api
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VUE_APP_BACKEND_URL=/api
+    volumes:
+      - './frontend:/app'
+      - '/app/node_modules'
+    ports:
+      - 3007:8080
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+    networks:
+      - api_bridge
+    depends_on:
+      - db
+      - api
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - 6060:80
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - api_bridge
+
+  redis:
+    image: bitnami/redis
+    ports:
+      - 6379:6379
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    logging:
+      driver: none
+    networks:
+      - api_bridge
+
+  db:
+    image: timescale/timescaledb:2.7.1-pg12
+    restart: always
+    environment:
+      POSTGRES_DB: queds
+      POSTGRES_USER: queds_user
+      POSTGRES_PASSWORD: Kbh85n7M6Fxo
+    volumes:
+      - users_data:/var/lib/postgresql/data/
+    networks:
+      - api_bridge
+    ports:
+      - 5432:5432
+
+networks:
+  api_bridge:
+    driver: bridge
+
+volumes:
+  users_data:

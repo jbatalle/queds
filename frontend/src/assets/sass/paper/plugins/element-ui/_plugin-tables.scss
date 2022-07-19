@@ -1,0 +1,43 @@
+@import "../../variables";
+
+// Element UI override
+
+.el-table table {
+  @extend .table;
+}
+
+.el-table {
+  .td-total {
+    font-weight: $font-weight-bold;
+    font-size: $font-size-h5;
+    padding-top: 20px;
+    text-align: right;
+  }
+  .td-price{
+    font-size: 26px;
+    font-weight: $font-weight-light;
+    margin-top: 5px;
+    position: relative;
+    top: 4px;
+    text-align: right;
+  }
+
+  .table-actions{
+    .btn{
+      margin-right: 5px;
+      &:last-child{
+        margin-right: 0px;
+      }
+    }
+  }
+}
+
+.el-table,
+.el-table tr,
+.el-table thead th{
+  background-color: transparent !important;
+}
+
+.table-shopping .el-table table {
+  @extend .table-shopping;
+}

@@ -1,0 +1,51 @@
+{
+  "name": "queds-finance-portfolio",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Finance portfolio",
+  "author": "jbatalle <jbatalle3@gmail.com>",
+  "scripts": {
+    "build": "vue-cli-service build",
+    "dev": "vue-cli-service serve --open",
+    "serve": "vue-cli-service serve --open"
+  },
+  "dependencies": {
+    "axios": "^0.21.4",
+    "chart.js": "^2.9.4",
+    "core-js": "^3.6.5",
+    "element-ui": "^2.13.2",
+    "nprogress": "^0.2.0",
+    "perfect-scrollbar": "^1.5.0",
+    "sweetalert2": "^9.13.1",
+    "vee-validate": "^3.3.0",
+    "vue": "^2.6.11",
+    "vue-authenticate": "1.4.1",
+    "vue-chartjs": "^3.5.0",
+    "vue-clickaway": "^2.2.2",
+    "vue-meta": "^2.4.0",
+    "vue-notifyjs": "^0.4.3",
+    "vue-router": "^3.4.7",
+    "vue-router-prefetch": "^1.6.0",
+    "vue-trading-view": "^1.0.1",
+    "vue2-transitions": "^0.3.0",
+    "vuex": "^3.5.1"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "^4.3.1",
+    "@vue/cli-plugin-pwa": "^4.3.1",
+    "@vue/cli-service": "^4.3.1",
+    "babel-plugin-component": "^1.1.1",
+    "node-sass": "^4.14.1",
+    "sass-loader": "^8.0.2",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 10"
+  ],
+  "engines": {
+    "node": ">= 8.9.0",
+    "npm": ">= 5.0.0"
+  }
+}

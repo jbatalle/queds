@@ -1,0 +1,11 @@
+flask/
+*.pyc
+dev
+env/
+env__/
+.vscode/symbols.json
+app/db.sqlite3
+config/
+models/
+dist/
+services/cookies.pickle
