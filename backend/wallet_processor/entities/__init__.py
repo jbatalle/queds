@@ -27,6 +27,9 @@ class AbstractEntity(ABC):
     def get_orders(self, user_id):
         pass
 
+    def create_closed_orders(self):
+        pass
+
     def calc_wallet(self):
         pass
 

@@ -49,6 +49,8 @@ class WalletProcessor:
             if sell_order:
                 tracked_orders.append(sell_order)
 
+        logger.info("")
+        self.processor.create_closed_orders(orders, tracked_orders)
         logger.info("Calculation done. Generating wallet...")
         self.processor.calc_wallet(user_id, orders, queue, tracked_orders)
 

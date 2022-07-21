@@ -34,7 +34,7 @@ class Transaction:
 
 class PartialOrder:
     """
-    Represents an percentage of a an amount bought in the past, and the corresponding trade.
+    Represents a percentage of an amount bought in the past, and the corresponding trade.
     """
 
     def __init__(self, amount, order):
@@ -113,9 +113,9 @@ class SellInfo:
     def cost_buy_in_eur(self):
         """
         Cost when buying (in tax currency).
+        Summarize cost of all buy items
         """
-
-        return reduce(lambda a, b: a + b.cost*a.trade.currency_rate, self.buy_items, 0.0)  # summarize cost of all buy items
+        return reduce(lambda a, b: a + b.cost * b.trade.currency_rate, self.buy_items, 0.0)
 
     @property
     def benefits(self):
@@ -133,7 +133,8 @@ class SellInfo:
         # if self.sell_trade.currency_rate:
         #     return self.cost_sell - self.cost_buy
 
-        return self.cost_sell * self.sell_trade.currency_rate - self.cost_buy * self.sell_trade.currency_rate
+        # return self.cost_sell * self.sell_trade.currency_rate - self.cost_buy * self.sell_trade.currency_rate
+        return self.cost_sell * self.sell_trade.currency_rate - self.cost_buy_in_eur
 
 
 class BalanceQueue:
