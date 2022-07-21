@@ -126,6 +126,9 @@ class ClosedOrder(Base, CRUD):
     sell_transaction_id = Column(Integer, ForeignKey('stock_transactions.id', ondelete="CASCADE"))
     buy_transaction = relationship("ProxyOrder")
 
+    def __str__(self):
+        return f"{self.sell_transaction.name}-{self.sell_transaction.shares}@{self.sell_transaction.price}"
+
 
 class Ticker(Base, CRUD):
     __tablename__ = 'tickers'
@@ -146,12 +149,20 @@ class Ticker(Base, CRUD):
     def __str__(self):
         return self.name
 
+    def get_currency(self):
+        if self.currency == 'USD':
+            return '$'
+        elif self.currency == 'EUR':
+            return '€'
+
+        return self.currency
+
     def to_dict(self):
         d = {
             "id": self.id,
             "name": self.name,
             "ticker": self.ticker,
-            "currency": self.currency,
+            "currency": self.get_currency(),
             "isin": self.isin,
             "ticker_yahoo": self.ticker_yahoo,
             "status": self.status

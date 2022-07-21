@@ -1,7 +1,9 @@
+import os
+import sys
 import unittest
-from mock import patch, create_autospec
-from loader import load_models
-load_models()
+from mock import patch
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
 from wallet_processor.handlers.wallet_processor import WalletProcessor
 from models.broker import StockTransaction, ProxyOrder
 
@@ -14,7 +16,7 @@ class BaseTestClass(unittest.TestCase):
         pass
 
 
-class PostModelTestCase(BaseTestClass):
+class BrokerTestCase(BaseTestClass):
 
     # @patch('models.system.User.check_password')
     @patch('wallet_processor.entities.broker.BrokerProcessor.get_orders')
