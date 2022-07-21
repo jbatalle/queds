@@ -8,7 +8,7 @@
       <a
           class="simple-text logo-mini"
           aria-label="sidebar mini logo"
-          href="https://github.com/jbatalle"
+          href=""
       >
         <div class="logo-img">
           <img :src="logo" alt=""/>
@@ -16,7 +16,7 @@
       </a>
       <a
           class="simple-text logo-normal"
-          href="https://github.com/jbatalle"
+          href=""
       >
         {{ title }}
       </a>

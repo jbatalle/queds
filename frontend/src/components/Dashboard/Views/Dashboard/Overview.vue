@@ -26,8 +26,12 @@
           <div slot="reference">
             <stats-card type="success"
                         icon="nc-icon nc-globe"
-                        small-title="Invested"
-                        :title="total_invested.toString()">
+                        small-title="Gain"
+                        :title="gain.toString()">
+                                    <div class="stats" slot="footer">
+                        <i class="nc-icon nc-refresh-69"></i>
+                        Total invested: {{ total_invested }}
+                      </div>
             </stats-card>
           </div>
         </el-popover>
@@ -35,8 +39,8 @@
       <div class="col-lg-3 col-md-6 col-sm-6">
         <stats-card type="success"
                     icon="fa fa-chart-line"
-                    small-title="Capital gain"
-                    :title="gain.toString()">
+                    small-title="W/L"
+                    :title="Number(gain - total_invested).toFixed(2)">
         </stats-card>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
@@ -140,7 +144,11 @@ export default {
       return account;
     },
     fillTotal() {
+      console.log(this.total_invested);
       this.wallet_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
+
+      let benefits = this.total_value - this.total_invested;
+      console.log("Current benefits: " + benefits);
       //this.total_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
       let fiat = 0;
       fiat += this.brokerAccounts.reduce((a, b) => a + b['balance'], 0);
@@ -179,7 +187,7 @@ export default {
     fillWallet(res) {
       let resStatus = res.status === 200 ? true : false;
       let wallet = res.data;
-      this.total_value = Number(wallet.reduce((a, b) => a + (b.shares * b.market.price || 0), 0)).toFixed(2);
+      this.total_value = Number(wallet.reduce((a, b) => a + (b.shares * b.market.price * this.fx_rate || 0), 0)).toFixed(2);
     },
     fillStats(res) {
       let resStatus = res.status === 200 ? true : false;
@@ -209,14 +217,21 @@ export default {
       bar.then(() => {
         this.fillTotal();
       });
-    }, async getData() {
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
+    },
+    fillFxRate(res) {
+      let resStatus = res.status === 200 ? true : false;
+      this.fx_rate = Number(res.data.close).toFixed(2);
+    },
+    async getData() {
+      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/stats").then(this.fillStats);
+      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
+      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     }
   },
   data() {
     return {
+      fx_rate: 1,
       total_assets: [],
       brokerAccounts: [],
       exchangeAccounts: [],

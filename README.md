@@ -6,7 +6,7 @@ https://queds-api.herokuapp.com/overview
 
 ## Features
 * Wallet tracking with Session/Pre/Post market prices
-* Tax calculation
+* Tax calculation with FIFO
 * Watchlist stock
 * Automatic read from Degiro, Clicktrade and InteractiveBrokers
 * Automatic read from exchanges: Bitstamp, Kraken, Bittrex and Binance
@@ -116,6 +116,8 @@ BACKEND_SETTINGS=config.local python -m unittest
 ```
 
 Finally, check API endpoints in Swagger: http://0.0.0.0:5000/api
+
+Also you can visit the demo api at http://queds-api.herokuapp.com/api/
 
 ### Backend
 Create a virtual environment and initialize a worker:

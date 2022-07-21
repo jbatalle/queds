@@ -27,14 +27,20 @@
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <h5 class="title">Taxes</h5>
-            <div class="pull-right">
-              <el-select class="select-default" v-model="tax_year" placeholder="Year">
-                <el-option
-                    class="select-default"
-                    v-for="item in years" :key="item" :label="item" :value="item">
-                </el-option>
-              </el-select>
+            <div class="row">
+              <div class="col-md-6">
+                <h5 class="title">Taxes</h5>
+              </div>
+              <div class="col-md-6">
+                <div class="pull-right">
+                  <el-select class="select-default" v-model="tax_year" placeholder="Year">
+                    <el-option
+                        class="select-default"
+                        v-for="item in years" :key="item" :label="item" :value="item">
+                    </el-option>
+                  </el-select>
+                </div>
+              </div>
             </div>
           </div>
           <div class="card-body table-full-width">
@@ -104,7 +110,6 @@ export default {
         //TODO: sum fees of children items
         s.benefits_net = s.amount * s.price;
         s.benefits = Number((s.amount * s.price - s.fees).toFixed(2));
-        console.log(s.benefits);
         s.value_date = s.value_date.split(' ')[0];
 
         s.children.forEach(function (c) {
@@ -115,7 +120,9 @@ export default {
           s.benefits_net -= c.price * c.amount;
           s.benefits -= (c.price * c.amount + c.partial_fee); //- (c.fees/(s.shares/c.shares));
           s.benefits = Number((s.benefits).toFixed(2));
+          c.fees = Number(c.fees).toFixed(2);
         });
+        s.cost = Number(s.cost).toFixed(2);
         vm.benefits += s.benefits;
         vm.benefits = Number((vm.benefits).toFixed(2));
       });

@@ -47,7 +47,7 @@
               </div>
               <div class="card-body table-responsive table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'win_lose', order: 'descending'}"
-                          :cell-class-name="testClass">
+                          :cell-class-name="testClass" :cell-style="{padding: '0', height: '20px'}">
                   <el-table-column label="Coin" property="currency" width="100px" sortable></el-table-column>
                   <el-table-column label="Balance" property="amount"></el-table-column>
                   <el-table-column label="Price ($/€)" property="price"></el-table-column>
@@ -76,7 +76,7 @@
                         description=""
                         :key="investKey">
               <template slot="header">
-                <h5 class="card-title">Positions</h5>
+                <h5 class="title">Positions </h5>
               </template>
             </chart-card>
           </div>
