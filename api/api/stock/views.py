@@ -116,7 +116,8 @@ class WalletCollection(Resource):
         user_id = User.find_by_email(username).id
         wallet_items = Wallet.query.options(joinedload('ticker')).options(joinedload('open_orders'))\
             .options(joinedload('open_orders.transaction')).filter(Wallet.user_id == user_id).all()
-        symbols = ",".join([t.ticker.ticker_yahoo for t in wallet_items if t.ticker.ticker_yahoo])
+        tickers_yahoo = {t.ticker.ticker_yahoo: t.ticker.ticker for t in wallet_items if t.ticker.ticker_yahoo}
+        symbols = ",".join(list(tickers_yahoo.keys()))
         if len(wallet_items) == 0:
             return {'message': "Unable to detect tickers in open transactions"}, 400
 
@@ -146,12 +147,12 @@ class WalletCollection(Resource):
 
         tickers_by_ticker = {}
         for d in yahoo_prices:
-            tickers_by_ticker[d.get('symbol')] = d
+            tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
         items = []
         for r in wallet_items:
             item = r.json
-            item['ticker'] = r.ticker.json
+            item['ticker'] = r.ticker.to_dict()
             item['open_orders'] = []
             for oo in r.open_orders:
                 oo_item = oo.json
@@ -190,6 +191,7 @@ class Tax(Resource):
         items = []
         for r in closed_orders:
             item = r.sell_transaction.json
+            item['ticker'] = r.sell_transaction.ticker.json
             children = []
             for q in r.buy_transaction:
                 buy = q.transaction.json
@@ -229,28 +231,24 @@ class CalcStats(Resource):
         query = StockTransaction.query.filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).order_by(
             StockTransaction.value_date.desc())
 
-        orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price).all()
+        orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price, StockTransaction.currency_rate).all()
         invested = 0
         for o in orders:
             if o[0] == StockTransaction.Type.BUY:
-                invested += o.shares * o.price
+                invested += o.shares * o.price * o.currency_rate
             else:
-                invested -= o.shares * o.price
-
-        # Get Wallets
-        # TODO: get yahoo prices!
-        wallet_items = Wallet.query.filter(Wallet.user_id == user_id).all()
+                invested -= o.shares * o.price * o.currency_rate
 
         # Closed orders
         closed_orders = ClosedOrder.query.join(ClosedOrder.sell_transaction) \
             .filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).all()
+
         gain = 0
         for o in closed_orders:
-            # fees = o.fee + o.exchange_fee
-            gain += o.sell_transaction.shares * o.sell_transaction.price - o.sell_transaction.fee - o.sell_transaction.exchange_fee
+            gain += (o.sell_transaction.shares * o.sell_transaction.price * o.sell_transaction.currency_rate) + o.sell_transaction.fee + o.sell_transaction.exchange_fee
             for t in o.buy_transaction:
                 buy_order = t.transaction
-                gain -= t.shares * buy_order.price + buy_order.fee + buy_order.exchange_fee
+                gain -= t.shares * buy_order.price * buy_order.currency_rate - t.partial_fee
 
         stats = {
             "portfolio_value": 0,
@@ -260,3 +258,15 @@ class CalcStats(Resource):
         }
 
         return stats
+
+
+@namespace.route('/fx_rate')
+class Calculate(Resource):
+
+    @demo_check
+    @jwt_required()
+    def get(self):
+        """Returns current eur/usd price."""
+        y = YahooClient()
+        r = y.get_currency()
+        return r, 200
