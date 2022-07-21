@@ -157,7 +157,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="brokerAccounts">
+            <el-table :data="brokerAccounts" :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="entity_name"></el-table-column>
               <el-table-column label="Fiat" property="balance"></el-table-column>
@@ -213,7 +213,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="this.exchangeAccounts">
+            <el-table :data="this.exchangeAccounts" :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="name"></el-table-column>
               <el-table-column label="Fiat" property="balance"></el-table-column>
@@ -228,7 +228,7 @@
                     </p-button>
                   </el-tooltip>
                   <el-tooltip content="Edit" placement="top">
-                    <p-button type="info" aria-label="edit button" round icon class="btn-icon-mini btn-neutral"
+                    <p-button type="warning" aria-label="edit button" round icon class="btn-icon-mini btn-neutral"
                               @click="openCreateDialog(3, scope.row)">
                       <i class="nc-icon nc-settings-gear-65"></i>
                     </p-button>
@@ -263,7 +263,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="this.bankAccounts">
+            <el-table :data="this.bankAccounts" :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Balance" property="balance"></el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>
@@ -391,7 +391,7 @@ export default {
           type: 'info',
         });
       }).catch(function (error) {
-        console.log("Catch Final!");
+        console.log("Error reading the account!");
         vm.$notify({
           message: 'Unable to read the account',
           type: 'warning',
@@ -458,9 +458,7 @@ export default {
     },
     checkCredential(res) {
       let res_status = res.status === 200 ? true : false;
-      // this.bankData = res.data;
-      console.log("Checking credential created");
-      console.log(res.data)
+      //console.log("Checking credential created");
     },
     async openCreateDialog(account_type, account=undefined) {
       this.dialogVisible = true;
@@ -469,7 +467,6 @@ export default {
         "entity": undefined
       }
       if (account !== undefined){
-        console.log("Update credential");
         this.credential["id"] = account.id;
         this.credential["entity"] = account.entity_id;
         this.credential["currency"] = account.currency;
@@ -497,13 +494,14 @@ export default {
       this.deleteDialogVisible = false;
     },
     fillBrokers(broker_account) {
-      broker_account.virtual_balance = Number(broker_account.virtual_balance).toFixed(2);
+      broker_account.balance = broker_account.balance + broker_account.currency;
+      broker_account.virtual_balance = Number(broker_account.virtual_balance).toFixed(2) + broker_account.currency;
       this.brokerAccounts.push(broker_account);
       return broker_account;
     },
     fillExchanges(exchange_account) {
-      exchange_account.balance = Number(exchange_account.balance).toFixed(2);
-      exchange_account.virtual_balance = Number(exchange_account.virtual_balance).toFixed(2);
+      exchange_account.balance = Number(exchange_account.balance).toFixed(2) + exchange_account.currency;
+      exchange_account.virtual_balance = Number(exchange_account.virtual_balance).toFixed(2) + exchange_account.currency;
       this.exchangeAccounts.push(exchange_account);
       return exchange_account;
     },
