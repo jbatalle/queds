@@ -15,6 +15,7 @@ class BrokerAccount:
     def __init__(self):
         self.name = None
         self.account_id = ''
+        self.currency = ''
         self.entity_id = ''
         self.balance = 0
         self.virtual_balance = 0

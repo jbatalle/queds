@@ -54,6 +54,13 @@ class Degiro(AbstractBroker):
         r = self._client.get(url.format(self.account_id, self.session_id), params=payload)
         data = r.json()
         cashfund = {}
+
+        base_currency = 'EUR'
+        for item in data['totalPortfolio']['value']:
+            if item['name'] != 'cashFundCompensationCurrency':
+                continue
+            base_currency = item['value']
+
         for currency in data["cashFunds"]["value"]:
             for parameter in currency["value"]:
                 if parameter["name"] == "currencyCode":
@@ -71,9 +78,9 @@ class Degiro(AbstractBroker):
                     sum += parameter["value"]
 
         entity_account = BrokerAccount()
-        entity_account.entity_id = ''
-        entity_account.balance = cashfund["EUR"]
-        entity_account.virtual_balance = sum + cashfund["EUR"]
+        entity_account.currency = base_currency
+        entity_account.balance = cashfund[base_currency]
+        entity_account.virtual_balance = sum + cashfund[base_currency]
         return entity_account
 
     def get_account_id(self):
