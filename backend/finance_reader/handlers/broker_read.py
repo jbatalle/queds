@@ -62,7 +62,8 @@ class BrokerReader:
     @staticmethod
     def _update_account(account_id, entity_account):
         broker_account = Account.get_by_account_id(account_id)
-        broker_account.currency = entity_account.currency
+        if entity_account.currency:
+            broker_account.currency = entity_account.currency
         broker_account.balance = entity_account.balance
         broker_account.virtual_balance = entity_account.virtual_balance
         broker_account.save()
@@ -113,6 +114,7 @@ class BrokerReader:
         ticker = Ticker(ticker=t.ticker.ticker,
                         isin=t.ticker.isin,
                         name=t.ticker.name,
+                        currency=t.currency,
                         status=t.ticker.active)
         try:
             ticker.save()
