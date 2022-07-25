@@ -5,21 +5,21 @@
         <stats-card type="success"
                     icon="fa fa-chart-line"
                     small-title="Win/Loses"
-                    :title="benefits.toString()">
+                    :title="benefits | toCurrency(base_currency)">
         </stats-card>
       </div>
       <div class="col-lg-4 col-md-6 col-sm-6">
         <stats-card type="success"
                     icon="nc-icon nc-money-coins"
                     small-title="Dividends"
-                    :title="value.toString()">
+                    :title="dividends | toCurrency(base_currency)">
         </stats-card>
       </div>
       <div class="col-lg-4 col-md-6 col-sm-6">
         <stats-card type="danger"
                     icon="nc-icon nc-money-coins"
                     small-title="Fees"
-                    :title="fees.toString()">
+                    :title="fees | toCurrency(base_currency)">
         </stats-card>
       </div>
     </div>
@@ -57,10 +57,26 @@
               <el-table-column label="ISIN" property="ticker.isin"></el-table-column>
               <el-table-column label="Date" property="value_date" sortable></el-table-column>
               <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
-              <el-table-column label="Price ($/€)" property="price"></el-table-column>
-              <el-table-column label="Fees" property="fees"></el-table-column>
-              <el-table-column label="Cost" property="cost"></el-table-column>
-              <el-table-column label="Benefits" property="benefits"></el-table-column>
+              <el-table-column label="Price">
+                <template slot-scope="scope">
+                  {{ scope.row.price | toCurrency(scope.row.currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Fees" property="fees">
+                <template slot-scope="scope">
+                  {{ scope.row.fees | toCurrency(base_currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Cost" property="cost">
+                <template slot-scope="scope">
+                  {{ scope.row.cost | toCurrency(base_currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Benefits" property="benefits">
+                <template slot-scope="scope">
+                  {{ scope.row.benefits | toCurrency(base_currency) }}
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </div>
@@ -85,10 +101,11 @@ export default {
   },
   data() {
     return {
+      base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
       years: [2019, 2020, 2021, 2022],
-      tax_year: 2021,
-      value: 0,
+      tax_year: new Date().getFullYear() - 1,
+      dividends: 0,
       benefits: 0,
       fees: 0
     };
@@ -112,37 +129,25 @@ export default {
       this.fees = 0;
       let vm = this;
       this.closedOrders.forEach(function (s) {
-        vm.fees += s.fee + s.exchange_fee;
         s.fees = s.fee + s.exchange_fee;
-        s.cost = s.shares * s.price - s.fee - s.exchange_fee;
-        s.cost_eur = s.shares * s.price * s.currency_rate + s.fee + s.exchange_fee;
-        s.sell = 0;
-        vm.fees = Number((vm.fees).toFixed(2));
+        s.cost = s.shares * s.price * s.currency_rate + s.fees;
 
         //TODO: sum fees of children items
         //s.benefits = Number(s.shares * s.price *s.currency_rate + s.fees).toFixed(2);
-        s.benefits = s.cost_eur;
+        s.benefits = s.cost;
         s.value_date = s.value_date.split(' ')[0];
-        s.fees = Number(s.fees).toFixed(2);
+
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
           c.name = "";
-          c.ticker = {ticker: ""};
+          c.ticker = {ticker: "", currency: s.currency};
           c.value_date = c.value_date.split(' ')[0];
           c.fees = c.fee + c.exchange_fee;
-          s.benefits -= Number(c.price * c.shares *c.currency_rate - c.partial_fee).toFixed(2); //- (c.fees/(s.shares/c.shares));
-          c.cost = Number(c.shares * c.price * c.currency_rate - c.fee - c.exchange_fee).toFixed(2) + "€";
-          c.fees = Number(c.fees).toFixed(2);
-          c.price = c.price + c.currency;
+          s.benefits -= c.price * c.shares * c.currency_rate - c.partial_fee;
+          c.cost = c.shares * c.price * c.currency_rate - c.fee - c.exchange_fee;
         });
-        s.cost = Number(s.cost_eur).toFixed(2);
         vm.benefits += s.benefits;
-
-        s.price = s.price + s.currency;
-        s.cost = s.cost + "€";
-        s.sell = s.sell + "€";
-        s.benefits = Number(s.benefits).toFixed(2)+ "€";
-        vm.benefits = Number((vm.benefits).toFixed(2));
+        vm.fees += s.fees;
       });
     },
     async getData() {

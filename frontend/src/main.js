@@ -33,6 +33,21 @@ Vue.use(SideBar);
 locale.use(lang);
 Vue.use(IsDemo);
 Vue.use(VueMeta);
+
+
+Vue.filter('toCurrency', function (value, currency, digits=2) {
+    if (typeof value !== "number") {
+        return value;
+    }
+
+    var formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        maximumFractionDigits: digits
+    });
+    return formatter.format(value);
+});
+
 // configure router
 const router = new VueRouter({
   mode: 'history',

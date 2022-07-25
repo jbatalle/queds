@@ -2,8 +2,7 @@
   <div>
     <div class="row">
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover"
-                    placement="top">
+        <el-popover trigger="hover" placement="top">
           <div>
             <div class="popover-body">Value of your portfolio taking into account current prices</div>
           </div>
@@ -11,15 +10,14 @@
             <stats-card type="success"
                         icon="nc-icon nc-money-coins"
                         small-title="Portfolio value"
-                        :title="total_value.toString()"
+                        :title="total_value | toCurrency(base_currency)"
             >
             </stats-card>
           </div>
         </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover"
-                    placement="top">
+        <el-popover trigger="hover" placement="top">
           <div>
             <div class="popover-body">Contribution to the wallet. Buys minus sells</div>
           </div>
@@ -27,10 +25,10 @@
             <stats-card type="success"
                         icon="nc-icon nc-globe"
                         small-title="Gain"
-                        :title="gain.toString()">
+                        :title="gain | toCurrency(base_currency)">
                                     <div class="stats" slot="footer">
                         <i class="nc-icon nc-refresh-69"></i>
-                        Total invested: {{ total_invested }}
+                        Total invested: {{ total_invested | toCurrency(base_currency)}}
                       </div>
             </stats-card>
           </div>
@@ -40,12 +38,11 @@
         <stats-card type="success"
                     icon="fa fa-chart-line"
                     small-title="W/L"
-                    :title="Number(gain - total_invested).toFixed(2)">
+                    :title="(gain - total_invested) | toCurrency(base_currency)">
         </stats-card>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover"
-                    placement="top">
+        <el-popover trigger="hover" placement="top">
           <div>
             <div class="popover-body">Total fiat available in accounts</div>
           </div>
@@ -53,7 +50,7 @@
             <stats-card type="success"
                         icon="nc-icon nc-money-coins"
                         small-title="Fiat"
-                        :title="fiat.toString()">
+                        :title="fiat | toCurrency(base_currency)">
             </stats-card>
           </div>
         </el-popover>
@@ -150,10 +147,8 @@ export default {
       let benefits = this.total_value - this.total_invested;
       console.log("Current benefits: " + benefits);
       //this.total_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
-      let fiat = 0;
-      fiat += this.brokerAccounts.reduce((a, b) => a + b['balance'], 0);
-      fiat += this.exchangeAccounts.reduce((a, b) => a + b['balance'], 0);
-      this.fiat = Number(fiat).toFixed(2);
+      this.fiat += this.brokerAccounts.reduce((a, b) => a + b['balance'], 0);
+      this.fiat += this.exchangeAccounts.reduce((a, b) => a + b['balance'], 0);
 
       this.createPortfolioChart();
       this.createInvestChart();
@@ -187,13 +182,13 @@ export default {
     fillWallet(res) {
       let resStatus = res.status === 200 ? true : false;
       let wallet = res.data;
-      this.total_value = Number(wallet.reduce((a, b) => a + (b.shares * b.market.price * this.fx_rate || 0), 0)).toFixed(2);
+      this.total_value = wallet.reduce((a, b) => a + (b.current_value), 0);
     },
     fillStats(res) {
       let resStatus = res.status === 200 ? true : false;
       let stats = res.data;
-      this.total_invested = Number(stats.invested).toFixed(2);
-      this.gain = Number(stats.gain).toFixed(2);
+      this.total_invested = stats.invested;
+      this.gain = stats.gain;
     },
     fillAccounts(res) {
       let resStatus = res.status === 200 ? true : false;
@@ -231,6 +226,7 @@ export default {
   },
   data() {
     return {
+      base_currency: localStorage.getItem('base_currency'),
       fx_rate: 1,
       total_assets: [],
       brokerAccounts: [],

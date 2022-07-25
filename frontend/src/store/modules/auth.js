@@ -40,6 +40,7 @@ export default {
             return vueAuth.login(payload.user, payload.requestOptions).then(response => {
                 let token = response.data['token'];
                 localStorage.setItem("vue-authenticate.vueauth_access_token", token);
+                localStorage.setItem("base_currency", response.data['base_currency']);
                 axios.defaults.headers.common['Authorization'] = token;
                 context.commit("auth_success", token);
                 router.push({path: "/"});

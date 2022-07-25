@@ -149,21 +149,45 @@ class WalletCollection(Resource):
         for d in yahoo_prices:
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
+        fx_rate = round(y.get_currency()['close'], 2)
+
         items = []
         for r in wallet_items:
             item = r.json
             item['ticker'] = r.ticker.to_dict()
             item['open_orders'] = []
+            item['base_cost'] = 0  # cost of open orders in user currency
+            item['current_benefit'] = 0  # benefits with current values and with closed orders in user currency
+            item['base_current_value'] = 0  # in user currency
+            item['current_value'] = 0  # in ticker currency
+
             for oo in r.open_orders:
                 oo_item = oo.json
                 oo_item['transaction'] = oo.transaction.json
+                oo_item['cost'] = oo.shares * oo.transaction.price
+                oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                item['base_cost'] += oo_item['base_cost']
                 item['open_orders'].append(oo_item)
 
             item['market'] = {}
             if r.ticker.ticker in tickers_by_ticker:
                 item['market'] = tickers_by_ticker[r.ticker.ticker]
-            # item['transaction'] = r.transaction.json
+                # TODO: remove next lines
+                item['current_price'] = round(item['market'].get('price', 0), 2) or 0
+                item['price_change_percent'] = f"{round(item['market'].get('price_change', 0) or 0, 2)}%"
+                item['current_pre'] = round(item['market'].get('pre', 0) or 0, 2)
+                item['pre_change_percent'] = f"{round(item['market'].get('pre_change', 0) or 0, 2)}%"
+
+            item['current_value'] = r.shares * item['market'].get('price', 0)
+            if r.ticker.currency == 'EUR':
+                item['current_benefit'] = item['current_value'] - item['base_cost'] + r.benefits + r.fees
+                item['base_current_value'] += item['current_value']
+            else:
+                item['current_benefit'] = item['current_value'] * fx_rate - item['base_cost'] + r.benefits + r.fees
+                item['base_current_value'] += item['current_value'] * fx_rate
+
             items.append(item)
+
         return jsonify(items)
 
 
@@ -191,7 +215,7 @@ class Tax(Resource):
         items = []
         for r in closed_orders:
             item = r.sell_transaction.json
-            item['ticker'] = r.sell_transaction.ticker.json
+            item['ticker'] = r.sell_transaction.ticker.to_dict()
             children = []
             for q in r.buy_transaction:
                 buy = q.transaction.json
@@ -253,8 +277,7 @@ class CalcStats(Resource):
         stats = {
             "portfolio_value": 0,
             "invested": invested,
-            "gain": gain,
-            # "fiat": 0
+            "gain": gain
         }
 
         return stats
