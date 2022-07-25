@@ -157,7 +157,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="brokerAccounts" :cell-style="{padding: '0', height: '20px'}">
+            <el-table :data="brokerAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="entity_name"></el-table-column>
               <el-table-column label="Fiat" property="balance"></el-table-column>
@@ -213,7 +213,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="this.exchangeAccounts" :cell-style="{padding: '0', height: '20px'}">
+            <el-table :data="this.exchangeAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="name"></el-table-column>
               <el-table-column label="Fiat" property="balance"></el-table-column>
@@ -263,7 +263,7 @@
             </div>
           </div>
           <div class="col-sm-12 mt-2">
-            <el-table :data="this.bankAccounts" :cell-style="{padding: '0', height: '20px'}">
+            <el-table :data="this.bankAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Balance" property="balance"></el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>

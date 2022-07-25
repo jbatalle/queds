@@ -9,21 +9,21 @@
                 <stats-card type="warning"
                             icon="nc-icon nc-money-coins"
                             small-title="Cost"
-                            :title="cost.toString()">
+                            :title="total_cost | toCurrency(base_currency)">
                 </stats-card>
               </div>
               <div class="col-lg-4 col-md-6 col-sm-6">
                 <stats-card type="success"
                             icon="nc-icon nc-money-coins"
                             small-title="Wallet Value"
-                            :title="value.toString()">
+                            :title="value | toCurrency(base_currency)">
                 </stats-card>
               </div>
               <div class="col-lg-4 col-md-6 col-sm-6">
                 <stats-card type="success"
                             icon="nc-icon nc-globe"
                             small-title="Current W/L"
-                            :title="benefits.toString()">
+                            :title="benefits | toCurrency(base_currency)">
                 </stats-card>
               </div>
             </div>
@@ -45,14 +45,30 @@
                   </div>
                 </div>
               </div>
-              <div class="card-body table-responsive table-full-width">
+              <div class="card-body table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'win_lose', order: 'descending'}"
                           :cell-class-name="testClass" :cell-style="{padding: '0', height: '20px'}">
                   <el-table-column label="Coin" property="currency" width="100px" sortable></el-table-column>
-                  <el-table-column label="Balance" property="amount"></el-table-column>
-                  <el-table-column label="Price ($/€)" property="price"></el-table-column>
-                  <el-table-column label="Cost (€)" property="cost"></el-table-column>
-                  <el-table-column label="Market price" property="current_price"></el-table-column>
+                  <el-table-column label="Balance" property="amount">
+                    <template slot-scope="scope">
+                      {{ scope.row.amount | toCurrency(scope.row.currency, 8) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Price ($/€)" property="price">
+                    <template slot-scope="scope">
+                      {{ scope.row.price | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Cost (€)" property="cost">
+                    <template slot-scope="scope">
+                      {{ scope.row.cost | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Market price" property="current_price">
+                    <template slot-scope="scope">
+                      {{ scope.row.current_price | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
                   <!--el-table-column label="BE ($/€)" property="break_even"></el-table-column>
                   <el-table-column label="Value (€)" property="current_value" sortable></el-table-column>
                   <el-table-column label="W/L (€)" property="win_lose" sortable></el-table-column>
@@ -93,7 +109,11 @@
                 <el-table :data="this.wallet" :default-sort="{property: 'percentage', order: 'descending'}"
                           :cell-class-name="testClass">
                   <el-table-column label="Symbol" property="currency" width="100px" sortable></el-table-column>
-                  <el-table-column label="cost" property="cost"></el-table-column>
+                  <el-table-column label="cost" property="cost">
+                    <template slot-scope="scope">
+                      {{ scope.row.cost | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
                   <el-table-column label="Value" property="current_value"></el-table-column>
                   <el-table-column label="Percentage" property="percentage" sortable></el-table-column>
                 </el-table>
@@ -135,10 +155,11 @@ export default {
   },
   data() {
     return {
+      base_currency: localStorage.getItem('base_currency'),
       wallet: [],
       value: 0,
       benefits: 0,
-      cost: 0,
+      total_cost: 0,
       investKey: 0,
       investChart: {
         labels: [],
@@ -181,6 +202,7 @@ export default {
         var b = Math.floor(Math.random() * 255);
         return "rgb(" + r + "," + g + "," + b + ")";
       });
+
       this.investChart.datasets[0].data = this.wallet.map(el => Number(el.cost / wallet_value * 100).toFixed(2));
       this.investKey += 1;
     },
@@ -189,12 +211,13 @@ export default {
       this.wallet = res.data;
       var vm = this;
       this.wallet = []
-      this.cost = 0;
+      this.total_cost = 0;
       this.benefits = 0;
       this.value = 0;
 
       res.data.forEach(function (t) {
-        vm.cost += Number((t.price * t.amount).toFixed(2));
+        console.log(t);
+        vm.total_cost += t.price * t.amount;
         //vm.value += t.balance * t.market.price || 0
         //vm.benefits += Number((t.benefits).toFixed(2));
         //vm.benefits = Number((vm.benefits).toFixed(2));
@@ -210,7 +233,7 @@ export default {
 
         vm.wallet.push(t)
       });
-      this.cost = Number(this.cost).toFixed(2);
+      //this.cost = Number(this.cost).toFixed(2);
 
       let wallet_value = Number(this.wallet.reduce((a, b) => a + b.amount, 0)).toFixed(2);
       this.createInvestChart(wallet_value);

@@ -54,12 +54,32 @@
                 filter-placement="bottom-end"
             >
             </el-table-column>
-            <el-table-column label="Time" prop="value_date" sortable/>
-            <el-table-column label="price" prop="price"/>
-            <el-table-column label="amount" prop="amount" sortable/>
-            <!--el-table-column label="exchange" prop="exchange_id" sortable="custom" /-->
-            <!--el-table-column label="Created At" prop="created_at" sortable="custom" /-->
-
+            <el-table-column label="value date" prop="value_date" sortable/>
+            <el-table-column label="amount" prop="amount" sortable>
+              <template slot-scope="scope">
+                {{ scope.row.amount | toCurrency(scope.row.currency_source, 8) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="price" prop="price">
+              <template slot-scope="scope">
+                {{ scope.row.price | toCurrency(scope.row.currency_target) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="fees" sortable>
+              <template slot-scope="scope">
+                {{ scope.row.fee | toCurrency(scope.row.currency_target) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="total" sortable>
+              <template slot-scope="scope">
+                {{ scope.row.total | toCurrency(scope.row.currency_target, 8) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="cost" sortable>
+              <template slot-scope="scope">
+                {{ scope.row.cost | toCurrency(scope.row.currency_target, 8) }}
+              </template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -93,14 +113,12 @@ export default {
     [Tag.name]: Tag,
     [Input.name]: Input,
     [Icon.name]: Icon,
-
   },
 
   data: () => ({
-    orders: [],
     accounts: [],
+    orders: [],
     filter_accounts: new Set(),
-    query: null,
     sort: "value_date",
     search: '',
     pagination: {
@@ -116,7 +134,7 @@ export default {
         this.getData();
       },
       deep: true
-    },
+    }
   },
   computed: {
     from() {
@@ -147,22 +165,20 @@ export default {
       let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
-          if (!vm.accounts.some(el => el.text === entry))
-            vm.accounts.push({"text": entry, "value": entry});
+        if (!vm.accounts.some(el => el.text === entry))
+          vm.accounts.push({"text": entry, "value": entry});
       });
       this.total = res.data.pagination.count;
       this.orders.forEach(function (s) {
-        if (s.type == 0) {
-          s.type = "Buy"
-          s.cost = s.shares * s.price - s.fee - s.exchange_fee
+        if (s.type === 0) {
+          s.type = "Buy";
+          s.cost = s.amount * s.price - s.fee;
         } else {
           s.type = "Sell";
-          s.cost = s.shares * s.price + s.fee + s.exchange_fee
+          s.cost = s.amount * s.price + s.fee;
         }
-        s.total = s.shares * s.price;
+        s.total = s.amount * s.price;
         s.value_date = s.value_date.split(' ')[0];
-        s.total = Number(s.total).toFixed(2);
-        s.cost = Number(s.cost).toFixed(2);
       });
     },
     async getData() {
@@ -173,15 +189,15 @@ export default {
     },
     tableRowClassName(item) {
       if (item.row.type == 'Sell')
-        return 'table-success'
+        return 'table-success';
       else
-        return 'table-warning'
+        return 'table-warning';
     },
     iconClassName(item) {
       if (item.type == 'Sell')
-        return "nc-minimal-left blue"
+        return "nc-minimal-left blue";
       else
-        return 'nc-minimal-right red'
+        return 'nc-minimal-right red';
     }
   },
 }

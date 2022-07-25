@@ -122,6 +122,8 @@ class OrdersCollection(Resource):
         items = []
         for order in orders:
             o = order.to_dict()
+            o['currency_source'] = order.pair.split("/")[0]
+            o['currency_target'] = order.pair.split("/")[1]
             items.append(o)
 
         total = query.count()

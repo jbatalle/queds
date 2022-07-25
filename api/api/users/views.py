@@ -80,8 +80,12 @@ class Login(Resource):
         access_token = create_access_token(identity=_email, expires_delta=expires)
         refresh_token = create_refresh_token(identity=_email)
 
+        # TODO: get base currency from model
+
         return {"success": True,
-                "token": access_token}, 200
+                "token": access_token,
+                "base_currency": "EUR"
+                }, 200
 
 
 @namespace.route('/edit')

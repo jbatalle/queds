@@ -62,12 +62,29 @@
             <el-table-column label="Value date" property="value_date" sortable></el-table-column>
             <!--el-table-column label="type" property="type" sortable></el-table-column-->
             <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
-            <el-table-column label="price" property="price" width="100px"></el-table-column>
-            <el-table-column label="fees" property="fee"></el-table-column>
-            <el-table-column label="Exchange Fee" property="exchange_fee"></el-table-column>
-            <el-table-column label="Total (€)" property="total" sortable></el-table-column>
-            <el-table-column label="Cost (€)" property="cost" sortable></el-table-column>
-
+            <el-table-column label="price" width="100px">
+              <template slot-scope="scope">
+                {{scope.row.price | toCurrency(scope.row.currency)}}
+              </template>
+            </el-table-column>
+            <el-table-column label="fee" property="fee">
+              <template slot-scope="scope">
+                {{scope.row.fee | toCurrency(base_currency)}}
+              </template>
+            </el-table-column>
+            <el-table-column label="Exchange Fee" property="exchange_fee">
+              <template slot-scope="scope">
+                {{scope.row.exchange_fee | toCurrency(base_currency)}}
+              </template></el-table-column>
+            <el-table-column label="Total" property="total" sortable>
+              <template slot-scope="scope">
+                {{scope.row.total | toCurrency(scope.row.currency)}}
+              </template>
+            </el-table-column>
+            <el-table-column label="Cost" property="cost" sortable>
+              <template slot-scope="scope">
+                {{scope.row.cost | toCurrency(base_currency)}}
+              </template></el-table-column>
           </el-table>
         </div>
 
@@ -104,6 +121,7 @@ export default {
   },
 
   data: () => ({
+    base_currency: localStorage.getItem('base_currency'),
     accounts: [],
     orders: [],
     filter_accounts: new Set(),
@@ -153,22 +171,20 @@ export default {
       let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
-          if (!vm.accounts.some(el => el.text === entry))
-            vm.accounts.push({"text": entry, "value": entry});
+        if (!vm.accounts.some(el => el.text === entry))
+          vm.accounts.push({"text": entry, "value": entry});
       });
       this.total = res.data.pagination.count;
       this.orders.forEach(function (s) {
+        s.value_date = s.value_date.split(' ')[0];
+        s.total = s.shares * s.price;
         if (s.type == 0) {
           s.type = "Buy";
-          s.cost = s.shares * s.price + s.fee + s.exchange_fee;
+          s.cost = s.total + s.fee + s.exchange_fee;
         } else {
           s.type = "Sell";
-          s.cost = s.shares * s.price - s.fee - s.exchange_fee;
+          s.cost = s.total * s.currency_rate - s.fee - s.exchange_fee;
         }
-        s.total = s.shares * s.price;
-        s.value_date = s.value_date.split(' ')[0];
-        s.total = Number(s.total).toFixed(2);
-        s.cost = Number(s.cost).toFixed(2);
       });
     },
     async getData() {
