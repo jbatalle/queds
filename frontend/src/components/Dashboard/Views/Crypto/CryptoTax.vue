@@ -49,7 +49,10 @@
                       :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Symbol" property="pair"></el-table-column>
               <el-table-column label="Date" property="value_date" sortable></el-table-column>
-              <el-table-column label="Amount" property="amount" width="100px"></el-table-column>
+              <el-table-column label="Amount" property="amount" width="100px">
+              <template slot-scope="scope">
+                {{ scope.row.amount | toCurrency(scope.row.source_currency, 8) }}
+              </template></el-table-column>
               <el-table-column label="Price ($/€)" property="price"></el-table-column>
               <el-table-column label="Fees" property="fee"></el-table-column>
               <el-table-column label="Cost" property="cost"></el-table-column>
@@ -97,12 +100,12 @@ export default {
   },
   methods: {
     fillTaxes(res) {
-      let resStatus = res.status === 200 ? true : false;
       this.closedOrders = res.data;
       this.benefits = 0;
       this.fees = 0;
       let vm = this;
       this.closedOrders.forEach(function (s) {
+        console.log(s);
         vm.fees += s.fee;
         s.fees = s.fee;
         s.cost = s.amount * s.price - s.fee;
@@ -111,6 +114,8 @@ export default {
         s.benefits_net = s.amount * s.price;
         s.benefits = Number((s.amount * s.price - s.fees).toFixed(2));
         s.value_date = s.value_date.split(' ')[0];
+        s.source_currency = s.pair.split("/")[0];
+        s.target_currency = s.pair.split("/")[1];
 
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;

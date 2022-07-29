@@ -79,7 +79,7 @@ def seed_sample_transactions(account_id):
         ticker = Ticker(ticker="TSLA",
                         name="TESLA C",
                         currency="USD",
-                        isin="ISIN NUM",
+                        isin="US88160R1014",
                         ticker_yahoo="TSLA",
                         status=Ticker.Status.ACTIVE
                         )
@@ -101,8 +101,8 @@ def seed_sample_transactions(account_id):
             type=StockTransaction.Type.BUY,
             currency="USD",
             price=500.2 + i,
-            fee=2,
-            exchange_fee=1,
+            fee=-2,
+            exchange_fee=-1,
             currency_rate=1)
         objects.append(order)
 
@@ -117,8 +117,8 @@ def seed_sample_transactions(account_id):
         type=StockTransaction.Type.SELL,
         currency="USD",
         price=600,
-        fee=3,
-        exchange_fee=1,
+        fee=-3,
+        exchange_fee=-1,
         currency_rate=1)
     objects.append(order)
     order = StockTransaction(
@@ -131,8 +131,8 @@ def seed_sample_transactions(account_id):
         type=StockTransaction.Type.SELL,
         currency="USD",
         price=600,
-        fee=3,
-        exchange_fee=1,
+        fee=-3,
+        exchange_fee=-1,
         currency_rate=1)
     objects.append(order)
 
@@ -151,7 +151,7 @@ def seed_sample_exchange_order(acc_id):
             amount=3,
             type=ExchangeOrder.Type.BUY,
             price=950.2,
-            fee=12),
+            fee=-12),
         ExchangeOrder(
             account_id=acc_id,
             external_id="external_id2",
@@ -160,7 +160,7 @@ def seed_sample_exchange_order(acc_id):
             amount=3,
             type=ExchangeOrder.Type.BUY,
             price=970.2,
-            fee=12),
+            fee=-12),
         ExchangeOrder(
             account_id=acc_id,
             external_id="external_id3",
@@ -169,7 +169,7 @@ def seed_sample_exchange_order(acc_id):
             amount=4,
             type=ExchangeOrder.Type.SELL,
             price=960.2,
-            fee=13)
+            fee=-13)
     ]
 
     db_session.bulk_save_objects(objects)

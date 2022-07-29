@@ -33,7 +33,7 @@
                                 :title="total_value | toCurrency(base_currency)">
                       <div class="stats" slot="footer">
                         <i class="nc-icon nc-refresh-69"></i>
-                        {{ this.current_benefits_percent }}
+                        {{ this.current_benefits_percent }}%
                       </div>
                     </stats-card>
                   </div>
@@ -53,7 +53,7 @@
 
                       <div class="stats" slot="footer">
                         <i class="nc-icon nc-refresh-69"></i>
-                        {{ this.benefits_percent }}
+                        {{ this.benefits_percent }}%
                       </div>
                     </stats-card>
                   </div>
@@ -131,7 +131,11 @@
                       {{ scope.row.win_lose | toCurrency(base_currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Change" property="price_change_percent" sortable></el-table-column>
+                  <el-table-column label="Change" property="price_change_percent" sortable>
+                    <template slot-scope="scope">
+                      {{ scope.row.price_change_percent | round(2) }}%
+                    </template>
+                  </el-table-column>
                   <el-table-column label="Pre" property="current_pre">
                     <template slot-scope="scope">
                       {{ scope.row.current_pre | toCurrency(scope.row.ticker.currency) }}
@@ -174,16 +178,23 @@
                   <el-table-column label="cost" property="cost">
                     <template slot-scope="scope">
                       {{ scope.row.cost | toCurrency(scope.row.ticker.currency) }}
-                    </template></el-table-column>
+                    </template>
+                  </el-table-column>
                   <el-table-column label="Value" property="current_value">
                     <template slot-scope="scope">
                       {{ scope.row.current_value | toCurrency(scope.row.ticker.currency) }}
-                    </template></el-table-column>
+                    </template>
+                  </el-table-column>
                   <el-table-column label="Base value" property="base_current_value">
                     <template slot-scope="scope">
                       {{ scope.row.base_current_value | toCurrency(base_currency) }}
-                    </template></el-table-column>
-                  <el-table-column label="Percentage" property="percentage" sortable></el-table-column>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Percentage" property="percentage" sortable>
+                    <template slot-scope="scope">
+                      {{ scope.row.percentage }}%
+                    </template>
+                  </el-table-column>
                 </el-table>
               </div>
             </div>
@@ -268,7 +279,7 @@ export default {
       await this.getData();
     },
     fillFxRate(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       this.fx_rate = Number(res.data.close).toFixed(2);
     },
     createInvestChart(wallet_value) {
@@ -326,8 +337,8 @@ export default {
         this.createInvestChart(this.total_value);
 
         // card stats
-        this.current_benefits_percent = Number(this.total_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2) + "%";
-        this.benefits_percent = Number((Number(this.total_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2) + "%";
+        this.current_benefits_percent = Number(this.total_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
+        this.benefits_percent = Number((Number(this.total_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
       });
     },
     async getData() {

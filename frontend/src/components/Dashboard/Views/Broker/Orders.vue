@@ -64,7 +64,7 @@
             <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
             <el-table-column label="price" width="100px">
               <template slot-scope="scope">
-                {{scope.row.price | toCurrency(scope.row.currency)}}
+                {{ scope.row.price | toCurrency(scope.row.currency) }}
               </template>
             </el-table-column>
             <el-table-column label="fee" property="fee">
@@ -167,7 +167,7 @@ export default {
       this.getData()
     },
     fillOrders(res) {
-      var vm = this;
+      let vm = this;
       let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
@@ -180,10 +180,10 @@ export default {
         s.total = s.shares * s.price;
         if (s.type == 0) {
           s.type = "Buy";
-          s.cost = s.total + s.fee + s.exchange_fee;
+          s.cost = s.total - s.fee - s.exchange_fee;
         } else {
           s.type = "Sell";
-          s.cost = s.total * s.currency_rate - s.fee - s.exchange_fee;
+          s.cost = s.total * s.currency_rate + s.fee + s.exchange_fee;
         }
       });
     },
@@ -194,13 +194,13 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
     tableRowClassName(item) {
-      if (item.row.type == 'Sell')
+      if (item.row.type === 'Sell')
         return 'table-success';
       else
         return 'table-warning';
     },
     iconClassName(item) {
-      if (item.type == 'Sell')
+      if (item.type === 'Sell')
         return "nc-minimal-left blue";
       else
         return 'nc-minimal-right red';

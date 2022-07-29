@@ -14,7 +14,7 @@ https://queds-api.herokuapp.com/overview
 ## In progress
 * Include dividends
 * Allow to import broker/crypto data from CSV
-* Profile view -> Change default portfolio currency
+* Set default portfolio currency
 * Include crowdlending platform: October
 * Include investment funds
 

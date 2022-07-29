@@ -1,4 +1,6 @@
-FROM python:3.9
+FROM python:3.9-slim-buster
+
+RUN apt-get update && apt-get -y install libpq-dev gcc
 # to be used by heroku for demo page
 
 COPY . /usr/src
