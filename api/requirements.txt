@@ -18,3 +18,4 @@ jinja2==3.0.0
 kombu==5.2.4
 redis==4.2.0
 pycrypto==2.6.1
+werkzeug==2.1.2

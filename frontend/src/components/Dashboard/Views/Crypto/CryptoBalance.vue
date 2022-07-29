@@ -69,13 +69,6 @@
                       {{ scope.row.current_price | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
                   </el-table-column>
-                  <!--el-table-column label="BE ($/€)" property="break_even"></el-table-column>
-                  <el-table-column label="Value (€)" property="current_value" sortable></el-table-column>
-                  <el-table-column label="W/L (€)" property="win_lose" sortable></el-table-column>
-                  <el-table-column label="Market price" property="current_price"></el-table-column>
-                  <el-table-column label="Change (%)" property="price_change_percent" sortable></el-table-column>
-                  <el-table-column label="Pre" property="current_pre"></el-table-column>
-                  <el-table-column label="Pre change (%)" property="pre_change_percent" sortable></el-table-column-->
                 </el-table>
               </div>
             </div>
@@ -218,22 +211,8 @@ export default {
       res.data.forEach(function (t) {
         console.log(t);
         vm.total_cost += t.price * t.amount;
-        //vm.value += t.balance * t.market.price || 0
-        //vm.benefits += Number((t.benefits).toFixed(2));
-        //vm.benefits = Number((vm.benefits).toFixed(2));
-        //vm.value = Number((vm.value).toFixed(2));
-        //t['price'] = Number((t.price).toFixed(2)) + t.ticker.currency
-
-        //t['current_value'] = Number((t.shares * t.market.price || 0).toFixed(2)) //+ "€"
-        //t['win_lose'] = Number((t.shares * t.market.price - t.shares * t.price + t.benefits + t.fees).toFixed(2)) + "€"
-        //t['current_price'] = Number((t.market.price || 0).toFixed(2))
-        //t['price_change_percent'] = Number((t.market.price_change || 0).toFixed(2))
-        //t['current_pre'] = Number((t.market.pre || 0).toFixed(2)) + t.ticker.currency
-        //t['pre_change_percent'] = Number((t.market.price_change || 0).toFixed(2))
-
         vm.wallet.push(t)
       });
-      //this.cost = Number(this.cost).toFixed(2);
 
       let wallet_value = Number(this.wallet.reduce((a, b) => a + b.amount, 0)).toFixed(2);
       this.createInvestChart(wallet_value);

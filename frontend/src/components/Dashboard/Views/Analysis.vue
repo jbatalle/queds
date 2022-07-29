@@ -70,7 +70,11 @@
                 </template>
               </el-table-column>
               <el-table-column label="Time" property="market_time"></el-table-column>
-              <el-table-column label="Change" property="price_change" sortable></el-table-column>
+              <el-table-column label="Change" property="price_change" sortable>
+                    <template slot-scope="scope">
+                      {{ scope.row.price_change | round(2) }}%
+                    </template>
+              </el-table-column>
               <el-table-column label="Price" property="price"></el-table-column>
               <el-table-column label="High" property="high"></el-table-column>
               <el-table-column label="Low" property="low"></el-table-column>
@@ -152,6 +156,7 @@ export default {
     fillWatchlist(res) {
       let resStatus = res.status === 200 ? true : false;
       this.watchlist = res.data;
+      console.log(res.data);
     },
     fillComments(res) {
       let resStatus = res.status === 200 ? true : false;

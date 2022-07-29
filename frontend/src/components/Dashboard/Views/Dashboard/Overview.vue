@@ -12,6 +12,10 @@
                         small-title="Portfolio value"
                         :title="total_value | toCurrency(base_currency)"
             >
+              <div class="stats" slot="footer">
+                <i class="nc-icon nc-refresh-69"></i>
+                Current invests: {{ total_invested | toCurrency(base_currency) }}
+              </div>
             </stats-card>
           </div>
         </el-popover>
@@ -19,27 +23,38 @@
       <div class="col-lg-3 col-md-6 col-sm-6">
         <el-popover trigger="hover" placement="top">
           <div>
-            <div class="popover-body">Contribution to the wallet. Buys minus sells</div>
+            <div class="popover-body">Materialized gain</div>
           </div>
           <div slot="reference">
             <stats-card type="success"
                         icon="nc-icon nc-globe"
                         small-title="Gain"
                         :title="gain | toCurrency(base_currency)">
-                                    <div class="stats" slot="footer">
-                        <i class="nc-icon nc-refresh-69"></i>
-                        Total invested: {{ total_invested | toCurrency(base_currency)}}
-                      </div>
+              <div class="stats" slot="footer">
+                <i class="nc-icon nc-refresh-69"></i>
+                Total buy: {{ buy | toCurrency(base_currency) }}. Total sell: {{ -sell | toCurrency(base_currency) }}
+              </div>
             </stats-card>
           </div>
         </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <stats-card type="success"
-                    icon="fa fa-chart-line"
-                    small-title="W/L"
-                    :title="(gain - total_invested) | toCurrency(base_currency)">
-        </stats-card>
+        <el-popover trigger="hover" placement="top">
+          <div>
+            <div class="popover-body">Future gains. Materialized gains + portfolio value</div>
+          </div>
+          <div slot="reference">
+            <stats-card type="success"
+                        icon="fa fa-chart-line"
+                        small-title="W/L"
+                        :title="(total_value + gain - total_invested) | toCurrency(base_currency)">
+              <div class="stats" slot="footer">
+                <i class="nc-icon nc-refresh-69"></i>
+                {{ (((total_value + gain) / total_invested) - 1) * 100 | round }}%
+              </div>
+            </stats-card>
+          </div>
+        </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
         <el-popover trigger="hover" placement="top">
@@ -141,7 +156,6 @@ export default {
       return account;
     },
     fillTotal() {
-      console.log(this.total_invested);
       this.wallet_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
 
       let benefits = this.total_value - this.total_invested;
@@ -180,27 +194,31 @@ export default {
       this.totalKey += 1;
     },
     fillWallet(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       let wallet = res.data;
       this.total_value = wallet.reduce((a, b) => a + (b.current_value), 0);
+      this.roi = (this.total_value + this.total_invested) / this.total_invested;
     },
     fillStats(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       let stats = res.data;
-      this.total_invested = stats.invested;
+      //this.total_invested = stats.invested;
+      this.buy = stats.buy;
+      this.sell = stats.sell;
+      this.total_invested = this.buy + this.sell + stats.gain;
       this.gain = stats.gain;
     },
     fillAccounts(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       this.accounts = res.data;
 
-      var vm = this;
-      var bar = new Promise((resolve, reject) => {
+      let vm = this;
+      let bar = new Promise((resolve, reject) => {
         vm.accounts.forEach((p, index, array) => {
           let asset = undefined;
-          if (p.entity_type == 1) {
+          if (p.entity_type === 1) {
             asset = vm.fillBrokers(p);
-          } else if (p.entity_type == 3) {
+          } else if (p.entity_type === 3) {
             asset = vm.fillExchanges(p);
           }
           if (asset != undefined) {
@@ -214,7 +232,7 @@ export default {
       });
     },
     fillFxRate(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       this.fx_rate = Number(res.data.close).toFixed(2);
     },
     async getData() {
@@ -239,6 +257,8 @@ export default {
       total_value: 0,
       wallet_value: 0,
       total_invested: 0,
+      buy: 0,
+      sell: 0,
       totalChart: {
         labels: [],
         datasets: [{

@@ -48,6 +48,13 @@ Vue.filter('toCurrency', function (value, currency, digits=2) {
     return formatter.format(value);
 });
 
+Vue.filter('round', function (value) {
+    if (typeof value !== "number") {
+        return value;
+    }
+    return Number(value).toFixed(2);
+});
+
 // configure router
 const router = new VueRouter({
   mode: 'history',

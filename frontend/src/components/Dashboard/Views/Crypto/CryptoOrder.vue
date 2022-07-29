@@ -172,10 +172,10 @@ export default {
       this.orders.forEach(function (s) {
         if (s.type === 0) {
           s.type = "Buy";
-          s.cost = s.amount * s.price - s.fee;
+          s.cost = s.amount * s.price + s.fee;
         } else {
           s.type = "Sell";
-          s.cost = s.amount * s.price + s.fee;
+          s.cost = s.amount * s.price - s.fee;
         }
         s.total = s.amount * s.price;
         s.value_date = s.value_date.split(' ')[0];

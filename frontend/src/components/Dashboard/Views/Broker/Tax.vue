@@ -123,7 +123,7 @@ export default {
   },
   methods: {
     fillTaxes(res) {
-      let resStatus = res.status === 200 ? true : false;
+      let resStatus = res.status === 200;
       this.closedOrders = res.data;
       this.benefits = 0;
       this.fees = 0;
@@ -142,9 +142,9 @@ export default {
           c.name = "";
           c.ticker = {ticker: "", currency: s.currency};
           c.value_date = c.value_date.split(' ')[0];
-          c.fees = c.fee + c.exchange_fee;
+          c.fees = c.partial_fee; //c.fee + c.exchange_fee;
           s.benefits -= c.price * c.shares * c.currency_rate - c.partial_fee;
-          c.cost = c.shares * c.price * c.currency_rate - c.fee - c.exchange_fee;
+          c.cost = c.shares * c.price * c.currency_rate - c.partial_fee;
         });
         vm.benefits += s.benefits;
         vm.fees += s.fees;

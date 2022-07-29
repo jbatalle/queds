@@ -160,8 +160,16 @@
             <el-table :data="brokerAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="entity_name"></el-table-column>
-              <el-table-column label="Fiat" property="balance"></el-table-column>
-              <el-table-column label="Value" property="virtual_balance"></el-table-column>
+              <el-table-column label="Fiat" property="balance">
+                <template slot-scope="scope">
+                  {{ scope.row.balance | toCurrency(scope.row.currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Value" property="virtual_balance">
+                <template slot-scope="scope">
+                  {{ scope.row.virtual_balance | toCurrency(scope.row.currency) }}
+                </template>
+              </el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>
               <el-table-column label="actions">
                 <template slot-scope="scope">
@@ -215,9 +223,17 @@
           <div class="col-sm-12 mt-2">
             <el-table :data="this.exchangeAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
-              <el-table-column label="Type" property="name"></el-table-column>
-              <el-table-column label="Fiat" property="balance"></el-table-column>
-              <el-table-column label="Value" property="virtual_balance"></el-table-column>
+              <el-table-column label="Type" property="entity_name"></el-table-column>
+              <el-table-column label="Fiat" property="balance">
+                <template slot-scope="scope">
+                  {{ scope.row.balance | toCurrency(scope.row.currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Value" property="virtual_balance">
+                <template slot-scope="scope">
+                  {{ scope.row.virtual_balance | toCurrency(scope.row.currency) }}
+                </template>
+              </el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>
               <el-table-column label="actions">
                 <template slot-scope="scope">
@@ -340,7 +356,7 @@ export default {
   watch: {
     "credential.entity": {
       handler(entity) {
-        if (entity != undefined) {
+        if (entity !== undefined) {
           this.getAccountCredentialTypes(entity);
         }
       },
@@ -351,7 +367,7 @@ export default {
         this.errors = {};
       }
     },
-      deep: true
+    deep: true
   },
   methods: {
     async deleteAccount() {
@@ -460,13 +476,13 @@ export default {
       let res_status = res.status === 200 ? true : false;
       //console.log("Checking credential created");
     },
-    async openCreateDialog(account_type, account=undefined) {
+    async openCreateDialog(account_type, account = undefined) {
       this.dialogVisible = true;
       this.credential = {
         "parameters": [],
         "entity": undefined
       }
-      if (account !== undefined){
+      if (account !== undefined) {
         this.credential["id"] = account.id;
         this.credential["entity"] = account.entity_id;
         this.credential["currency"] = account.currency;
@@ -494,14 +510,10 @@ export default {
       this.deleteDialogVisible = false;
     },
     fillBrokers(broker_account) {
-      broker_account.balance = broker_account.balance + broker_account.currency;
-      broker_account.virtual_balance = Number(broker_account.virtual_balance).toFixed(2) + broker_account.currency;
       this.brokerAccounts.push(broker_account);
       return broker_account;
     },
     fillExchanges(exchange_account) {
-      exchange_account.balance = Number(exchange_account.balance).toFixed(2) + exchange_account.currency;
-      exchange_account.virtual_balance = Number(exchange_account.virtual_balance).toFixed(2) + exchange_account.currency;
       this.exchangeAccounts.push(exchange_account);
       return exchange_account;
     },
@@ -526,11 +538,11 @@ export default {
       });
     },
     fillEntities(res) {
-      let res_status = res.status === 200 ? true : false;
+      let res_status = res.status === 200;
       this.entities = res.data;
     },
     fillCredentials(res) {
-      let res_status = res.status === 200 ? true : false;
+      let res_status = res.status === 200;
       this.entity_credentials = res.data;
     },
     async getData() {

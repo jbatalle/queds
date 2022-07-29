@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from flask_restx import Resource, fields, Namespace
 from models.broker import Watchlist, Watchlists, Wallet, StockTransaction, Ticker, OpenOrder, ClosedOrder, ProxyOrder
 from models.system import Account, Entity, User
@@ -165,6 +166,7 @@ class WalletCollection(Resource):
                 oo_item = oo.json
                 oo_item['transaction'] = oo.transaction.json
                 oo_item['cost'] = oo.shares * oo.transaction.price
+                # TODO: transaction fee should be partial in case of partial sell
                 oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
                 item['base_cost'] += oo_item['base_cost']
                 item['open_orders'].append(oo_item)
@@ -174,9 +176,9 @@ class WalletCollection(Resource):
                 item['market'] = tickers_by_ticker[r.ticker.ticker]
                 # TODO: remove next lines
                 item['current_price'] = round(item['market'].get('price', 0), 2) or 0
-                item['price_change_percent'] = f"{round(item['market'].get('price_change', 0) or 0, 2)}%"
+                item['price_change_percent'] = round(item['market'].get('price_change', 0) or 0, 2)
                 item['current_pre'] = round(item['market'].get('pre', 0) or 0, 2)
-                item['pre_change_percent'] = f"{round(item['market'].get('pre_change', 0) or 0, 2)}%"
+                item['pre_change_percent'] = round(item['market'].get('pre_change', 0) or 0, 2)
 
             item['current_value'] = r.shares * item['market'].get('price', 0)
             if r.ticker.currency == 'EUR':
@@ -199,7 +201,7 @@ class Tax(Resource):
         """Returns all closed orders."""
         args = request.args.to_dict()
 
-        year = int(args.get('year', 2021))
+        year = int(args.get('year', datetime.now().year - 1))
         username = get_jwt_identity()
         user_id = User.find_by_email(username).id
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
@@ -255,13 +257,16 @@ class CalcStats(Resource):
         query = StockTransaction.query.filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).order_by(
             StockTransaction.value_date.desc())
 
-        orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price, StockTransaction.currency_rate).all()
-        invested = 0
+        orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price,
+                                     StockTransaction.currency_rate, StockTransaction.fee,
+                                     StockTransaction.exchange_fee).all()
+        buy = 0
+        sell = 0
         for o in orders:
             if o[0] == StockTransaction.Type.BUY:
-                invested += o.shares * o.price * o.currency_rate
+                buy += o.shares * o.price * o.currency_rate - o.fee - o.exchange_fee
             else:
-                invested -= o.shares * o.price * o.currency_rate
+                sell -= o.shares * o.price * o.currency_rate + o.fee + o.exchange_fee
 
         # Closed orders
         closed_orders = ClosedOrder.query.join(ClosedOrder.sell_transaction) \
@@ -276,7 +281,8 @@ class CalcStats(Resource):
 
         stats = {
             "portfolio_value": 0,
-            "invested": invested,
+            "buy": buy,
+            "sell": sell,
             "gain": gain
         }
 
@@ -286,7 +292,6 @@ class CalcStats(Resource):
 @namespace.route('/fx_rate')
 class Calculate(Resource):
 
-    @demo_check
     @jwt_required()
     def get(self):
         """Returns current eur/usd price."""
