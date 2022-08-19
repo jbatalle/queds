@@ -20,11 +20,21 @@
                 </stats-card>
               </div>
               <div class="col-lg-4 col-md-6 col-sm-6">
-                <stats-card type="success"
-                            icon="nc-icon nc-globe"
-                            small-title="Current W/L"
-                            :title="benefits | toCurrency(base_currency)">
-                </stats-card>
+                <el-popover trigger="hover"
+                            placement="bottom">
+                  <div>
+                    <div class="popover-body">Current wallet value. Benefits vs cost and benefits from previous day
+                    </div>
+                  </div>
+                  <div slot="reference">
+
+                    <stats-card type="success"
+                                icon="nc-icon nc-globe"
+                                small-title="Current W/L"
+                                :title="benefits | toCurrency(base_currency)">
+                    </stats-card>
+                  </div>
+                </el-popover>
               </div>
             </div>
           </div>
@@ -47,19 +57,19 @@
               </div>
               <div class="card-body table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'win_lose', order: 'descending'}"
-                          :cell-class-name="testClass" :cell-style="{padding: '0', height: '20px'}">
+                          :cell-class-name="colorClass" :cell-style="{padding: '0', height: '20px'}">
                   <el-table-column label="Coin" property="currency" width="100px" sortable></el-table-column>
                   <el-table-column label="Balance" property="amount">
                     <template slot-scope="scope">
-                      {{ scope.row.amount | toCurrency(scope.row.currency, 8) }}
+                      {{ scope.row.amount | toCurrency(undefined, 8) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Price ($/€)" property="price">
+                  <el-table-column label="Buy Price" property="price">
                     <template slot-scope="scope">
                       {{ scope.row.price | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Cost (€)" property="cost">
+                  <el-table-column label="Cost" property="cost">
                     <template slot-scope="scope">
                       {{ scope.row.cost | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
@@ -67,6 +77,16 @@
                   <el-table-column label="Market price" property="current_price">
                     <template slot-scope="scope">
                       {{ scope.row.current_price | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Value">
+                    <template slot-scope="scope">
+                      {{ scope.row.current_value | toCurrency(scope.row.current_price_currency, 8) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="W/L" property="current_benefit">
+                    <template slot-scope="scope">
+                      {{ scope.row.current_benefit | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
                   </el-table-column>
                 </el-table>
@@ -100,7 +120,7 @@
               </div>
               <div class="card-body table-responsive table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'percentage', order: 'descending'}"
-                          :cell-class-name="testClass">
+                          :cell-class-name="colorClass">
                   <el-table-column label="Symbol" property="currency" width="100px" sortable></el-table-column>
                   <el-table-column label="cost" property="cost">
                     <template slot-scope="scope">
@@ -120,7 +140,7 @@
 </template>
 <script>
 
-import {Table, TableColumn, Tabs, TabPane} from 'element-ui'
+import {Table, TableColumn, Tabs, TabPane, Popover} from 'element-ui'
 import axios from "axios";
 import StatsCard from "../../../UIComponents/Cards/StatsCard";
 import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
@@ -144,7 +164,8 @@ const tooltipOptions = {
 export default {
   name: "Wallet",
   components: {
-    Table, TableColumn, StatsCard, ChartCard, Tabs, TabPane
+    Table, TableColumn, StatsCard, ChartCard, Tabs, TabPane,
+    [Popover.name]: Popover,
   },
   data() {
     return {
@@ -200,9 +221,8 @@ export default {
       this.investKey += 1;
     },
     fillWallet(res) {
-      let resStatus = res.status === 200 ? true : false;
       this.wallet = res.data;
-      var vm = this;
+      let vm = this;
       this.wallet = []
       this.total_cost = 0;
       this.benefits = 0;
@@ -210,8 +230,14 @@ export default {
 
       res.data.forEach(function (t) {
         console.log(t);
+        if (t.currency === undefined) {
+          return;
+        }
         vm.total_cost += t.price * t.amount;
         vm.wallet.push(t)
+        vm.value += t.current_value;
+        // vm.benefits += t.benefits;
+        vm.benefits += t.current_benefit;
       });
 
       let wallet_value = Number(this.wallet.reduce((a, b) => a + b.amount, 0)).toFixed(2);
@@ -224,9 +250,8 @@ export default {
     async getData() {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillWallet);
     },
-    testClass(item) {
-      if (item.column.property == 'pre_price_change_percent' || item.column.property == 'current_price_change_percent'
-          || item.column.property == 'win_lose') {
+    colorClass(item) {
+      if (item.column.property == 'current_benefit') {
         if (parseInt(item.row[item.column.property]) > 0)
           return "green";
         else

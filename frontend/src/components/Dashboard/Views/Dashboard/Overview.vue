@@ -160,7 +160,7 @@ export default {
 
       let benefits = this.total_value - this.total_invested;
       console.log("Current benefits: " + benefits);
-      //this.total_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
+      // this.total_value = Number(this.brokerAccounts.reduce((a, b) => parseFloat(a) + parseFloat(b['virtual_balance']), 0)).toFixed(2);
       this.fiat += this.brokerAccounts.reduce((a, b) => a + b['balance'], 0);
       this.fiat += this.exchangeAccounts.reduce((a, b) => a + b['balance'], 0);
 
@@ -194,9 +194,13 @@ export default {
       this.totalKey += 1;
     },
     fillWallet(res) {
-      let resStatus = res.status === 200;
       let wallet = res.data;
-      this.total_value = wallet.reduce((a, b) => a + (b.current_value), 0);
+      this.total_value += wallet.reduce((a, b) => a + (b.base_current_value), 0);
+      this.roi = (this.total_value + this.total_invested) / this.total_invested;
+    },
+    fillCryptoWallet(res) {
+      let wallet = res.data;
+      this.total_value += wallet.reduce((a, b) => a + (b.current_value), 0);
       this.roi = (this.total_value + this.total_invested) / this.total_invested;
     },
     fillStats(res) {
@@ -239,6 +243,7 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/stats").then(this.fillStats);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
+      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillCryptoWallet);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     }
   },

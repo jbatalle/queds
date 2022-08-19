@@ -59,12 +59,12 @@
                 filter-placement="bottom-end"
             >
             </el-table-column>
-            <el-table-column label="Value date" property="value_date" sortable></el-table-column>
+            <el-table-column label="Value date" prop="value_date" sortable/>
             <!--el-table-column label="type" property="type" sortable></el-table-column-->
             <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
             <el-table-column label="price" width="100px">
               <template slot-scope="scope">
-                {{ scope.row.price | toCurrency(scope.row.currency) }}
+                {{ scope.row.price | toCurrency(scope.row.ticker.currency) }}
               </template>
             </el-table-column>
             <el-table-column label="fee" property="fee">
@@ -78,7 +78,7 @@
               </template></el-table-column>
             <el-table-column label="Total" property="total" sortable>
               <template slot-scope="scope">
-                {{scope.row.total | toCurrency(scope.row.currency)}}
+                {{scope.row.total | toCurrency(scope.row.ticker.currency)}}
               </template>
             </el-table-column>
             <el-table-column label="Cost" property="cost" sortable>
@@ -178,9 +178,9 @@ export default {
       this.orders.forEach(function (s) {
         s.value_date = s.value_date.split(' ')[0];
         s.total = s.shares * s.price;
-        if (s.type == 0) {
+        if (s.type === 0) {
           s.type = "Buy";
-          s.cost = s.total - s.fee - s.exchange_fee;
+          s.cost = s.total * s.currency_rate - s.fee - s.exchange_fee;
         } else {
           s.type = "Sell";
           s.cost = s.total * s.currency_rate + s.fee + s.exchange_fee;

@@ -54,7 +54,7 @@
                 filter-placement="bottom-end"
             >
             </el-table-column>
-            <el-table-column label="value date" prop="value_date" sortable/>
+            <el-table-column label="Value date" prop="value_date" sortable/>
             <el-table-column label="amount" prop="amount" sortable>
               <template slot-scope="scope">
                 {{ scope.row.amount | toCurrency(scope.row.currency_source, 8) }}
@@ -161,7 +161,7 @@ export default {
       this.getData()
     },
     fillOrders(res) {
-      var vm = this;
+      let vm = this;
       let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
@@ -188,13 +188,13 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
     tableRowClassName(item) {
-      if (item.row.type == 'Sell')
+      if (item.row.type === 'Sell')
         return 'table-success';
       else
         return 'table-warning';
     },
     iconClassName(item) {
-      if (item.type == 'Sell')
+      if (item.type === 'Sell')
         return "nc-minimal-left blue";
       else
         return 'nc-minimal-right red';

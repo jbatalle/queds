@@ -39,8 +39,10 @@ Vue.filter('toCurrency', function (value, currency, digits=2) {
     if (typeof value !== "number") {
         return value;
     }
-
-    var formatter = new Intl.NumberFormat('en-US', {
+    if (currency === undefined) {
+        return Number(value).toFixed(digits);
+    }
+    let formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency,
         maximumFractionDigits: digits

@@ -24,7 +24,8 @@
                 <el-popover trigger="hover"
                             placement="bottom">
                   <div>
-                    <div class="popover-body">Current wallet value</div>
+                    <div class="popover-body">Current wallet value. Benefits vs cost and benefits from previous day
+                    </div>
                   </div>
                   <div slot="reference">
                     <stats-card type="success"
@@ -33,7 +34,8 @@
                                 :title="total_value | toCurrency(base_currency)">
                       <div class="stats" slot="footer">
                         <i class="nc-icon nc-refresh-69"></i>
-                        {{ this.current_benefits_percent }}%
+                        {{ this.current_benefits_percent }}% | Previous day:
+                        {{ this.total_value - this.base_previous_value | toCurrency(base_currency) }}
                       </div>
                     </stats-card>
                   </div>
@@ -63,7 +65,7 @@
                 <el-popover trigger="hover"
                             placement="bottom">
                   <div>
-                    <div class="popover-body">Executed benefits over bought items. Only open orders</div>
+                    <div class="popover-body">Executed benefits over bought items. Only current open orders</div>
                   </div>
                   <div slot="reference">
                     <stats-card type="success"
@@ -97,8 +99,41 @@
               </div>
               <div class="card-body table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'win_lose', order: 'descending'}"
-                          row-key="id" :cell-class-name="testClass" :default-expand-all="false"
+                          :cell-class-name="colorClass"
                           :cell-style="{padding: '0', height: '20px'}">
+                  <el-table-column type="expand">
+                    <template #default="props">
+                      <div class="row">
+                        <div class="col-lg-6 col-md-6 col-sm-6">
+                          <el-table :data="props.row.children">
+                            <el-table-column label="Date" prop="ticker.ticker"/>
+                            <el-table-column label="Shares" prop="shares"/>
+                            <el-table-column label="Price" prop="price">
+                              <template slot-scope="scope">
+                                {{ scope.row.price | toCurrency(scope.row.ticker.currency) }}
+                              </template>
+                            </el-table-column>
+                            <el-table-column label="Cost" prop="cost">
+                              <template slot-scope="scope">
+                                {{ scope.row.cost | toCurrency(scope.row.ticker.currency) }}
+                              </template>
+                            </el-table-column>
+                            <el-table-column label="Rate" prop="currency_rate">
+                              <template slot-scope="scope">
+                                {{ scope.row.transaction.currency_rate | toCurrency(scope.row.ticker.currency) }}
+                              </template>
+                            </el-table-column>
+                            <!--el-table-column label="Broker" prop="broker"/-->
+                          </el-table>
+                        </div>
+                        <div class="col-lg-6 col-md-6 col-sm-6">
+                          <div :id="props.row.ticker.ticker"></div>
+                          <VueTradingView :options="props.row"/>
+                        </div>
+                      </div>
+                    </template>
+                  </el-table-column>
+
                   <el-table-column label="Symbol" property="ticker.ticker" sortable></el-table-column>
                   <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
                   <el-table-column label="Price" property="price">
@@ -118,7 +153,7 @@
                   </el-table-column>
                   <el-table-column label="Market price" property="current_price">
                     <template slot-scope="scope">
-                      {{ scope.row.current_price | toCurrency(scope.row.ticker.currency) }}
+                      {{ scope.row.market.price | toCurrency(scope.row.ticker.currency) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Value" property="current_value" sortable>
@@ -131,17 +166,21 @@
                       {{ scope.row.win_lose | toCurrency(base_currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Change" property="price_change_percent" sortable>
+                  <el-table-column label="Change" property="market.price_change" sortable>
                     <template slot-scope="scope">
-                      {{ scope.row.price_change_percent | round(2) }}%
+                      {{ scope.row.market.price_change | round(2) }}%
                     </template>
                   </el-table-column>
-                  <el-table-column label="Pre" property="current_pre">
+                  <el-table-column label="Pre" property="pre">
                     <template slot-scope="scope">
-                      {{ scope.row.current_pre | toCurrency(scope.row.ticker.currency) }}
+                      {{ scope.row.market.pre | toCurrency(scope.row.ticker.currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Pre change" property="pre_change_percent" sortable></el-table-column>
+                  <el-table-column label="Pre change" property="market.pre_change" sortable>
+                    <template slot-scope="scope">
+                      {{ scope.row.market.pre_change | round(2) }}%
+                    </template>
+                  </el-table-column>
                 </el-table>
               </div>
             </div>
@@ -173,7 +212,7 @@
               </div>
               <div class="card-body table-responsive table-full-width">
                 <el-table :data="this.wallet" :default-sort="{property: 'percentage', order: 'descending'}"
-                          :cell-class-name="testClass">
+                          :cell-class-name="colorClass">
                   <el-table-column label="Symbol" property="ticker.ticker" width="100px" sortable></el-table-column>
                   <el-table-column label="cost" property="cost">
                     <template slot-scope="scope">
@@ -210,6 +249,7 @@ import {Table, TableColumn, Tabs, TabPane, Popover} from 'element-ui';
 import axios from "axios";
 import StatsCard from "../../../UIComponents/Cards/StatsCard";
 import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
+import VueTradingView from 'vue-trading-view/src/vue-trading-view';
 
 const tooltipOptions = {
   tooltipFillColor: "rgba(0,0,0,0.5)",
@@ -231,7 +271,7 @@ export default {
   name: "Wallet",
   components: {
     Table, TableColumn, StatsCard, ChartCard, Tabs, TabPane,
-    [Popover.name]: Popover,
+    [Popover.name]: Popover, VueTradingView
   },
   data() {
     return {
@@ -244,6 +284,7 @@ export default {
       total_cost: 0,
       current_benefits_percent: 0,
       benefits_percent: 0,
+      base_previous_value: 0,
       investKey: 0,
       investChart: {
         labels: [],
@@ -285,9 +326,9 @@ export default {
     createInvestChart(wallet_value) {
       this.investChart.labels = this.wallet.map(el => el.ticker.ticker);
       this.investChart.datasets[0].backgroundColor = this.wallet.map(function (el) {
-        var r = Math.floor(Math.random() * 255);
-        var g = Math.floor(Math.random() * 255);
-        var b = Math.floor(Math.random() * 255);
+        let r = Math.floor(Math.random() * 255);
+        let g = Math.floor(Math.random() * 255);
+        let b = Math.floor(Math.random() * 255);
         return "rgb(" + r + "," + g + "," + b + ")";
       });
 
@@ -296,17 +337,22 @@ export default {
     },
     fillWallet(res) {
       this.wallet = res.data;
-      var vm = this;
+      let vm = this;
       this.wallet = []
       this.total_cost = 0;
       this.total_current_benefits = 0;  // taking into account if we sell the wallet right now
       this.total_benefits = 0;
       this.total_value = 0;
+      this.base_previous_value = 0;
 
       let bar = new Promise((resolve, reject) => {
         res.data.forEach(function (t, index, array) {
           t.children = t.open_orders;
           t['win_lose'] = t.current_benefit;
+          t.symbol = t.ticker.ticker;
+          t.container_id = t.ticker.ticker;
+          t.style = "3";
+          t.break_even = t.break_even * vm.fx_rate;
 
           t.children.forEach(function (c) {
             c.ticker = {
@@ -323,6 +369,7 @@ export default {
           vm.total_benefits += t.benefits;
           vm.total_current_benefits += t.current_benefit;
           vm.total_value += t.base_current_value;
+          vm.base_previous_value += t.base_previous_value;
 
           if (index === array.length - 1) resolve();
         });
@@ -345,10 +392,17 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
     },
-    testClass(item) {
-      if (item.column.property == 'pre_price_change_percent' || item.column.property == 'current_price_change_percent'
+    colorClass(item) {
+      if (item.column.property == 'market.price_change' || item.column.property == 'market.pre_change'
           || item.column.property == 'win_lose') {
-        if (parseInt(item.row[item.column.property]) > 0)
+        let objects = item.column.property.split('.')
+        let value = 0;
+        if (objects.length > 1){
+          value =  objects.reduce((a, prop) => a[prop], item.row);
+        } else {
+          value = item.row[item.column.property]
+        }
+        if (parseFloat(value) > 0)
           return "green";
         else
           return "red"
