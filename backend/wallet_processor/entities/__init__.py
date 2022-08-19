@@ -21,10 +21,19 @@ class AbstractEntity(ABC):
     def trade(self, queue, order):
         raise NotImplementedError
 
+    def preprocess(self, orders):
+        pass
+
     def clean(self):
         pass
 
-    def get_orders(self, user_id):
+    def get_accounts(self, user_id):
+        pass
+
+    def get_orders(self, accounts):
+        pass
+
+    def get_transactions(self, accounts):
         pass
 
     def create_closed_orders(self):

@@ -5,7 +5,6 @@ from kombu.mixins import ConsumerMixin
 from kombu import Exchange, Queue, Connection
 
 logger = logging.getLogger("worker")
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)-15s %(levelname)s:%(name)s:%(message)s')
 
 
 class HandlerType:
