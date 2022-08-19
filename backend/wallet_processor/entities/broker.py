@@ -10,36 +10,53 @@ class BrokerProcessor(AbstractEntity):
         super(BrokerProcessor, self).__init__()
 
     @staticmethod
+    def preprocess(orders):
+        return orders
+
+    @staticmethod
     def clean(transactions):
         ProxyOrder.query.filter(ProxyOrder.transaction_id.in_([t.id for t in transactions])).delete()
         ClosedOrder.query.filter(ClosedOrder.sell_transaction_id.in_([t.id for t in transactions])).delete()
 
     @staticmethod
-    def get_orders(user_id):
-        accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
-                                                                  Account.entity.has(type=Entity.Type.BROKER)).all()
-        transactions = StockTransaction.query.filter(
+    def get_accounts(user_id):
+        return Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
+                                                              Account.entity.has(type=Entity.Type.BROKER)).all()
+
+    @staticmethod
+    def get_orders(accounts):
+        """
+        Get all stock orders of user user_id in ASC order
+        """
+        return StockTransaction.query.filter(
             StockTransaction.account_id.in_([a.id for a in accounts])).order_by(
             StockTransaction.value_date.asc(), StockTransaction.type.asc()).all()
-        return transactions
+
+    @staticmethod
+    def get_transactions(accounts):
+        return []
 
     def trade(self, queue, order):
+        """
+        Create queue and closed orders checking buys and sells
+        """
         sell_items = None
         fees = order.fee + order.exchange_fee
         if order.shares == 0:
             return None
         if order.type == StockTransaction.Type.BUY:
-            order = Transaction(order.id, Transaction.Type.BUY, order.value_date, order.ticker, order.shares, order.price, fees, order.currency_rate)
+            order = Transaction(Transaction.Type.BUY, order, order.ticker, order.shares, order.price, fees)
             queue.buy(order)
-            # ticker_transactions[t.ticker]["open"].append(OpenOrder(t))
         else:
-            order = Transaction(order.id, Transaction.Type.SELL, order.value_date, order.ticker, order.shares, order.price, fees, order.currency_rate)
+            order = Transaction(Transaction.Type.SELL, order, order.ticker, order.shares, order.price, fees)
             sell_items = queue.sell(order)
-            # ticker_transactions[t.ticker]["closed"].extend(sell_items)
 
         return sell_items
 
     def create_closed_orders(self, orders, tracked_orders):
+        """
+        Insert closed orders to database
+        """
         self._logger.info("Cleaning closed/wallet/proxy orders")
         self.clean(orders)
 
@@ -64,10 +81,14 @@ class BrokerProcessor(AbstractEntity):
                 ).save()
 
     def calc_wallet(self, user_id, orders, queue, tracked_orders):
-        # calculating wallet
+        """
+        Calculate current open orders
+        """
         to_insert = []
         for ticker, partial_orders in queue.queues.items():
-            self._logger.debug(f"Start processing ticker {ticker.ticker} - {ticker}")
+            if ticker.ticker == 'CRSR':
+                print("CHECL")
+            # self._logger.debug(f"Processing ticker {ticker.ticker} - {ticker}")
             if not ticker:
                 self._logger.error("Ticker not found!")
                 continue
@@ -76,6 +97,7 @@ class BrokerProcessor(AbstractEntity):
             avg_price = 0
             fees = 0
             total_cost = 0
+            total_cost_eur = 0
             open_orders = []
 
             for order in partial_orders:
@@ -83,6 +105,7 @@ class BrokerProcessor(AbstractEntity):
                     shares += order.amount
                     avg_price = order.price
                     total_cost = shares * avg_price
+                    total_cost_eur += shares * avg_price * order.trade.currency_rate
                     fees = order.fee
                     open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=shares))
                     continue
@@ -90,7 +113,8 @@ class BrokerProcessor(AbstractEntity):
                 avg_price = (shares * avg_price + order.amount * order.price) / (shares + order.amount)
                 # TODO: calc average fee?
                 shares += order.amount
-                total_cost += order.price * order.amount  # * partial_order.trade.currency_rate
+                total_cost += order.price * order.amount
+                total_cost_eur += order.price * order.amount * order.trade.currency_rate
                 fees += order.fee
 
                 open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=order.amount))
@@ -103,16 +127,17 @@ class BrokerProcessor(AbstractEntity):
             current_benefits = 0
             current_benefits_eur = 0
             total_sell = 0
+            total_sell_eur = 0
             for order in [w for w in tracked_orders if w.sell_trade.ticker == ticker]:
                 current_benefits += order.benefits
                 current_benefits_eur += order.benefits_in_eur
-                total_sell += order.sell_trade.price * order.amount  # * order.sell_trade.currency_rate
+                total_sell += order.sell_trade.price * order.amount
+                total_sell_eur += order.sell_trade.price * order.amount * order.sell_trade.currency_rate
                 fees += order.sell_trade.fees
 
-            self._logger.debug(f"Benefits: {current_benefits}. Fees: {fees}")
+            # self._logger.debug(f"Benefits: {current_benefits}. Fees: {fees}")
             current_benefits += fees
-
-            break_even = (total_cost - total_sell) / shares
+            break_even = (total_cost_eur - current_benefits_eur) / shares
 
             w = Wallet(
                 ticker_id=ticker.id,
@@ -121,8 +146,9 @@ class BrokerProcessor(AbstractEntity):
                 price=avg_price,  # in $
                 cost=total_cost,  # in base currency without fees
                 benefits=current_benefits_eur,  # in €, in front we should sum fees
-                break_even=break_even if break_even > 0 else 0,  # in base_currency
-                fees=fees)
+                break_even=break_even if break_even > 0 else 0,  # in €, in front we apply the current fx_rate
+                fees=fees  # in €
+            )
             w.open_orders.extend(open_orders)
             to_insert.append(w)
 
@@ -133,5 +159,15 @@ class BrokerProcessor(AbstractEntity):
         self._logger.info("Wallet calculation done")
 
     @staticmethod
-    def calc_balance_with_orders(self):
-        return {}
+    def calc_balance_with_orders(orders):
+        balance = {}
+        for order in orders:
+            if order.ticker.ticker not in balance:
+                balance[order.ticker.ticker] = 0
+
+            if order.type == StockTransaction.Type.BUY:
+                balance[order.ticker.ticker] += order.shares
+            else:
+                balance[order.ticker.ticker] -= order.shares
+
+        return balance

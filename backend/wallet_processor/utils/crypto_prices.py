@@ -101,7 +101,7 @@ def get_price(source, target, timestamp):
     r = requests.get(url.format(source, target, timestamp))
     data = r.json()
     if r.status_code != 200:
-        print("errir")
+        print("error")
     try:
         data.get('Data').get('Data')[1].get('close')
     except:

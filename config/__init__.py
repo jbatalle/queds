@@ -1,6 +1,8 @@
 import os
 import importlib
 import importlib.util
+import logging
+import logging.config
 
 ENVIRONMENT_VARIABLE = "BACKEND_SETTINGS"
 
@@ -44,6 +46,52 @@ class Settings:
                     dst.update(setting_value)
                 else:
                     setattr(self, setting, setting_value)
+
+        self.LOG_LEVEL = logging.DEBUG
+        self.std_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+        self.enabled_handlers = ['default']
+        logging.config.dictConfig({
+            'version': 1,
+            'disable_existing_loggers': False,
+            'filters': {
+            },
+            'formatters': {
+                'standard': {
+                    'format': self.std_format
+                }
+            },
+            'handlers': {
+                'default': {
+                    'level': self.LOG_LEVEL,
+                    'formatter': 'standard',
+                    'class': 'logging.StreamHandler',
+                    'filters': []
+                },
+            },
+            'loggers': {
+                '': {
+                    'handlers': self.enabled_handlers,
+                    'level': self.LOG_LEVEL,
+                    'propagate': True
+                },
+                'urllib3': {
+                    'handlers': self.enabled_handlers,
+                    'level': logging.WARNING
+                },
+                'requests': {  # disable requests library logging
+                    'handlers': self.enabled_handlers,
+                    'level': logging.WARNING
+                },
+                'sqlalchemy': {
+                    'handlers': self.enabled_handlers,
+                    'level': logging.ERROR
+                },
+                'sqlalchemy.engine': {
+                    'handlers': self.enabled_handlers,
+                    'level': logging.CRITICAL
+                },
+            }
+        })
 
 
 env = os.environ.setdefault(ENVIRONMENT_VARIABLE, "config.local")
