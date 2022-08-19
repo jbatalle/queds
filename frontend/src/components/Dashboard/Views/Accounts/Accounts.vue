@@ -15,10 +15,10 @@
                   placeholder="Select account">
                 <el-option
                     class="select-default"
+                    :error="errors.entity ? errors.entity : ''"
                     v-for="item in entities"
                     :key="item.id"
                     :label="item.name"
-                    :error="errors.entity ? errors.entity : ''"
                     :value="item.id">
                 </el-option>
               </el-select>
@@ -34,7 +34,10 @@
                 <el-option
                     class="select-default"
                     :error="errors.currency ? errors.currency : ''"
-                    v-for="item in ['EUR', 'USD']" :key="item" :label="item" :value="item">
+                    v-for="item in ['EUR', 'USD']"
+                    :key="item"
+                    :label="item"
+                    :value="item">
                 </el-option>
               </el-select>
             </div>
@@ -363,11 +366,11 @@ export default {
       deep: true
     },
     "credential": {
-      handler(entity) {
+      handler(val, oldVal) {
         this.errors = {};
-      }
+      },
+      deep: true
     },
-    deep: true
   },
   methods: {
     async deleteAccount() {
@@ -416,6 +419,7 @@ export default {
       this.readDialogVisible = false;
     },
     async addAccount(done) {
+      console.log("Add or update account");
       this.errors = {};
       if (!this.credential.entity) {
         this.errors.entity = 'Choose an entity';
@@ -427,15 +431,15 @@ export default {
       if (!this.credential.currency) {
         this.errors.currency = 'The currency is required';
       }
-      if (!this.credential.parameters.length) {
+      if (!this.credential.parameters.length && this.credential.id == undefined) {
         this.errors.parameters = 'Credentials are required';
       }
-
-      if (!this.credential.encrypt_password) {
+      if (!this.credential.encrypt_password && this.credential.id == undefined) {
         this.errors.encrypt_password = 'Encryption password is required';
       }
 
       if (Object.keys(this.errors).length) {
+        console.log(this.errors)
         return;
       }
 
@@ -444,11 +448,14 @@ export default {
         "entity_id": this.credential.entity,
         "currency": this.credential.currency
       }
-
-      var vm = this;
+      let vm = this;
       if (this.credential['id'] != undefined) {
-        console.log("Update credentials!")
-        this.createCredential(this.credential);
+        console.log("Update account!");
+        await axios.put(process.env.VUE_APP_BACKEND_URL + "/entities/accounts/" + this.credential['id'], data).then(function (res) {});
+        if (this.credential.parameters.length) {
+          console.log("Update credential!");
+          await this.createCredential(this.credential);
+        }
       } else {
         await axios.post(process.env.VUE_APP_BACKEND_URL + "/entities/accounts", data).then(function (res) {
           vm.createCredential(res.data);
@@ -458,7 +465,7 @@ export default {
     },
     async createCredential(account) {
       let parameters = []
-      for (var key in this.credential.parameters) {
+      for (let key in this.credential.parameters) {
         parameters.push({
           "value": this.credential.parameters[key],
           "credential_type_id": Number(key)
@@ -480,7 +487,9 @@ export default {
       this.dialogVisible = true;
       this.credential = {
         "parameters": [],
-        "entity": undefined
+        "entity": undefined,
+        "currency": undefined,
+        "name": ""
       }
       if (account !== undefined) {
         this.credential["id"] = account.id;
@@ -490,9 +499,8 @@ export default {
       }
       this.errors = [];
       this.entities = [];
-      var vm = this;
+      let vm = this;
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/").then(function (res) {
-        //let res_code = res.status === 200 ? true : false;
         res.data.forEach(function (e) {
           if (e.type == account_type) {
             vm.entities.push(e);

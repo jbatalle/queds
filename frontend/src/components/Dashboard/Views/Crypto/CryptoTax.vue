@@ -9,13 +9,6 @@
         </stats-card>
       </div>
       <div class="col-lg-4 col-md-6 col-sm-6">
-        <stats-card type="success"
-                    icon="nc-icon nc-money-coins"
-                    small-title="Dividends"
-                    :title="value.toString()">
-        </stats-card>
-      </div>
-      <div class="col-lg-4 col-md-6 col-sm-6">
         <stats-card type="danger"
                     icon="nc-icon nc-money-coins"
                     small-title="Fees"
@@ -49,14 +42,31 @@
                       :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Symbol" property="pair"></el-table-column>
               <el-table-column label="Date" property="value_date" sortable></el-table-column>
-              <el-table-column label="Amount" property="amount" width="100px">
-              <template slot-scope="scope">
-                {{ scope.row.amount | toCurrency(scope.row.source_currency, 8) }}
-              </template></el-table-column>
-              <el-table-column label="Price ($/€)" property="price"></el-table-column>
-              <el-table-column label="Fees" property="fee"></el-table-column>
-              <el-table-column label="Cost" property="cost"></el-table-column>
-              <el-table-column label="Benefits" property="benefits"></el-table-column>
+              <el-table-column label="Amount" property="amount">
+                <template slot-scope="scope">
+                  {{ scope.row.amount | toCurrency(scope.row.source_currency, 8) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Price" property="price">
+                <template slot-scope="scope">
+                  {{ scope.row.price | toCurrency(scope.row.target_currency, 8) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Fees" property="fee">
+                <template slot-scope="scope">
+                  {{ scope.row.fee | toCurrency(scope.row.target_currency, 8) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Cost" property="cost">
+                <template slot-scope="scope">
+                  {{ scope.row.cost | toCurrency(scope.row.target_currency) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="Benefits" property="benefits">
+                <template slot-scope="scope">
+                  {{ scope.row.benefits | toCurrency(scope.row.target_currency) }}
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </div>
@@ -81,7 +91,7 @@ export default {
     return {
       closedOrders: [],
       years: [2019, 2020, 2021, 2022],
-      tax_year: 2021,
+      tax_year: new Date().getFullYear() - 1,
       value: 0,
       benefits: 0,
       fees: 0
@@ -114,12 +124,13 @@ export default {
         s.benefits_net = s.amount * s.price;
         s.benefits = Number((s.amount * s.price - s.fees).toFixed(2));
         s.value_date = s.value_date.split(' ')[0];
-        s.source_currency = s.pair.split("/")[0];
+        //s.source_currency = s.pair.split("/")[0];
         s.target_currency = s.pair.split("/")[1];
 
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
           c.name = "";
+          c.target_currency = s.pair.split("/")[1];
           c.value_date = c.value_date.split(' ')[0];
           c.fees = c.fee + c.exchange_fee;
           s.benefits_net -= c.price * c.amount;
@@ -127,7 +138,7 @@ export default {
           s.benefits = Number((s.benefits).toFixed(2));
           c.fees = Number(c.fees).toFixed(2);
         });
-        s.cost = Number(s.cost).toFixed(2);
+        //s.cost = Number(s.cost).toFixed(2);
         vm.benefits += s.benefits;
         vm.benefits = Number((vm.benefits).toFixed(2));
       });
@@ -136,8 +147,7 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
     testClass(item) {
-      if (item.column.property == 'pre_price_change_percent' || item.column.property == 'current_price_change_percent'
-          || item.column.property == 'win_lose') {
+      if (item.column.property == 'benefits') {
         if (parseInt(item.row[item.column.property]) > 0)
           return "green";
         else

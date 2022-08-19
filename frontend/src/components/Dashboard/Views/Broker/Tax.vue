@@ -45,7 +45,7 @@
           </div>
           <div class="card-body table-full-width">
             <el-table name="tax_items" :data="this.closedOrders" :default-sort="{property: 'id', order: 'descending'}"
-                      row-key="id" :cell-class-name="testClass" default-expand-all
+                      row-key="id" :cell-class-name="colorClass" default-expand-all
                       :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Symbol">
                 <template #default="scope">
@@ -123,7 +123,6 @@ export default {
   },
   methods: {
     fillTaxes(res) {
-      let resStatus = res.status === 200;
       this.closedOrders = res.data;
       this.benefits = 0;
       this.fees = 0;
@@ -153,9 +152,8 @@ export default {
     async getData() {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
-    testClass(item) {
-      if (item.column.property == 'pre_price_change_percent' || item.column.property == 'current_price_change_percent'
-          || item.column.property == 'win_lose') {
+    colorClass(item) {
+      if (item.column.property == 'benefits') {
         if (parseInt(item.row[item.column.property]) > 0)
           return "green";
         else
