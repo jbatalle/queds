@@ -67,7 +67,6 @@ class CRUD:
 
         d = dict()
         for k, v in instance.items():
-            # v = getattr(inst, c.name)
             if v is None:
                 d[k] = str()
             elif isinstance(v, sql.sqltypes.Date):
@@ -76,37 +75,4 @@ class CRUD:
                 d[k] = v.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 d[k] = v
-        return d
-
-        try:
-            l.pop('_sa_instance_state', None)
-        except:
-            pass
-        for c in d:
-            v = getattr(inst, c.name)
-        return l
-
-        convert = dict()
-        # add your coversions for things like datetime's
-        # and what-not that aren't serializable.
-        d = dict()
-        import time
-        start = time.time()
-        print(time.time() - start)
-        for c in inst.__table__.columns:
-            print(time.time() - start)
-            v = getattr(inst, c.name)
-
-            if c.type in convert.keys() and v is not None:
-                try:
-                    d[c.name] = convert[c.type](v)
-                except:
-                    d[c.name] = "Error:  Failed to covert using ", str(convert[c.type])
-            elif v is None:
-                d[c.name] = str()
-            elif isinstance(c.type, sql.sqltypes.Date):
-                d[c.name] = v.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                d[c.name] = v
-
         return d

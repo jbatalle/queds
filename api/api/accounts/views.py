@@ -94,8 +94,31 @@ class AccountElement(Resource):
 
     @demo_check
     @jwt_required()
+    def put(self, id):
+        """Update account."""
+        accounts = filter_by_username(Account).all()
+        if id not in [a.id for a in accounts]:
+            return {'message': 'Unable to delete the account!'}, 400
+
+        log.debug(f"Request update of account {id}")
+        account = filter_by_username(Account).filter(Account.id == id).one()
+
+        log.info(f"Found account: {account.id}. Trying to update the account")
+        content = request.get_json(silent=True)
+        try:
+            account.name = content['name']
+            account.currency = content['currency']
+            account.save()
+        except Exception as e:
+            log.error(f"Unable to update: {e}")
+
+        log.debug("Account updated")
+        return {'message': 'Account updated!'}
+
+    @demo_check
+    @jwt_required()
     def delete(self, id):
-        """Deletes and account and the related items."""
+        """Deletes an account and the related items."""
         accounts = filter_by_username(Account).all()
         if id not in [a.id for a in accounts]:
             return {'message': 'Unable to delete the account!'}, 400
@@ -211,3 +234,25 @@ class AccountReader(Resource):
 
         log.debug("Account credential check")
         return {'message': f'Reading account {account.name}!'}
+
+
+@namespace.route('/stats')
+class AccountStats(Resource):
+
+    @jwt_required()
+    def get(self):
+        user_id = User.find_by_email(get_jwt_identity()).id
+        accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id).all()
+
+        # TODO:
+        # values required: current portfolio wallet, current gain, total_invested
+        # call stock and crypto wallet
+
+        stats = {
+            "portfolio_value": 0,
+            "buy": 0,
+            "sell": 0,
+            "gain": 0
+        }
+
+        return stats
