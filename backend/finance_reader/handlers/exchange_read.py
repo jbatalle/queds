@@ -72,11 +72,11 @@ class ExchangeReader:
         logger.info(f"Updating account: {account_id}")
         self._update_account(account_id, base_balance)
 
-        logger.info(f"Processing {len(orders)} balances")
+        logger.info(f"Processing {len(balances)} balances")
         ExchangeBalance.bulk_insert([o.to_dict() for o in balances])
 
         logger.info(f"Processing {len(orders)} orders")
         ExchangeOrder.bulk_insert([o.to_dict() for o in orders])
 
-        logger.info(f"Processing {len(transactions)} orders")
+        logger.info(f"Processing {len(transactions)} transactions")
         ExchangeTransaction.bulk_insert([o.to_dict() for o in transactions])

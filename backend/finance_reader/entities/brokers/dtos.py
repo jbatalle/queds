@@ -9,6 +9,7 @@ class Ticker:
         self.isin = ''
         self.name = None
         self.active = True
+        self.exchange = None
 
 
 class BrokerAccount:

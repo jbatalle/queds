@@ -83,7 +83,7 @@ class Kraken(AbstractExchange):
         try:
             orders = self.query("/0/private/TradesHistory", params={"ofs": 0}).json()
         except Exception as e:
-            print(e)
+            self._logger.exception(e)
             return
 
         parsed_orders.extend(self._convert_orders(orders))
@@ -93,7 +93,7 @@ class Kraken(AbstractExchange):
             try:
                 orders = self.query("/0/private/TradesHistory", params={"ofs": offset}).json()
             except Exception as e:
-                print(e)
+                self._logger.exception(e)
                 return
             parsed_orders.extend(self._convert_orders(orders))
             if len(orders['result']['trades'].items()) == 50:
@@ -145,7 +145,7 @@ class Kraken(AbstractExchange):
             try:
                 transactions = self.query("/0/private/Ledgers", params={"ofs": offset}).json()
             except Exception as e:
-                print(e)
+                self._logger.exception(e)
                 return
             total_transactions.extend(transactions['result']['ledger'].values())
             if len(transactions['result']['ledger'].items()) == 50:

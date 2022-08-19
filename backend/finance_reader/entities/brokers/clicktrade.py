@@ -79,10 +79,6 @@ class Clicktrade(AbstractBroker):
         me = b.json()
         self.client_key = me.get('ClientKey')
 
-        # TODO: can be removed?
-        # a = self._client.get(f"https://fssoclicktrader.clicktrade.es/openapi/cs/v1/clientinfo/clients/{self.client_key}")
-        # user_info = a.json()
-        # client_id = user_info.get('ClientId')
         self._client.headers.update({
             "origin": "https://fssoclicktrader.clicktrade.es",
             "referer": "https://fssoclicktrader.clicktrade.es/d"
@@ -127,7 +123,7 @@ class Clicktrade(AbstractBroker):
         to_insert = []
         for d in data.get("Data"):
             isin = d['ISINCode']
-            symbol = d['InstrumentSymbol'].replace(":xnys", "").replace(":xnas", "").replace(":xmce", ".MC").upper()
+            symbol, exchange_mic = d['InstrumentSymbol'].upper().split(":")
             if ':' in symbol:
                 self._logger.warning("Unknown market: {}".format(d['InstrumentSymbol']))
 
@@ -170,6 +166,7 @@ class Clicktrade(AbstractBroker):
             ticker.ticker = symbol
             ticker.name = d['InstrumentDescription']
             ticker.active = status
+            ticker.exchange = exchange_mic
 
             t = Transaction()
             t.name = d['InstrumentDescription'],  # 14578496
@@ -182,7 +179,7 @@ class Clicktrade(AbstractBroker):
             t.fee = fee
             t.exchange_fee = exchange_fee
             t.currency_rate = currency_rate
-            t.currency = currency
+            t.currency = currency if currency else None
 
             to_insert.append(t)
 
