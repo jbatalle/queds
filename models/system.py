@@ -17,12 +17,16 @@ class User(Base, CRUD):
     password = Column(String(255), nullable=False)
     registered_on = Column(DateTime, nullable=False)
     admin = Column(Boolean, nullable=False, default=False)
+    currency = Column(String(5), default=False)
+    # telegram_chat = Column(String(30), default=False)
+    # telegram_token = Column(String(60), default=False)
 
-    def __init__(self, email, password, admin=False):
+    def __init__(self, email, password, admin=False, currency="EUR"):
         self.email = email
         self.password = generate_password_hash(password)
         self.registered_on = datetime.now()
         self.admin = admin
+        self.currency = currency
 
     @classmethod
     def find_by_email(cls, email):

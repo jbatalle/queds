@@ -24,7 +24,7 @@ class StockTransaction(Base, CRUD):
     ticker = relationship("Ticker")
     shares = Column(Integer)
     type = Column(Integer)
-    currency = Column(String(5))
+    currency = Column(String(5))  # duplicated, should be extracted from ticker
     price = Column(Float)  # according to currency
     fee = Column(Float)  # according to currency
     exchange_fee = Column(Float)  # in €
@@ -145,6 +145,7 @@ class Ticker(Base, CRUD):
     isin = Column(String(50))
     ticker_yahoo = Column(String(10))
     status = Column(Integer, default=Status.ACTIVE)
+    # market = Column(String(50))
 
     def __str__(self):
         return self.name
@@ -162,7 +163,7 @@ class Ticker(Base, CRUD):
             "id": self.id,
             "name": self.name,
             "ticker": self.ticker,
-            "currency": self.get_currency(),
+            "currency": self.currency,
             "isin": self.isin,
             "ticker_yahoo": self.ticker_yahoo,
             "status": self.status

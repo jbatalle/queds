@@ -120,26 +120,13 @@ class WalletCollection(Resource):
         tickers_yahoo = {t.ticker.ticker_yahoo: t.ticker.ticker for t in wallet_items if t.ticker.ticker_yahoo}
         symbols = ",".join(list(tickers_yahoo.keys()))
         if len(wallet_items) == 0:
-            return {'message': "Unable to detect tickers in open transactions"}, 400
-
-        # TODO: to be moved to backend
-        y = YahooClient()
-        to_be_req = Ticker.query.filter(Ticker.id.in_([w.ticker_id for w in wallet_items])).filter(Ticker.ticker_yahoo == None).all()
-        # to_be_req = [t for t in tickers if not t.ticker_yahoo]
-        log.info(f"Tickers without yahoo: {to_be_req}")
-        for no_yahoo_symbol in to_be_req:
-            yahoo_symbol = y.get_yahoo_symbol(no_yahoo_symbol.ticker)
-            log.info(f"{no_yahoo_symbol.ticker} - {yahoo_symbol}")
-            if not yahoo_symbol:
-                continue
-            no_yahoo_symbol.ticker_yahoo = yahoo_symbol
-            # this update here can cause delay in the joinedload due is commiting to the DB!
-            q = no_yahoo_symbol.save()
+            return {'message': "Unable to detect tickers in open transactions. Recalculate wallet"}, 400
 
         if len(symbols) == 0:
             log.error("Unable to detect tickers in open transactions")
             return {'message': "Unable to detect tickers in open transactions"}, 400
 
+        y = YahooClient()
         try:
             yahoo_prices = y.get_current_tickers(symbols)
         except:
@@ -150,7 +137,7 @@ class WalletCollection(Resource):
         for d in yahoo_prices:
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
-        fx_rate = round(y.get_currency()['close'], 2)
+        fx_rate = round(y.get_currency()['close'], 2) or 1
 
         items = []
         for r in wallet_items:
@@ -159,8 +146,9 @@ class WalletCollection(Resource):
             item['open_orders'] = []
             item['base_cost'] = 0  # cost of open orders in user currency
             item['current_benefit'] = 0  # benefits with current values and with closed orders in user currency
-            item['base_current_value'] = 0  # in user currency
+            item['base_current_value'] = 0  # portfolio value in user currency
             item['current_value'] = 0  # in ticker currency
+            item['base_previous_value'] = 0  # portfolio value previous day in user currency
 
             for oo in r.open_orders:
                 oo_item = oo.json
@@ -174,19 +162,14 @@ class WalletCollection(Resource):
             item['market'] = {}
             if r.ticker.ticker in tickers_by_ticker:
                 item['market'] = tickers_by_ticker[r.ticker.ticker]
-                # TODO: remove next lines
-                item['current_price'] = round(item['market'].get('price', 0), 2) or 0
-                item['price_change_percent'] = round(item['market'].get('price_change', 0) or 0, 2)
-                item['current_pre'] = round(item['market'].get('pre', 0) or 0, 2)
-                item['pre_change_percent'] = round(item['market'].get('pre_change', 0) or 0, 2)
 
             item['current_value'] = r.shares * item['market'].get('price', 0)
-            if r.ticker.currency == 'EUR':
-                item['current_benefit'] = item['current_value'] - item['base_cost'] + r.benefits + r.fees
-                item['base_current_value'] += item['current_value']
-            else:
-                item['current_benefit'] = item['current_value'] * fx_rate - item['base_cost'] + r.benefits + r.fees
-                item['base_current_value'] += item['current_value'] * fx_rate
+            item['previous_day_value'] = r.shares * item['market'].get('previous_close', 0)
+
+            item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
+            item['current_benefit'] = r.benefits + r.fees + item['current_value'] * item_fx_rate - (item['base_cost'])
+            item['base_current_value'] += item['current_value'] * item_fx_rate
+            item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
 
             items.append(item)
 
@@ -290,7 +273,7 @@ class CalcStats(Resource):
 
 
 @namespace.route('/fx_rate')
-class Calculate(Resource):
+class FxRate(Resource):
 
     @jwt_required()
     def get(self):

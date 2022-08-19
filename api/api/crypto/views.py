@@ -49,15 +49,19 @@ class BalanceList(Resource):
         username = get_jwt_identity()
         user_id = User.find_by_email(username).id
 
-        wallet_items = ExchangeWallet.query.filter(ExchangeWallet.user_id == user_id).all()
+        # TODO: get open orders
+        wallet_items = ExchangeWallet.query.options(joinedload('open_orders'))\
+             .options(joinedload('open_orders.order')).filter(ExchangeWallet.user_id == user_id).all()
+
+        # wallet_items = ExchangeWallet.query.filter(ExchangeWallet.user_id == user_id).all()
         if len(wallet_items) == 0:
-            return {'message': "Unable to detect tickers in open transactions"}, 400
+            return {'message': "Unable to detect tickers in open transactions. Recalculate the wallet!"}, 400
 
         c = CryptoCompareClient()
         currencies = [p.currency for p in wallet_items]
         prices_eur = c.get_price("EUR", ','.join(currencies))
         prices_usd = c.get_price("USD", ','.join(currencies))
-        prices_btc = c.get_price("USD", ','.join(currencies))
+        prices_btc = c.get_price("BTC", ','.join(currencies))
 
         items = []
         for r in wallet_items:
@@ -65,26 +69,29 @@ class BalanceList(Resource):
             if r.currency == 'EUR':
                 continue
             if r.currency in prices_eur:
-                item['current_price'] = round(1/prices_eur[r.currency])
+                item['current_price'] = 1/prices_eur[r.currency]
                 item['current_price_eur'] = item['current_price']
                 item['current_price_currency'] = 'eur'
             elif r.currency in prices_usd:
-                item['current_price'] = round(1/prices_usd[r.currency])
+                item['current_price'] = 1/prices_usd[r.currency]
                 item['current_price_eur'] = item['current_price'] * prices_eur['USD']
                 item['current_price_currency'] = 'usd'
             elif r.currency in prices_btc:
-                item['current_price'] = round(1/prices_usd[r.currency])
+                item['current_price'] = 1/prices_btc[r.currency]
                 item['current_price_eur'] = item['current_price'] * prices_eur['BTC']
                 item['current_price_currency'] = 'btc'
             else:
-                print(f"Unable to get prices of {r.currency}")
-            # p = c.get_price(r.currency, "EUR")
-            # item['ticker'] = r.ticker.json
-            # item['open_orders'] = []
-            # for oo in r.open_orders:
-                # oo_item = oo.json
-                # oo_item['transaction'] = oo.transaction.json
-                # item['open_orders'].append(oo_item)
+                log.error(f"Unable to get prices of {r.currency}")
+
+            item['current_value'] = item['amount'] * item['current_price']
+            item['current_benefit'] = item['current_value'] - item['cost'] #+ r.benefits + r.fees
+            item['open_orders'] = []
+
+            for oo in r.open_orders:
+                oo_item = oo.json
+                oo_item['order'] = oo.order.json
+                item['open_orders'].append(oo_item)
+
 
             # item['market'] = {}
             # if r.ticker.ticker in tickers_by_ticker:
@@ -170,20 +177,20 @@ class CryptoTax(Resource):
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.EXCHANGE)).all()
 
-        closed_orders = ExchangeClosedOrder.query.options(joinedload('sell_transaction'))\
-            .options(joinedload('buy_transaction')).options(joinedload('buy_transaction.transaction'))\
-            .join(ExchangeClosedOrder.sell_transaction) \
+        closed_orders = ExchangeClosedOrder.query.options(joinedload('sell_order'))\
+            .options(joinedload('buy_order')).options(joinedload('buy_order.order'))\
+            .join(ExchangeClosedOrder.sell_order) \
             .filter(ExchangeOrder.value_date >= f"{year}-01-01") \
             .filter(ExchangeOrder.value_date < f"{year + 1}-01-01") \
             .filter(ExchangeOrder.account_id.in_([a_id for a_id in accounts])).all()
 
         items = []
         for r in closed_orders:
-            item = r.sell_transaction.json
+            item = r.sell_order.json
             children = []
-            for q in r.buy_transaction:
-                buy = q.transaction.json
-                buy['shares'] = q.shares
+            for q in r.buy_order:
+                buy = q.order.json
+                buy['amount'] = q.amount
                 buy['partial_fee'] = q.partial_fee
                 children.append(buy)
 

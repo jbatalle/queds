@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from models.sql import Base, CRUD, db_session
-from sqlalchemy import Column, Integer, String, UniqueConstraint, ForeignKey, Float, Date
+from sqlalchemy import Column, Integer, String, UniqueConstraint, ForeignKey, Float, Date, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import insert
 from models.system import Account, User
@@ -30,20 +30,32 @@ class Pair():
 
 class ExchangeBalance(Base, CRUD):
     __tablename__ = 'exchange_balance'
+    __table_args__ = (UniqueConstraint('account_id', 'currency', name='_account_currency_unique'),)
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
     currency = Column(String(10))
     balance = Column(Float)  # according to currency
-    update_date = Column(Date, nullable=False, default=datetime.now)
+    update_date = Column(DateTime, nullable=False, default=datetime.now)
 
     @classmethod
     def bulk_insert(cls, transactions: list):
         if len(transactions) == 0:
             return
 
-        q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
+        insert_statement = insert(cls).values(transactions)
+        constraint_columns = set()
+        for c in [c for c in cls.__table__.constraints]:
+            for col in c.columns:
+                constraint_columns.add(col.name)
+
+        # Updated fields will get their specified value
+        update_dict = {c.name: c for c in insert_statement.excluded if c.name not in constraint_columns}
+        db_session.execute(insert_statement.on_conflict_do_update(
+            constraint="_account_currency_unique",
+            set_=update_dict,
+        ))
 
 
 class ExchangeOrder(Base, CRUD):
@@ -58,7 +70,7 @@ class ExchangeOrder(Base, CRUD):
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
     external_id = Column(String(70), unique=True)
-    value_date = Column(Date, nullable=False, default=datetime.now)
+    value_date = Column(DateTime, nullable=False, default=datetime.now)
     pair = Column(String(150))
     amount = Column(Float)
     type = Column(Integer)
@@ -66,11 +78,11 @@ class ExchangeOrder(Base, CRUD):
     fee = Column(Float)  # according to currency
 
     @classmethod
-    def bulk_insert(cls, transactions: list):
-        if len(transactions) == 0:
+    def bulk_insert(cls, orders: list):
+        if len(orders) == 0:
             return
 
-        q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
+        q = db_session.execute(insert(cls).values(orders).on_conflict_do_nothing())
 
     def to_dict(self):
         # TODO
@@ -105,7 +117,7 @@ class ExchangeTransaction(Base, CRUD):
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
     external_id = Column(String(70), unique=True)
-    value_date = Column(Date, nullable=False, default=datetime.now)
+    value_date = Column(DateTime, nullable=False, default=datetime.now)
     currency = Column(String(10))
     amount = Column(Float)
     fee = Column(Float)  # according to currency
@@ -121,14 +133,12 @@ class ExchangeTransaction(Base, CRUD):
 
         q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
 
+    def get_type(self):
+        return {v: n for n, v in vars(ExchangeTransaction.Type).items() if n.isupper()}[self.type]
+
 
 class ExchangeWallet(Base, CRUD):
     __tablename__ = 'exchange_wallet'
-
-    class Type:
-        BANK = 0
-        BROKER = 1
-        CROWD = 2
 
     id = Column(Integer, primary_key=True)
     currency = Column(String(10))
@@ -139,13 +149,14 @@ class ExchangeWallet(Base, CRUD):
     break_even = Column(Float)  # in ticker currency with fees
     benefits = Column(Float)  # in €, in front we should sum fees
     fees = Column(Float)
+    open_orders = relationship("ExchangeOpenOrder")
 
     @classmethod
-    def bulk_insert(cls, transactions: list):
-        if len(transactions) == 0:
+    def bulk_insert(cls, items: list):
+        if len(items) == 0:
             return
 
-        q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
+        q = db_session.execute(insert(cls).values(items).on_conflict_do_nothing())
 
     @classmethod
     def bulk_object(cls, objects: list):
@@ -159,9 +170,9 @@ class ExchangeProxyOrder(Base, CRUD):
     id = Column(Integer, primary_key=True)
     closed_order_id = Column(Integer, ForeignKey('exchange_closed_orders.id'))
 
-    transaction = relationship("ExchangeOrder")
-    transaction_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
-    shares = Column(Float)  # shares for each transaction
+    order = relationship("ExchangeOrder")
+    order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
+    amount = Column(Float)  # amount for each order
     partial_fee = Column(Float)
 
 
@@ -169,6 +180,17 @@ class ExchangeClosedOrder(Base, CRUD):
     __tablename__ = 'exchange_closed_orders'
 
     id = Column(Integer, primary_key=True)
-    sell_transaction = relationship("ExchangeOrder")
-    sell_transaction_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
-    buy_transaction = relationship("ExchangeProxyOrder")
+    sell_order = relationship("ExchangeOrder")
+    sell_order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
+    buy_order = relationship("ExchangeProxyOrder")
+
+
+class ExchangeOpenOrder(Base, CRUD):
+    __tablename__ = 'exchange_open_orders'
+
+    id = Column(Integer, primary_key=True)
+    wallet_id = Column(Integer, ForeignKey('exchange_wallet.id'))
+
+    order = relationship("ExchangeOrder")
+    order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
+    amount = Column(Integer)  # pending amount

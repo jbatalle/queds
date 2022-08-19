@@ -186,8 +186,6 @@ def create_taxes(acc):
 @cli.command('seed')
 def seed_db():
     """Seeds the database with demo data"""
-    from loader import load_models
-    load_models()
     from models.sql import create_db_connection
     from config import settings
     create_db_connection(settings.SQL_CONF)

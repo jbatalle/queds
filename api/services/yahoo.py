@@ -52,6 +52,8 @@ class YahooClient:
                 "vol": d.get('regularMarketVolume'),
                 "pre": d.get('preMarketPrice', None),  # postMarketChangePercent
                 "pre_change": d.get('preMarketChangePercent', None),  # postMarketChangePercent
+                "previous_close": d.get('regularMarketPreviousClose'),
+                "market_open": d.get('regularMarketPreviousClose')
             }
             parsed_json.append(q)
 
@@ -59,7 +61,7 @@ class YahooClient:
 
     def get_ticker_info(self, symbol):
         endpoint = "https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&region=US&corsDomain=finance.yahoo.com"
-        flds = ("symbol", "shortName", "currency")
+        flds = ("symbol", "shortName", "currency", "fullExchangeName", "exchange")
 
         url = f"{endpoint}&fields={','.join(flds)}&symbols={symbol}"
         r = self.client.get(url)
@@ -137,6 +139,15 @@ class YahooClient:
         indicators = api_json['chart']['result'][0]['indicators']
 
         to_insert = []
+        if 'timestamp' not in api_json['chart']['result'][0]:
+            logger.error("No timestamp found. Returning last value")
+            d = api_json['chart']['result'][0]['meta']
+            a = {
+                "timestamp": d['regularMarketTime'],
+                "pair": "USD/EUR",
+                "close": d['regularMarketPrice']
+            }
+            return a
         for idx, timestamp in enumerate(api_json['chart']['result'][0]['timestamp']):
             a = {
                 "timestamp": timestamp,

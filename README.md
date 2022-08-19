@@ -5,6 +5,7 @@ Finance portfolio for manage all your finance assets: stock transactions, crypto
 https://queds-api.herokuapp.com/overview
 
 ## Features
+* Stock-Portfolio and Crypto-Portfolio
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
 * Watchlist stock
