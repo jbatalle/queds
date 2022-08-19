@@ -100,6 +100,15 @@ class Degiro(AbstractBroker):
 
         return response.json().get('data')
 
+    def _get_exchanges(self):
+        url = "https://trader.degiro.nl/product_search/config/dictionary/"
+        response = self._client.get(url)
+        if response.status_code != 200:
+            self._logger.error(response.text)
+
+        exchanges = {str(e['id']): e for e in response.json().get('exchanges')}
+        return exchanges
+
     def read_transactions(self, start_date):
         url = "https://trader.degiro.nl/reporting/secure/v4/transactions?fromDate={}&toDate={}&groupTransactionsByOrder=true&intAccount={}&sessionId={}"
         end_date = datetime.now().strftime("%d/%m/%Y")  # "12/01/2019"
@@ -107,6 +116,7 @@ class Degiro(AbstractBroker):
         data = r.json()
 
         products = self._get_product([str(p['productId']) for p in data.get('data')])
+        exchanges = self._get_exchanges()
 
         to_insert = []
         for d in data.get('data'):
@@ -121,6 +131,10 @@ class Degiro(AbstractBroker):
             ticker.name = product_name
             ticker.isin = product_isin
             ticker.active = active
+            try:
+                ticker.exchange = exchanges[product.get('exchangeId')]['micCode']
+            except:
+                self._logger.warning(f"Unable to detect the exchange for ticker {product_name}")
 
             value_date = datetime.fromisoformat(d.get('date')).replace(hour=0, minute=0)
             value_date = value_date.replace(tzinfo=tz.timezone("America/Los_Angeles"))

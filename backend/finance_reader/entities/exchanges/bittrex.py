@@ -142,7 +142,7 @@ class Bittrex(AbstractExchange):
                 new_order.pair = "{}/{}".format(pair.split("-")[0], pair.split("-")[1])
                 new_order.type = OrderType.BUY
             if order['type'] != 'LIMIT':
-                print("Other type!")
+                self._logger.warning("Other type!")
             new_order.price = order['limit']
             new_order.cost = order['proceeds']
             new_order.fee = order['commission']

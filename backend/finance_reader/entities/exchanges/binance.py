@@ -87,7 +87,7 @@ class Binance(AbstractExchange):
         symbol = q['symbol']
 
         if idx % 10 == 0:
-            print(idx)
+            self._logger.debug(idx)
 
         try:
             r = self._private_query('GET', 'api/v3/allOrders', authenticate=True, params={"symbol": symbol})
@@ -122,7 +122,7 @@ class Binance(AbstractExchange):
                     # data = future.result()
                     orders.extend(future.result())
                 except Exception as exc:
-                    print('%r generated an exception: %s' % (url, exc))
+                    self._logger.error('%r generated an exception: %s' % (url, exc))
 
         self._logger.info("Converting {0} orders".format(len(orders)))
         try:

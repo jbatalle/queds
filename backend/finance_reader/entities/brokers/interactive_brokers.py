@@ -229,7 +229,7 @@ class InteractiveBrokers(AbstractBroker):
             transactions.extend(r.json()['transactions'])
 
             if con_id not in conids_isin:
-                q = self.get_position()
+                q = self.get_position(con_id)
                 if len(q[self.acc_id]) > 1:
                     self._logger.warning("More than two positions!")
                 exchange = q[self.acc_id][0]['listingExchange']
@@ -242,6 +242,7 @@ class InteractiveBrokers(AbstractBroker):
                 ticker.ticker = d.get('result')[0]['symbol']
                 ticker.name = d.get('result')[0]['description']
                 ticker.active = Ticker.Status.ACTIVE
+                ticker.exchange = exchange
                 tickers[isin] = ticker
 
         to_insert = []
@@ -280,7 +281,7 @@ class InteractiveBrokers(AbstractBroker):
         r = self._client.post(url, json=data)
         return r.json()
 
-    def get_position(self):
-        url = "https://www.interactivebrokers.co.uk/portal.proxy/v1/portal/portfolio/positions/366131373"
+    def get_position(self, position_id):
+        url = f"https://www.interactivebrokers.co.uk/portal.proxy/v1/portal/portfolio/positions/{position_id}"
         r = self._client.get(url)
         return r.json()
