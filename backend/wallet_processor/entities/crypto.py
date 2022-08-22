@@ -151,7 +151,6 @@ class CryptoProcessor(AbstractEntity):
         """
         Calculate current open orders
         """
-        # calculating wallet, using Wallet and OpenOrders
         to_insert = []
         for ticker, partial_orders in queue.queues.items():
             self._logger.debug(f"Start processing ticker {ticker}")

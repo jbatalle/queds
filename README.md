@@ -50,6 +50,7 @@ docker-compose run migrate
 7. Add stock to a watchlist
 
 ## Development
+Technology stack: Python, Vue, Redis and Timescaledb.
 
 ### Structure
     .

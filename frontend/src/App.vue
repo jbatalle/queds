@@ -13,8 +13,9 @@
 
 <script>
 // Loading some plugin css asynchronously
-import 'sweetalert2/dist/sweetalert2.css'
-import 'vue-notifyjs/themes/default.css'
+import 'sweetalert2/dist/sweetalert2.css';
+import 'vue-notifyjs/themes/default.css';
+import axios from "axios";
 
 export default {
   created: function () {
@@ -29,12 +30,16 @@ export default {
       //return error;
     })
   },
+  mounted() {
+    axios.get(process.env.VUE_APP_BACKEND_URL + "/version").then(function (d) {
+      localStorage.setItem("version", d.data);
+    });
+  },
   metaInfo() {
     return {
       title: "Queds",
       script: (function () {
-          return [];
-
+        return [];
       })(),
     };
   },

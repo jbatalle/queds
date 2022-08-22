@@ -63,7 +63,7 @@
             <!--el-table-column label="type" property="type" sortable></el-table-column-->
             <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
             <el-table-column label="price" width="100px">
-              <template slot-scope="scope">
+              <template slot-scope="scope" v-if="scope.row.ticker.currency !== undefined">
                 {{ scope.row.price | toCurrency(scope.row.ticker.currency) }}
               </template>
             </el-table-column>
@@ -77,7 +77,7 @@
                 {{scope.row.exchange_fee | toCurrency(base_currency)}}
               </template></el-table-column>
             <el-table-column label="Total" property="total" sortable>
-              <template slot-scope="scope">
+              <template slot-scope="scope" v-if="scope.row.ticker.currency !== undefined">
                 {{scope.row.total | toCurrency(scope.row.ticker.currency)}}
               </template>
             </el-table-column>
