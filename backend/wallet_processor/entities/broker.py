@@ -86,9 +86,6 @@ class BrokerProcessor(AbstractEntity):
         """
         to_insert = []
         for ticker, partial_orders in queue.queues.items():
-            if ticker.ticker == 'CRSR':
-                print("CHECL")
-            # self._logger.debug(f"Processing ticker {ticker.ticker} - {ticker}")
             if not ticker:
                 self._logger.error("Ticker not found!")
                 continue
@@ -124,19 +121,16 @@ class BrokerProcessor(AbstractEntity):
                 continue
 
             # Calculate current benefits taking into account sells
-            current_benefits = 0
             current_benefits_eur = 0
             total_sell = 0
             total_sell_eur = 0
             for order in [w for w in tracked_orders if w.sell_trade.ticker == ticker]:
-                current_benefits += order.benefits
                 current_benefits_eur += order.benefits_in_eur
                 total_sell += order.sell_trade.price * order.amount
                 total_sell_eur += order.sell_trade.price * order.amount * order.sell_trade.currency_rate
                 fees += order.sell_trade.fees
 
             # self._logger.debug(f"Benefits: {current_benefits}. Fees: {fees}")
-            current_benefits += fees
             break_even = (total_cost_eur - current_benefits_eur) / shares
 
             w = Wallet(

@@ -13,6 +13,9 @@ from flask_sqlalchemy import SQLAlchemy
 # import config and models from main path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
 
+with open("../VERSION") as f:
+    VERSION = f.read()
+
 from config import settings
 from models.sql import create_db_connection
 
@@ -80,6 +83,10 @@ def initialize_app(flask_app):
     from api.analysis.views import namespace as api_analysis
 
     blueprint = Blueprint('api', __name__, url_prefix='/api')
+
+    @app.route("/api/version")
+    def version():
+        return VERSION
 
     if settings.DEMO_MODE:
         log.info("Setting DEMO MODE!")

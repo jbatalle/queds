@@ -167,17 +167,17 @@
                     </template>
                   </el-table-column>
                   <el-table-column label="Change" property="market.price_change" sortable>
-                    <template slot-scope="scope">
+                    <template slot-scope="scope" v-if="scope.row.market.price_change">
                       {{ scope.row.market.price_change | round(2) }}%
                     </template>
                   </el-table-column>
                   <el-table-column label="Pre" property="pre">
-                    <template slot-scope="scope">
+                    <template slot-scope="scope" v-if="scope.row.market.pre">
                       {{ scope.row.market.pre | toCurrency(scope.row.ticker.currency) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Pre change" property="market.pre_change" sortable>
-                    <template slot-scope="scope">
+                    <template slot-scope="scope" v-if="scope.row.market.pre_change">
                       {{ scope.row.market.pre_change | round(2) }}%
                     </template>
                   </el-table-column>

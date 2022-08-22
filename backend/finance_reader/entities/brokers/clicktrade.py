@@ -106,10 +106,10 @@ class Clicktrade(AbstractBroker):
 
     def check_if_tradeable(self, isin):
         url = "https://fssoclicktrader.clicktrade.es/openapi/ref/v1/instruments/?$top=201&$skip=0&includeNonTradable=true&AssetTypes=Stock%2CEtf%2CEtc%2CEtn%2CFund%2CRights%2CCompanyWarrant%2CStockIndex&keywords={}&OrderBy=Popularity&ClientKey={}"
-        response4 = self._client.get(url.format(isin, self.client_key))
-        if response4.status_code != 200:
+        response = self._client.get(url.format(isin, self.client_key))
+        if response.status_code != 200:
             self._logger.error("Error, unable to search isin {}!!!".format(isin))
-        return response4.json()
+        return response.json()['Data']
 
     def read_transactions(self, start_date):
         url = "https://fssoclicktrader.clicktrade.es/openapi/cs/v1/reports/trades/{}?fromDate={}&toDate={}"
@@ -142,7 +142,7 @@ class Clicktrade(AbstractBroker):
 
             fee = 0
             currency_rate = 0
-            currency = 0
+            currency = None
             exchange_fee = 0
             for q in detail.get('Data', []):
                 if q['BkAmountType'] == "Exchange Fee":
@@ -158,14 +158,30 @@ class Clicktrade(AbstractBroker):
 
             products = self.check_if_tradeable(isin)
             status = Ticker.Status.ACTIVE
-            if not len(products['Data']):
+            if not len(products):
                 status = Ticker.Status.INACTIVE
+
+            if len(products) > 1:
+                self._logger.warning(f"Check multiple tradeable products for {isin}")
+                products = [p for p in products if p['Identifier'] == d.get('Uic')]
+                if not len(products):
+                    self._logger.warning(f"No products found for {isin}")
+                    continue
+            product = products[0]
+
+            new_symbol, new_exchange_mic = product['Symbol'].upper().split(":")
+            if new_symbol != symbol:
+                self._logger.warning(f"Different symbol: {new_symbol} vs {symbol}. Saving {new_symbol}")
+
+            if d['InstrumentDescription'] != product['Description']:
+                self._logger.warning(f"Different description: {d['InstrumentDescription']} vs {product['Description']}")
 
             ticker = Ticker()
             ticker.isin = isin
-            ticker.ticker = symbol
-            ticker.name = d['InstrumentDescription']
+            ticker.ticker = new_symbol
+            ticker.name = product['Description']
             ticker.active = status
+            ticker.currency = product['CurrencyCode']
             ticker.exchange = exchange_mic
 
             t = Transaction()
@@ -179,7 +195,7 @@ class Clicktrade(AbstractBroker):
             t.fee = fee
             t.exchange_fee = exchange_fee
             t.currency_rate = currency_rate
-            t.currency = currency if currency else None
+            t.currency = currency if currency else ticker.currency
 
             to_insert.append(t)
 

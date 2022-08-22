@@ -243,7 +243,7 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/stats").then(this.fillStats);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillCryptoWallet);
+      // await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillCryptoWallet);
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     }
   },

@@ -9,8 +9,7 @@ logger = logging.getLogger("broker_read")
 
 class BrokerReader:
     def __init__(self):
-        self.exchange_mic = {}
-        self._get_iso_codes()
+        pass
 
     @staticmethod
     def _validate_data(data):
@@ -52,8 +51,7 @@ class BrokerReader:
         if not entity_account:
             return
 
-        # start_date = self._get_start_date(account_id) or "01/01/2017"
-        start_date = "01/01/2017"
+        start_date = self._get_start_date(account_id) or "01/01/2017"
         logger.info(f"Reading transactions from {start_date}...")
         transactions = broker.read_transactions(start_date)
         logger.info("Found {} transactions in {}".format(len(transactions), broker_name))
@@ -98,60 +96,9 @@ class BrokerReader:
 
         StockTransaction.bulk_insert(transactions)
 
-    def _get_iso_codes(self):
-        import csv
-        with open("finance_reader/utils/ISO10383_MIC_NewFormat.csv") as f:
-            reader = csv.reader(f, delimiter=',')
-            for idx, row in enumerate(reader):
-                if idx == 0:
-                    continue
-                self.exchange_mic[row[0]] = {
-                    "mic": row[1],
-                    "name": row[3],
-                    "acronym": row[7],
-                    "deleted": True if row[11] == 'DELETED' else False
-                }
-
-    def _search_yahoo_ticker(self, ticker):
-        # y = YahooClient()
-        logger.info(f"Searching {ticker.ticker}")
-        if ticker.ticker == 'SHIP':
-            print("HCEKC")
-#        yahoo_symbol = y.get_yahoo_symbol(ticker.ticker)
-        import requests
-        client = requests.Session()
-        client.headers.update({
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.110 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.8,es;q=0.6,ca;q=0.4',
-                'Accept-Encoding': 'deflate'
-            })
-        r = client.get(f"https://query2.finance.yahoo.com/v1/finance/search?q={ticker.ticker}")
-        d = r.json()['quotes']
-        items = [c for c in d if c['typeDisp'] == 'Equity']
-        yahoo_symbol = None
-        for item in items:
-            if item['symbol'] == ticker.ticker:
-                if item['exchDisp'] == ticker.exchange or item['exchDisp'] == self.exchange_mic.get(ticker.exchange, {}).get('acronym'):
-                    yahoo_symbol = item['symbol']
-                    break
-                else:
-                    logger.warning(f"Check ticker exchange {ticker.ticker} - {ticker.exchange}")
-
-            if ticker.exchange and (item['exchange'] in ticker.exchange or item['exchange'] in self.exchange_mic.get(ticker.exchange, {}).get('acronym')):
-                logger.warning(f"Check ticker exchange {ticker.ticker} - {ticker.exchange}")
-                if ticker.ticker in item['symbol']:
-                    yahoo_symbol = item['symbol']
-                    break
-
-        if not yahoo_symbol:
-            logger.error("Unable to detect the Yahoo symbol")
-            return None
-        return yahoo_symbol
-
-    def _create_new_ticker(self, tickers, t):
+    @staticmethod
+    def _create_new_ticker(tickers, t):
         logger.info(f"Creating new ticker {t.ticker.ticker} - {t.ticker.isin}!")
-        # TODO: search in yahoo
 
         if t.ticker.active == Ticker.Status.ACTIVE:
             # check if some ticker with this ticker already exists, and set to status INACTIVE
@@ -165,7 +112,7 @@ class BrokerReader:
             except:
                 pass
 
-        yahoo_ticker = self._search_yahoo_ticker(t.ticker)
+        yahoo_ticker = YahooClient().get_ticker(t.ticker)
         logger.info(f"Ticker {t.ticker.ticker} - Yahoo ticker: {yahoo_ticker}!")
         ticker = Ticker(ticker=t.ticker.ticker,
                         isin=t.ticker.isin,
