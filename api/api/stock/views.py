@@ -120,7 +120,7 @@ class WalletCollection(Resource):
         tickers_yahoo = {t.ticker.ticker_yahoo: t.ticker.ticker for t in wallet_items if t.ticker.ticker_yahoo}
         symbols = ",".join(list(tickers_yahoo.keys()))
         if len(wallet_items) == 0:
-            return {'message': "Unable to detect tickers in open transactions. Recalculate wallet"}, 400
+            return [], 200
 
         if len(symbols) == 0:
             log.error("Unable to detect tickers in open transactions")
