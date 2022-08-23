@@ -55,7 +55,7 @@ class BalanceList(Resource):
 
         # wallet_items = ExchangeWallet.query.filter(ExchangeWallet.user_id == user_id).all()
         if len(wallet_items) == 0:
-            return {'message': "Unable to detect tickers in open transactions. Recalculate the wallet!"}, 400
+            return [], 400
 
         c = CryptoCompareClient()
         currencies = [p.currency for p in wallet_items]
@@ -92,11 +92,6 @@ class BalanceList(Resource):
                 oo_item['order'] = oo.order.json
                 item['open_orders'].append(oo_item)
 
-
-            # item['market'] = {}
-            # if r.ticker.ticker in tickers_by_ticker:
-                # item['market'] = tickers_by_ticker[r.ticker.ticker]
-            # item['transaction'] = r.transaction.json
             items.append(item)
         return jsonify(items)
 

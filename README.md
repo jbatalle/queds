@@ -13,6 +13,7 @@ https://queds-api.herokuapp.com/overview
 * Automatic read from exchanges: Bitstamp, Kraken, Bittrex and Binance
 
 ## In progress
+* Set price alerts
 * Include dividends
 * Allow to import broker/crypto data from CSV
 * Set default portfolio currency
