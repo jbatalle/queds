@@ -5,14 +5,14 @@
         <stats-card type="success"
                     icon="fa fa-chart-line"
                     small-title="Win/Loses"
-                    :title="benefits.toString()">
+                    :title="benefits | toCurrency(base_currency)">
         </stats-card>
       </div>
       <div class="col-lg-4 col-md-6 col-sm-6">
         <stats-card type="danger"
                     icon="nc-icon nc-money-coins"
                     small-title="Fees"
-                    :title="fees.toString()">
+                    :title="fees | toCurrency(base_currency)">
         </stats-card>
       </div>
     </div>
@@ -89,6 +89,7 @@ export default {
   },
   data() {
     return {
+      base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
       years: [2019, 2020, 2021, 2022],
       tax_year: new Date().getFullYear() - 1,
