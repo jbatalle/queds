@@ -84,7 +84,7 @@
                       {{ scope.row.current_value | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="W/L" property="current_benefit">
+                  <el-table-column label="W/L" property="current_benefit" sortable>
                     <template slot-scope="scope">
                       {{ scope.row.current_benefit | toCurrency(scope.row.current_price_currency, 8) }}
                     </template>
@@ -252,7 +252,7 @@ export default {
     },
     colorClass(item) {
       if (item.column.property == 'current_benefit') {
-        if (parseInt(item.row[item.column.property]) > 0)
+        if (parseFloat(item.row[item.column.property]) > 0)
           return "green";
         else
           return "red"
