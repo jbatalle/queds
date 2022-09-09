@@ -84,10 +84,23 @@
             <div class="card">
               <div class="card-header">
                 <div class="row">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <h5 class="title">Wallet </h5>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-sm-4">
+                    <div class="pull-right">
+                      <el-input class="input-sm"
+                                placeholder="Search"
+                                v-model="search"
+                                width="100%">
+                        <template #suffix>
+                          <el-icon class="el-input__icon"></el-icon>
+                          <i class="nc-icon nc-zoom-split"></i>
+                        </template>
+                      </el-input>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
                     <div class="text-right mb-3">
                       <p-button type="info" size="sm" @click="reload">Reload</p-button>
                       <p-button type="warning" size="sm" @click="recalculate">Recalculate</p-button>
@@ -98,13 +111,15 @@
                 <!--p class="card-category">FX rate: {{ fx_rate }}</p-->
               </div>
               <div class="card-body table-full-width">
-                <el-table :data="this.wallet" :default-sort="{property: 'win_lose', order: 'descending'}"
-                          :cell-class-name="colorClass"
-                          :cell-style="{padding: '0', height: '20px'}">
-                  <el-table-column type="expand">
+                <el-table
+                    :data="this.wallet.filter(data => !search || data.ticker.ticker.toLowerCase().includes(search.toLowerCase()))"
+                    :default-sort="{property: 'win_lose', order: 'descending'}"
+                    :cell-class-name="colorClass"
+                    :cell-style="{padding: '0', height: '20px'}">
+                  <el-table-column type="expand" fixed>
                     <template #default="props">
                       <div class="row">
-                        <div class="col-lg-6 col-md-6 col-sm-6">
+                        <div class="col-lg-6 col-md-6 col-sm-12">
                           <el-table :data="props.row.children">
                             <el-table-column label="Date" prop="ticker.ticker"/>
                             <el-table-column label="Shares" prop="shares"/>
@@ -126,7 +141,7 @@
                             <!--el-table-column label="Broker" prop="broker"/-->
                           </el-table>
                         </div>
-                        <div class="col-lg-6 col-md-6 col-sm-6">
+                        <div class="col-lg-6 col-md-6 col-sm-12" style="height: 500px">
                           <div :id="props.row.ticker.ticker"></div>
                           <VueTradingView :options="props.row"/>
                         </div>
@@ -134,7 +149,7 @@
                     </template>
                   </el-table-column>
 
-                  <el-table-column label="Symbol" property="ticker.ticker" sortable></el-table-column>
+                  <el-table-column label="Symbol" property="ticker.ticker" sortable fixed></el-table-column>
                   <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
                   <el-table-column label="Price" property="price">
                     <template slot-scope="scope">
@@ -245,7 +260,7 @@
 </template>
 <script>
 
-import {Table, TableColumn, Tabs, TabPane, Popover} from 'element-ui';
+import {Popover, Table, TableColumn, TabPane, Tabs} from 'element-ui';
 import axios from "axios";
 import StatsCard from "../../../UIComponents/Cards/StatsCard";
 import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
@@ -277,6 +292,7 @@ export default {
     return {
       base_currency: localStorage.getItem('base_currency'),
       fx_rate: 1,
+      search: '',
       wallet: [],
       total_value: 0,
       total_current_benefits: 0,
@@ -397,8 +413,8 @@ export default {
           || item.column.property == 'win_lose') {
         let objects = item.column.property.split('.')
         let value = 0;
-        if (objects.length > 1){
-          value =  objects.reduce((a, prop) => a[prop], item.row);
+        if (objects.length > 1) {
+          value = objects.reduce((a, prop) => a[prop], item.row);
         } else {
           value = item.row[item.column.property]
         }
