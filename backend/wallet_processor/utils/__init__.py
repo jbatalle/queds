@@ -119,7 +119,7 @@ class SellInfo:
         Cost when buying (in tax currency).
         Summarize cost of all buy items
         """
-        return reduce(lambda a, b: a + b.cost * b.trade.currency_rate or 1, self.buy_items, 0.0)
+        return reduce(lambda a, b: a + b.cost * b.trade.currency_rate if hasattr(b.trade, 'currency_rate') else 1, self.buy_items, 0.0)
 
     @property
     def benefits(self):
