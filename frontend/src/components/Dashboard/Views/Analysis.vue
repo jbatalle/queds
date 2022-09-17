@@ -57,7 +57,8 @@
             <el-table
                 :data="watchlist.filter(data => !search || data.symbol.toLowerCase().includes(search.toLowerCase()))"
                 :default-sort="{property: 'ticker.ticker', order: 'descending'}"
-                max-height="650">
+                max-height="650"
+              :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Symbol" property="ticker.ticker">
                 <template slot="header" slot-scope="scope">
                   <el-input
@@ -83,8 +84,8 @@
                   class-name="td-actions"
                   label="Actions">
                 <template slot-scope="props">
-                  <p-button type="danger" size="sm" icon @click="onProFeature()"
-                            :disabled="current_watchlist == undefined">
+                  <p-button type="info" size="sm" disabled>Alert</p-button>
+                  <p-button type="danger" size="sm" icon @click="onProFeature()"  :disabled="current_watchlist == undefined">
                     <i class="fa fa-times"></i>
                   </p-button>
                 </template>
@@ -156,6 +157,9 @@ export default {
     fillWatchlist(res) {
       let resStatus = res.status === 200 ? true : false;
       this.watchlist = res.data;
+      this.watchlist.forEach(function (s) {
+        s.market_time = s.market_time.split(' ')[0];
+      });
       console.log(res.data);
     },
     fillComments(res) {
