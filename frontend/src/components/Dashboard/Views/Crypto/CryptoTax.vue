@@ -92,7 +92,7 @@ export default {
       base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
       years: [2019, 2020, 2021, 2022],
-      tax_year: new Date().getFullYear() - 1,
+      tax_year: new Date().getFullYear(),
       value: 0,
       benefits: 0,
       fees: 0
