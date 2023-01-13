@@ -2,13 +2,13 @@
 Finance portfolio for manage all your finance assets: stock transactions, crypto transactions, bank statements... It reads the data automatically from the Brokers, Crypto Exchanges and Banks.
 
 ## Demo
-https://queds-api.herokuapp.com/overview
+https://queds.fly.dev/overview
 
 ## Features
 * Stock-Portfolio and Crypto-Portfolio
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
-* Watchlist stock
+* Watchlist
 * Automatic read from Degiro, Clicktrade and InteractiveBrokers
 * Automatic read from exchanges: Bitstamp, Kraken, Bittrex and Binance
 
@@ -29,7 +29,7 @@ https://queds-api.herokuapp.com/overview
 You can deploy using docker-compose or installing each component.
 
 ### Docker compose
-Deploy everything with docker-compose (including external services: redis + nginx + postgresql):
+Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
 ```
 docker-compose build --parallel
 docker-compose up
@@ -82,7 +82,7 @@ REDIS = {
 ```
     
 ### Database
-Create a database in Postgres and apply migrations:
+Create a database in Timescale and apply migrations:
 ```
 BACKEND_SETTINGS=config.local alembic upgrade head
 ```
@@ -120,7 +120,7 @@ BACKEND_SETTINGS=config.local python -m unittest
 
 Finally, check API endpoints in Swagger: http://0.0.0.0:5000/api
 
-Also you can visit the demo api at http://queds-api.herokuapp.com/api/
+Also you can visit the demo api at https://queds.fly.dev/api/
 
 ### Backend
 Create a virtual environment and initialize a worker:
