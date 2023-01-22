@@ -11,13 +11,13 @@ https://queds.fly.dev/overview
 * Watchlist
 * Automatic read from Degiro, Clicktrade and InteractiveBrokers
 * Automatic read from exchanges: Bitstamp, Kraken, Bittrex and Binance
+* TradingView graphs
 
 ## In progress
-* Set price alerts
+* Set price alerts via Telegram
 * Include dividends
 * Allow to import broker/crypto data from CSV
 * Set default portfolio currency
-* Include crowdlending platform: October
 * Include investment funds
 
 ## Table of Contents
@@ -26,7 +26,7 @@ https://queds.fly.dev/overview
 3. [Development](#development)
 
 ## Getting Started
-You can deploy using docker-compose or installing each component.
+You can deploy using docker-compose or installing each component individually.
 
 ### Docker compose
 Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
@@ -55,7 +55,7 @@ Technology stack: Python, Vue, Redis and Timescaledb.
 
 ### Structure
     .
-    ├── api/
+    ├── api/ (flask app)
     ├── backend/ (worker) 
     ├── config/ (app configs)
     ├── frontend/ (vue web page)
@@ -148,3 +148,10 @@ Build:
 ```
 npm run-script build
 ```
+
+# Screenshots
+![Queds wallet](docs/img/wallet.png)
+
+![Queds taxes](docs/img/taxes.png)
+
+![Queds watchlist](docs/img/watchlist.png)
