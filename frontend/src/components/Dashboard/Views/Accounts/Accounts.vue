@@ -91,7 +91,7 @@
       </div>
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">Cancel</el-button>
-        <el-button type="primary" @click="addAccount">Confirm</el-button>
+        <el-button type="primary" @click="addAccount" :disabled="$isDemo == 1">Confirm</el-button>
       </span>
     </el-dialog>
     <el-dialog title="Read account" :visible.sync="readDialogVisible" width="60%" :close-on-press-escape="true"
@@ -149,7 +149,7 @@
           <div class="card-header">
             <div class="row">
               <div class="col-md-6">
-                <h5 class="title">Invest accounts </h5>
+                <h5 class="title">Broker accounts </h5>
               </div>
               <div class="col-md-6">
                 <div class="text-right mb-3">
@@ -281,7 +281,7 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-12 mt-2">
+          <!--div class="col-sm-12 mt-2">
             <el-table :data="this.bankAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Balance" property="balance"></el-table-column>
@@ -303,7 +303,7 @@
                 </template>
               </el-table-column>
             </el-table>
-          </div>
+          </div-->
         </div>
       </div>
     </div>
@@ -316,7 +316,8 @@ import axios from "axios";
 import ChartCard from 'src/components/UIComponents/Cards/ChartCard'
 import PieChart from 'src/components/UIComponents/Charts/PieChart'
 import StatsCard from "../../../UIComponents/Cards/StatsCard";
-import {Tooltip} from 'element-ui'
+import {Tooltip} from 'element-ui';
+import IsDemo from 'src/isDemo.js';
 
 Vue.use(Table)
 Vue.use(TableColumn)
@@ -328,6 +329,7 @@ export default {
     [Tooltip.name]: Tooltip,
     PieChart,
     StatsCard,
+    IsDemo,
   },
   data() {
     return {

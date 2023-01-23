@@ -84,7 +84,9 @@
                   class-name="td-actions"
                   label="Actions">
                 <template slot-scope="props">
-                  <p-button type="info" size="sm" disabled>Alert</p-button>
+                  <p-button type="info" size="sm" icon @click="onProFeature()"  :disabled="current_watchlist == undefined">
+                    <i class="fa fa-bell"></i>
+                  </p-button>
                   <p-button type="danger" size="sm" icon @click="onProFeature()"  :disabled="current_watchlist == undefined">
                     <i class="fa fa-times"></i>
                   </p-button>
@@ -95,7 +97,7 @@
         </div>
       </div>
       <div class="col-md-6">
-        <div class="card">
+        <div class="card" style="padding: 5px">
           <VueTradingView :key=componentKey :options="options"/>
         </div>
         <!--div class="card">

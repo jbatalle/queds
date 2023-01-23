@@ -37,7 +37,7 @@
       <div class="card-body row">
         <div class="col-sm-12 mt-2">
           <el-table
-              :data="orders.filter(data => !search || data.ticker.ticker.toLowerCase().includes(search.toLowerCase()))"
+              :data="orders"
               :default-sort="{property: 'value_date', order: 'descending'}"
               :row-class-name="tableRowClassName"
               @filter-change="filterChange"
@@ -132,7 +132,8 @@ export default {
       currentPage: 1,
       perPageOptions: [5, 20, 50, 100, 1000],
     },
-    total: 0
+    total: 0,
+    total_orders: 0
   }),
   watch: {
     pagination: {
@@ -140,6 +141,19 @@ export default {
         this.getData();
       },
       deep: true
+    },
+    search: {
+        handler(val) {
+            if (this.search_loading){
+                return;
+            }
+            // wait 2 seconds before make the request
+            this.search_loading = true;
+            setTimeout(() => {
+                this.getData();
+                this.search_loading = false;
+            }, 2000);
+        }
     }
   },
   computed: {
@@ -153,6 +167,11 @@ export default {
       }
       return highBound;
     },
+    /*filterTableData() {
+        //let rows = this.orders.filter((data) => !this.search || data.ticker.ticker.toLowerCase().includes(this.search.toLowerCase()));
+        //this.total = rows.length;
+        //return rows;
+    },*/
   },
   created() {
     this.getData();
@@ -191,6 +210,8 @@ export default {
       let f = ""
       if (this.filter_accounts.length > 0)
         f = "&broker=" + this.filter_accounts.join();
+      if (this.search.length > 0)
+        f += "&search=" + this.search.toLowerCase();
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
     tableRowClassName(item) {

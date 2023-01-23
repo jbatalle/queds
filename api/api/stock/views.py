@@ -54,6 +54,7 @@ class OrdersCollection(Resource):
         args = request.args
         broker_names = args.get('broker', None)
         pagination = args.to_dict()
+        search = args.get('search', None)
         user_id = User.find_by_email(get_jwt_identity()).id
 
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.BROKER))
@@ -63,9 +64,12 @@ class OrdersCollection(Resource):
             accounts = accounts.filter(Account.name.in_(exchange_list))
         accounts = accounts.all()
 
-        query = StockTransaction.query.options(joinedload('ticker'))\
-            .filter(StockTransaction.account_id.in_([a.id for a in accounts])).order_by(
-            StockTransaction.value_date.desc())
+        query = StockTransaction.query.join(StockTransaction.ticker).options(joinedload('ticker'))\
+            .filter(StockTransaction.account_id.in_([a.id for a in accounts]))\
+            .order_by(StockTransaction.value_date.desc())
+
+        if search:
+            query = query.filter(Ticker.ticker.ilike(f"%{search}%"))
 
         limit = int(pagination.get('limit', 10))
         page = int(pagination.get('page', 1)) - 1

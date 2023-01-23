@@ -84,24 +84,20 @@
             <div class="card">
               <div class="card-header">
                 <div class="row">
-                  <div class="col-md-4">
+                  <div class="col-md-6">
                     <h5 class="title">Wallet </h5>
                   </div>
-                  <div class="col-sm-4">
-                    <div class="pull-right">
-                      <el-input class="input-sm"
-                                placeholder="Search"
-                                v-model="search"
-                                width="100%">
+                  <div class="col-md-6">
+                    <div class="text-right mb-3">
+                        <el-input class="input-sm"
+                                    placeholder="Search"
+                                    v-model="search"
+                                    width="50%" style="width: 50%;">
                         <template #suffix>
                           <el-icon class="el-input__icon"></el-icon>
                           <i class="nc-icon nc-zoom-split"></i>
                         </template>
                       </el-input>
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <div class="text-right mb-3">
                       <p-button type="info" size="sm" @click="reload">Reload</p-button>
                       <p-button type="warning" size="sm" @click="recalculate">Recalculate</p-button>
                     </div>
@@ -112,7 +108,8 @@
               </div>
               <div class="card-body table-full-width">
                 <el-table
-                    :data="this.wallet.filter(data => !search || data.ticker.ticker.toLowerCase().includes(search.toLowerCase()))"
+                    :data="this.wallet.filter(data => !search || data.ticker.ticker.toLowerCase().includes(search.toLowerCase())
+                    || data.ticker.name.toLowerCase().includes(search.toLowerCase()))"
                     :default-sort="{property: 'win_lose', order: 'descending'}"
                     :cell-class-name="colorClass"
                     :cell-style="{padding: '0', height: '20px'}">
@@ -161,12 +158,12 @@
                       {{ scope.row.cost | toCurrency(scope.row.ticker.currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="BE" property="break_even">
+                  <el-table-column label="Break Even" property="break_even">
                     <template slot-scope="scope">
                       {{ scope.row.break_even | toCurrency(scope.row.ticker.currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Market price" property="current_price">
+                  <el-table-column label="Current price" property="current_price">
                     <template slot-scope="scope">
                       {{ scope.row.market.price | toCurrency(scope.row.ticker.currency) }}
                     </template>
@@ -181,19 +178,14 @@
                       {{ scope.row.win_lose | toCurrency(base_currency) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Change" property="market.price_change" sortable>
+                  <el-table-column label="Day Change" property="market.price_change" sortable>
                     <template slot-scope="scope" v-if="scope.row.market.price_change">
                       {{ scope.row.market.price_change | round(2) }}%
                     </template>
                   </el-table-column>
-                  <el-table-column label="Pre" property="pre">
+                  <el-table-column label="Pre" property="market.pre_change">
                     <template slot-scope="scope" v-if="scope.row.market.pre">
-                      {{ scope.row.market.pre | toCurrency(scope.row.ticker.currency) }}
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="Pre change" property="market.pre_change" sortable>
-                    <template slot-scope="scope" v-if="scope.row.market.pre_change">
-                      {{ scope.row.market.pre_change | round(2) }}%
+                      {{ scope.row.market.pre | toCurrency(scope.row.ticker.currency) }} ({{ scope.row.market.pre_change | round(2) }}%)
                     </template>
                   </el-table-column>
                 </el-table>
@@ -260,7 +252,7 @@
 </template>
 <script>
 
-import {Popover, Table, TableColumn, TabPane, Tabs} from 'element-ui';
+import {Popover, Table, TableColumn, TabPane, Tabs, Icon} from 'element-ui';
 import axios from "axios";
 import StatsCard from "../../../UIComponents/Cards/StatsCard";
 import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
@@ -286,6 +278,7 @@ export default {
   name: "Wallet",
   components: {
     Table, TableColumn, StatsCard, ChartCard, Tabs, TabPane,
+    [Icon.name]: Icon,
     [Popover.name]: Popover, VueTradingView
   },
   data() {
@@ -360,15 +353,23 @@ export default {
       this.total_benefits = 0;
       this.total_value = 0;
       this.base_previous_value = 0;
+      console.log("current fx_rate: " + this.fx_rate);
 
       let bar = new Promise((resolve, reject) => {
         res.data.forEach(function (t, index, array) {
+        console.log(t.ticker.ticker);
           t.children = t.open_orders;
           t['win_lose'] = t.current_benefit;
           t.symbol = t.ticker.ticker;
           t.container_id = t.ticker.ticker;
           t.style = "3";
-          t.break_even = t.break_even * vm.fx_rate;
+          console.log(t);
+          // if no current_change, fx_rate not required
+          if (t.current_value == t.shares * t.market.price) {
+            console.log("Equal " + t);
+          } else {
+            t.break_even = t.break_even * vm.fx_rate;
+          }
 
           t.children.forEach(function (c) {
             c.ticker = {
