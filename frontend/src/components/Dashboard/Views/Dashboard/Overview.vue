@@ -91,20 +91,11 @@
                     description=""
                     :key="investKey">
           <template slot="header">
-            <h5 class="card-title">Invest percentage</h5>
+            <h5 class="card-title">Invested</h5>
           </template>
         </chart-card>
       </div>
       <div class="col-md-4">
-        <chart-card :chart-data="bankChart"
-                    :chart-options="bankChart.options"
-                    chart-type="Pie"
-                    title="Bank"
-                    :key="componentKey2">
-          <template slot="header">
-            <h5 class="card-title">Bank percentage - Not implemented</h5>
-          </template>
-        </chart-card>
       </div>
     </div>
   </div>

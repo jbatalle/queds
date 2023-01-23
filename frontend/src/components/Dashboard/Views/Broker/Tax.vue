@@ -103,7 +103,7 @@ export default {
     return {
       base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
-      years: [2019, 2020, 2021, 2022],
+      years: Array.from({length: 5}, (v, k) => new Date().getFullYear()-k).sort(),
       tax_year: new Date().getFullYear(),
       dividends: 0,
       benefits: 0,
@@ -138,6 +138,7 @@ export default {
 
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
+          c.shares = -c.shares;
           c.name = "";
           c.ticker = {ticker: "", currency: s.currency};
           c.value_date = c.value_date.split(' ')[0];
@@ -153,7 +154,7 @@ export default {
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
     colorClass(item) {
-      if (item.column.property == 'benefits') {
+      if (item.column.property == 'benefits' || item.column.property == 'shares')  {
         if (parseInt(item.row[item.column.property]) > 0)
           return "green";
         else
