@@ -5,7 +5,7 @@ from models.broker import Watchlist, Watchlists, Wallet, Ticker
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services.yahoo import YahooClient
-from services.elasticsearch import ESClient
+from services.zinc import ZincClient
 from api import filter_by_username
 
 log = logging.getLogger(__name__)
@@ -66,11 +66,15 @@ class WatchlistItems(Resource):
             q = no_yahoo_symbol.save()
             log.info(q)
 
-        symbols = ",".join([t.ticker_yahoo for t in tickers if t.ticker_yahoo])
+        tickers = {t.ticker_yahoo: t for t in tickers}
+        symbols = ",".join(list(tickers.keys()))
         log.info(f"Symbols: {symbols}")
         if not symbols:
             return [], 200
         r = y.get_current_tickers(symbols)
+
+        # TODO: include ticker id here
+        [q.update({'id': tickers[q['symbol']].id}) for q in r]
 
         return r, 200
 
@@ -100,6 +104,17 @@ class WatchlistItems(Resource):
 
         return w.json, 201
 
+    @jwt_required()
+    def delete(self, id):
+        """Deletes a watchlist and the items."""
+
+        watchlist = Watchlists.query.filter(Watchlists.id == id).one()
+        Watchlist.query.filter(Watchlist.watchlists == watchlist.id).delete()
+
+        watchlist.destroy()
+
+        return {'message': 'Watchlist deleted!'}
+
 
 @namespace.route('/watchlist/<int:watchlist_id>/<int:id>')
 class WatchlistItems(Resource):
@@ -107,7 +122,28 @@ class WatchlistItems(Resource):
     @jwt_required()
     def delete(self, watchlist_id, id):
         log.info(f"Deleting ticker {id} from watchlist {watchlist_id}")
-        return {"message": "NotImplemented"}, 400
+
+        Watchlist.query.filter(Watchlist.watchlists == watchlist_id, Watchlist.ticker == id).delete()
+        return {'message': 'Ticker deleted!'}
+
+
+@namespace.route('/comments')
+class CommentsList(Resource):
+
+    @jwt_required()
+    def get(self):
+        zinc_client = ZincClient("oracle", "admin", "Complexpass#123")
+
+        comments = zinc_client.get_last_items()
+        comments = [
+            {
+                "date": c['_source']['date'],
+                "message": c['_source']['message'],
+                "source": c['_type'],
+                "tickers": ', '.join(c['_source']['ticker'])
+             } for c in comments]
+
+        return comments, 200
 
 
 @namespace.route('/comments/<string:symbol>')
@@ -117,8 +153,9 @@ class CommentsList(Resource):
     def get(self, symbol):
         # TODO: should receive ID in order to avoid problems
         # ticker = Ticker.query.filter(Ticker.ticker == symbol).first()
-        es_client = ESClient()
-        comments = es_client.search_by_ticker(symbol)
+        zinc_client = ZincClient("oracle", "admin", "Complexpass#123")
+
+        comments = zinc_client.search_by_ticker(symbol)
         comments = [{"date": c['_source']['date'], "message": c['_source']['message'], "source": c['_type']} for c in comments]
 
         return comments, 200
