@@ -119,7 +119,6 @@ class Binance(AbstractExchange):
             for future in concurrent.futures.as_completed(task):
                 url = task[future]
                 try:
-                    # data = future.result()
                     orders.extend(future.result())
                 except Exception as exc:
                     self._logger.error('%r generated an exception: %s' % (url, exc))
@@ -144,7 +143,6 @@ class Binance(AbstractExchange):
             new_order.external_id = order['orderId']
             new_order.pair = order['pair']
             new_order.value_date = datetime.fromtimestamp(order['time']/1000)
-            # new_order.time = int(order['time']/1000)
             if order['side'] == 'BUY':
                 new_order.type = OrderType.BUY
             elif order['side'] == 'SELL':
@@ -181,7 +179,7 @@ class Binance(AbstractExchange):
             return []
         transactions.extend(r)
         transactions.extend(q)
-        while start < datetime(2022, 1, 1):
+        while start < datetime.now():
             start = end
             end = start + timedelta(days=89)
             try:
@@ -216,7 +214,6 @@ class Binance(AbstractExchange):
             new_order.external_id = f"{order['txId']}"
             new_order.currency = order['coin']
             new_order.value_date = datetime.fromtimestamp(order['time'] / 1000)
-            # new_order.time = int(order['insertTime'] / 1000)
             new_order.type = OrderType.DEPOSIT
             new_order.rx_address = order['address']
             new_order.amount = float(order['amount'])
