@@ -1,24 +1,26 @@
 # Queds Finance
-Finance portfolio for manage all your finance assets: stock transactions, crypto transactions, bank statements... It reads the data automatically from the Brokers, Crypto Exchanges and Banks.
+Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers, crypto exchanges, and banks, making it easier for you to manage your investments.
+
+
 
 ## Demo
-https://queds.fly.dev/overview
+Check out the demo at https://queds.fly.dev/overview
 
 ## Features
-* Stock-Portfolio and Crypto-Portfolio
+* Stock-Portfolio and Crypto-Portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
-* Watchlist
-* Automatic read from Degiro, Clicktrade and InteractiveBrokers
-* Automatic read from exchanges: Bitstamp, Kraken, Bittrex and Binance
-* TradingView graphs
+* Watchlist for monitoring assets
+* Automatic data import from Degiro, Clicktrade and InteractiveBrokers
+* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex and Binance
+* TradingView graphs for visualizing asset performance
 
 ## In progress
 * Set price alerts via Telegram
-* Include dividends
-* Allow to import broker/crypto data from CSV
+* Dividends tracking
+* Import broker/crypto data from CSV
 * Set default portfolio currency
-* Include investment funds
+* Investment fund tracking
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
@@ -26,7 +28,7 @@ https://queds.fly.dev/overview
 3. [Development](#development)
 
 ## Getting Started
-You can deploy using docker-compose or installing each component individually.
+To get started with Queds Finance, you can deploy the tool using docker-compose or install each component individually.
 
 ### Docker compose
 Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
@@ -51,9 +53,8 @@ docker-compose run migrate
 7. Add stock to a watchlist
 
 ## Development
-Technology stack: Python, Vue, Redis and Timescaledb.
+Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an overview of the directory structure:
 
-### Structure
     .
     ├── api/ (flask app)
     ├── backend/ (worker) 
@@ -99,14 +100,14 @@ docker-compose run migrate /bin/bash
 cd models && alembic revision --autogenerate
 ```
 
-Downgrade migration:
+To downgrade a migration, use:
 ```
 docker-compose run migrate /bin/bash
 cd models && alembic downgrade -1
 ```
 
 ### API
-Create a virtual environment and initialize the API:
+To initialize the API, create a virtual environment and run:
 ```
 cd api
 pip install -r requirements.txt
