@@ -81,7 +81,8 @@
                           label="Insert a passphrase for credential encryption"
                           placeholder="passphrase"
                           :error="errors.encrypt_password ? errors.encrypt_password : ''"
-                          v-model="credential.encrypt_password">
+                          v-model="credential.encrypt_password"
+                          autocomplete="one-time-code">
                 </el-input>
               </div>
             </div>
