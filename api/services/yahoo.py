@@ -37,15 +37,24 @@ class YahooClient:
                 self.generate_cookies()
 
     def get_current_tickers(self, symbols):
-        r = self.client.get(
-            f"https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&region=US&corsDomain=finance.yahoo.com&symbols={symbols}")
+        r = self.client.get("https://query2.finance.yahoo.com/v1/test/getcrumb")
+        crumb = r.text
+        # r = self.client.get(f"https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&region=US&corsDomain=finance.yahoo.com")
+        # r = self.client.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbols}")
+        r = self.client.get(f"https://query1.finance.yahoo.com/v7/finance/quote?crumb={crumb}&lang=en-US&region=US&corsDomain=es.finance.yahoo.com&symbols={symbols}")
 
         parsed_json = []
         for d in r.json().get('quoteResponse').get('result'):
+            market_time = None
+            if d.get('regularMarketTime'):
+                market_time = datetime.fromtimestamp(d.get('regularMarketTime')).strftime('%Y/%m/%d %H:%M:%S')
+            else:
+                # TODO: handle this case
+                pass
             q = {
                 "symbol": d.get("symbol"),
                 "price_change": d.get('regularMarketChangePercent'),
-                "market_time": datetime.fromtimestamp(d.get('regularMarketTime')).strftime('%Y/%m/%d %H:%M:%S'),
+                "market_time": market_time,
                 "price": d.get('regularMarketPrice'),
                 "high": d.get('regularMarketDayHigh'),
                 "low": d.get('regularMarketDayLow'),
