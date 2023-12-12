@@ -266,48 +266,6 @@
         </div>
       </div>
     </div>
-    <div class="row">
-      <div class="col-md-12">
-        <div class="card">
-          <div class="card-header">
-            <div class="row">
-              <div class="col-md-6">
-                <h5 class="title">Bank accounts</h5>
-              </div>
-              <div class="col-md-6">
-                <div class="text-right mb-3">
-                  <p-button type="primary" size="sm" disabled>Read all</p-button>
-                  <p-button type="info" size="sm" @click="openCreateDialog(0)" disabled>Add account</p-button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!--div class="col-sm-12 mt-2">
-            <el-table :data="this.bankAccounts" stripe :cell-style="{padding: '0', height: '20px'}">
-              <el-table-column label="Name" property="name"></el-table-column>
-              <el-table-column label="Balance" property="balance"></el-table-column>
-              <el-table-column label="Last update" property="updated_on"></el-table-column>
-              <el-table-column label="actions">
-                <template slot-scope="scope">
-                  <el-tooltip content="Edit" placement="top">
-                    <p-button type="info" aria-label="edit button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openCreateDialog(3, scope.row)">
-                      <i class="nc-icon nc-settings-gear-65"></i>
-                    </p-button>
-                  </el-tooltip>
-                  <el-tooltip placement="top" content="Remove">
-                    <p-button type="danger" aria-label="remove button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openDeleteDialog(scope.row)">
-                      <i class="nc-icon nc-simple-remove"></i>
-                    </p-button>
-                  </el-tooltip>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div-->
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 <script>
@@ -351,7 +309,6 @@ export default {
       exchangeAccounts: [],
       brokerAccounts: [],
       crowdAccounts: [],
-      bankAccounts: [],
       entities: [],
       entity_credentials: []
     }
@@ -528,14 +485,6 @@ export default {
       this.exchangeAccounts.push(exchange_account);
       return exchange_account;
     },
-    fillBanks(res) {
-      let res_status = res.status === 200 ? true : false;
-      this.bankData = res.data;
-      //    this.bankData.map((a => a['balance']/100));
-      this.bankData.forEach(p => {
-        p.balance = p.balance / 100;
-      });
-    },
     fillAccounts(res) {
       let res_status = res.status === 200 ? true : false;
       this.accounts = res.data;
@@ -560,7 +509,6 @@ export default {
       this.brokerAccounts = [];
       this.exchangeAccounts = [];
       this.crowdAccounts = [];
-      this.bankAccounts = [];
       await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     },
     async getEntities() {
