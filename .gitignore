@@ -15,4 +15,6 @@ dist/
 **/__pycache__/
 *.pyc
 docker-compose.heroku.yml
-deploy_heroku.sh
+deploy_fly.sh
+docker-compose.local.yml
+nginx_template.local.yml

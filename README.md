@@ -21,6 +21,7 @@ Check out the demo at https://queds.fly.dev/overview
 * Import broker/crypto data from CSV
 * Set default portfolio currency
 * Investment fund tracking
+* Include Kucoin Exchange
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
@@ -33,7 +34,7 @@ To get started with Queds Finance, you can deploy the tool using docker-compose 
 ### Docker compose
 Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
 ```
-docker-compose build --parallel
+docker-compose build (also you can use --parallel)
 docker-compose up
 ```
 Check the VUE_APP_BACKEND_URL environment variable in docker-compose.yml. 
@@ -150,9 +151,16 @@ Build:
 npm run-script build
 ```
 
+### Database management
+You can access to the database using the docker-compose.
+
+
 # Screenshots
+Track your assets and monitor your portfolio performance.
 ![Queds wallet](docs/img/wallet.png)
 
+Check your taxes and dividends.
 ![Queds taxes](docs/img/taxes.png)
 
+Monitor your assets with the watchlist.
 ![Queds watchlist](docs/img/watchlist.png)

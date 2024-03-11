@@ -9,3 +9,4 @@ config/
 models/
 dist/
 services/cookies.pickle
+fly.toml
