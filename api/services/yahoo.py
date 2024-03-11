@@ -24,6 +24,7 @@ class YahooClient:
                 'Accept-Encoding': 'deflate'
             }
         )
+        self.redis = redis_svc
         if redis_svc.client:
             if not redis_svc.get('yahoo_cookies'):
                 self.generate_cookies()
@@ -37,6 +38,8 @@ class YahooClient:
                 self.generate_cookies()
 
     def get_current_tickers(self, symbols):
+        if self.redis.get('symbols'):
+            return self.redis.get('symbols')['symbols']
         r = self.client.get("https://query2.finance.yahoo.com/v1/test/getcrumb")
         crumb = r.text
         # r = self.client.get(f"https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&region=US&corsDomain=finance.yahoo.com")
@@ -66,6 +69,7 @@ class YahooClient:
             }
             parsed_json.append(q)
 
+        self.redis.store('symbols', {"symbols": parsed_json})
         return parsed_json
 
     def get_ticker_info(self, symbol):
@@ -138,6 +142,8 @@ class YahooClient:
         return None
 
     def get_currency(self):
+        if self.redis.get('currency'):
+            return self.redis.get('currency')['USD/EUR']
         timestamp = int(datetime.now().timestamp()) - 1
         url = "https://query1.finance.yahoo.com/v8/finance/chart/USDEUR=X?symbol=USDEUR%3DX&period1={}&period2=9999999999&useYfid=true&interval=1d&includePrePost=true&events=div%7Csplit%7Cearn&lang=es-ES&region=ES&crumb=O4yJagJUQUh&corsDomain=es.finance.yahoo.com"
         response = self.client.get(url.format(timestamp))
@@ -148,6 +154,7 @@ class YahooClient:
         indicators = api_json['chart']['result'][0]['indicators']
 
         to_insert = []
+        rate = 1
         if 'timestamp' not in api_json['chart']['result'][0]:
             logger.error("No timestamp found. Returning last value")
             d = api_json['chart']['result'][0]['meta']
@@ -156,11 +163,14 @@ class YahooClient:
                 "pair": "USD/EUR",
                 "close": d['regularMarketPrice']
             }
-            return a
+            rate = round(a['close'], 2)
         for idx, timestamp in enumerate(api_json['chart']['result'][0]['timestamp']):
             a = {
                 "timestamp": timestamp,
                 "pair": "USD/EUR",
                 "close": indicators['quote'][0]['close'][idx]
             }
-            return a
+            rate = round(a['close'], 2)
+
+        self.redis.store('currency', {"USD/EUR": rate})
+        return rate
