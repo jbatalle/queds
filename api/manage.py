@@ -3,6 +3,7 @@ from flask.cli import FlaskGroup
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
 from app import app
+from datetime import datetime
 
 
 @app.shell_context_processor
@@ -94,7 +95,7 @@ def seed_sample_transactions(account_id):
         order = StockTransaction(
             account_id=account_id,
             external_id=f"external_id_{i}",
-            value_date=f"2021-01-0{i}",
+            value_date=datetime(datetime.now().year-1, 1, i).strftime("%Y-%m-%d"),
             name="TESLA",
             ticker_id=ticker.id,
             shares=10,
@@ -110,7 +111,7 @@ def seed_sample_transactions(account_id):
     order = StockTransaction(
         account_id=account_id,
         external_id=f"external_id_sell",
-        value_date=f"2021-02-01",
+        value_date=datetime(datetime.now().year-1, 2, 1).strftime("%Y-%m-%d"),
         name="TESLA",
         ticker_id=ticker.id,
         shares=5,
@@ -124,7 +125,7 @@ def seed_sample_transactions(account_id):
     order = StockTransaction(
         account_id=account_id,
         external_id=f"external_id_sell2",
-        value_date=f"2021-02-02",
+        value_date=datetime(datetime.now().year-1, 2, 2).strftime("%Y-%m-%d"),
         name="TESLA",
         ticker_id=ticker.id,
         shares=10,
@@ -135,6 +136,22 @@ def seed_sample_transactions(account_id):
         exchange_fee=-1,
         currency_rate=1)
     objects.append(order)
+    objects.append(
+        StockTransaction(
+            account_id=account_id,
+            external_id=f"external_id_sell2",
+            value_date=datetime(datetime.now().year, 1, 2).strftime("%Y-%m-%d"),
+            name="TESLA",
+            ticker_id=ticker.id,
+            shares=10,
+            type=StockTransaction.Type.BUY,
+            currency="USD",
+            price=100,
+            fee=-3,
+            exchange_fee=-1,
+            currency_rate=1
+            )
+    )
 
     db_session.bulk_save_objects(objects)
 
@@ -146,7 +163,7 @@ def seed_sample_exchange_order(acc_id):
         ExchangeOrder(
             account_id=acc_id,
             external_id="external_id",
-            value_date="2021-01-01",
+            value_date=datetime(datetime.now().year-1, 1, 1).strftime("%Y-%m-%d"),
             pair="ETH/EUR",
             amount=3,
             type=ExchangeOrder.Type.BUY,
@@ -155,7 +172,7 @@ def seed_sample_exchange_order(acc_id):
         ExchangeOrder(
             account_id=acc_id,
             external_id="external_id2",
-            value_date="2021-01-02",
+            value_date=datetime(datetime.now().year-1, 1, 2).strftime("%Y-%m-%d"),
             pair="ETH/EUR",
             amount=3,
             type=ExchangeOrder.Type.BUY,
@@ -164,12 +181,21 @@ def seed_sample_exchange_order(acc_id):
         ExchangeOrder(
             account_id=acc_id,
             external_id="external_id3",
-            value_date="2021-01-03",
+            value_date=datetime(datetime.now().year-1, 1, 3).strftime("%Y-%m-%d"),
             pair="ETH/EUR",
             amount=4,
             type=ExchangeOrder.Type.SELL,
             price=960.2,
-            fee=-13)
+            fee=-13),
+        ExchangeOrder(
+            account_id=acc_id,
+            external_id="external_id4",
+            value_date=datetime(datetime.now().year, 1, 3).strftime("%Y-%m-%d"),
+            pair="ETH/EUR",
+            amount=4,
+            type=ExchangeOrder.Type.BUY,
+            price=950.2,
+            fee=-14)
     ]
 
     db_session.bulk_save_objects(objects)

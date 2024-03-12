@@ -11,7 +11,6 @@ from sqlalchemy.orm import joinedload
 
 
 log = logging.getLogger(__name__)
-
 namespace = Namespace("crypto")
 
 
@@ -101,11 +100,12 @@ class OrdersCollection(Resource):
 
     @jwt_required()
     def get(self):
+        """Returns all user exchange orders."""
         args = request.args
-        pagination = args.to_dict()
         exchange_names = args.get('exchange', None)
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        pagination = args.to_dict()
+        search = args.get('search', None)
+        user_id = User.find_by_email(get_jwt_identity()).id
 
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.EXCHANGE))
 
@@ -114,8 +114,11 @@ class OrdersCollection(Resource):
             accounts = accounts.filter(Account.name.in_(exchange_list))
         accounts = accounts.all()
 
-        query = ExchangeOrder.query.filter(ExchangeOrder.account_id.in_([a.id for a in accounts])).order_by(
-            ExchangeOrder.value_date.desc())
+        query = ExchangeOrder.query.filter(ExchangeOrder.account_id.in_([a.id for a in accounts]))\
+            .order_by(ExchangeOrder.value_date.desc())
+
+        if search:
+            query = query.filter(ExchangeOrder.pair.ilike(f"%{search}%"))
 
         limit = int(pagination['limit'])
         page = int(pagination['page']) - 1

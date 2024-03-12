@@ -41,18 +41,18 @@ class Register(Resource):
         _password2 = req_data.get("password_confirmation")
 
         if _password != _password2:
-            return {"success": False, "msg": "Different password."}, 400
+            return {"success": False, "message": "Different password."}, 400
 
         user_exists = User.get_by_email(_email)
         if user_exists:
-            return {"success": False, "msg": "Email already taken."}, 400
+            return {"success": False, "message": "Email already taken."}, 400
 
         new_user = User(email=_email, password=_password)
         new_user.save()
 
         return {"success": True,
                 "userID": new_user.id,
-                "msg": "The user was successfully registered."}, 200
+                "message": "The user was successfully registered."}, 200
 
 
 @namespace.route('/login')
@@ -71,10 +71,10 @@ class Login(Resource):
         user_exists = User.get_by_email(_email)
 
         if not user_exists:
-            return {"success": False, "msg": "This email does not exist."}, 400
+            return {"success": False, "message": "This email does not exist."}, 400
 
         if not user_exists.check_password(_password):
-            return {"success": False, "msg": "Wrong credentials."}, 400
+            return {"success": False, "message": "Wrong credentials."}, 400
 
         expires = timedelta(minutes=60*24*7)
         access_token = create_access_token(identity=_email, expires_delta=expires)
@@ -125,7 +125,7 @@ class LogoutUser(Resource):
     """
 
     @jwt_required()
-    def post(self, current_user):
+    def post(self):
         # TODO: remove token; for the moment the cookie is remove from front but not disabled
         return {"success": True}, 200
 
