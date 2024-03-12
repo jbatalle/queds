@@ -1,30 +1,29 @@
 import DashboardLayout from '../components/Dashboard/Layout/DashboardLayout.vue'
 
 //import middleware
-import auth from "@/middleware/auth";
-import guest from "@/middleware/guest";
+import auth from "../middleware/auth";
+import guest from "../middleware/guest";
 
 // Not Found page
 import NotFound from '../components/Dashboard/Layout/NotFoundPage.vue'
 // Dashboard pages
-const Overview = () => import(/* webpackChunkName: "widgets" */ 'src/components/Dashboard/Views/Dashboard/Overview.vue');
+const Overview = () => import('../components/Dashboard/Views/Overview.vue');
 
-import Login from 'src/components/Dashboard/Views/Pages/Login.vue'
-import Register from 'src/components/Dashboard/Views/Pages/Register.vue'
+import Login from '../components/Dashboard/Views/Pages/Login.vue';
+import Register from '../components/Dashboard/Views/Pages/Register.vue';
 
-import PasswordReset from "src/components/Dashboard/Views/Password/Reset.vue";
-import PasswordEmail from "src/components/Dashboard/Views/Password/Email.vue";
-
-// Example pages
-const Accounts = () => import('src/components/Dashboard/Views/Accounts/Accounts.vue');
-const BrokerBalance = () => import('src/components/Dashboard/Views/Broker/Balance.vue');
-const BrokerOrder = () => import('src/components/Dashboard/Views/Broker/Orders.vue');
-const BrokerTax = () => import('src/components/Dashboard/Views/Broker/Tax.vue');
-const CryptoBalance = () => import('src/components/Dashboard/Views/Crypto/CryptoBalance.vue');
-const CryptoOrder = () => import('src/components/Dashboard/Views/Crypto/CryptoOrder.vue');
-const CryptoTax = () => import('src/components/Dashboard/Views/Crypto/CryptoTax.vue');
-const Analysis = () => import('src/components/Dashboard/Views/Analysis.vue');
-const Comments = () => import('src/components/Dashboard/Views/Comments.vue');
+//import PasswordReset from "../components/Dashboard/Views/Password/Reset.vue";
+//import PasswordEmail from "../components/Dashboard/Views/Password/Email.vue";
+//
+const Accounts = () => import('../components/Dashboard/Views/Accounts.vue');
+const BrokerBalance = () => import('../components/Dashboard/Views/Broker/Balance.vue');
+const BrokerOrder = () => import('../components/Dashboard/Views/Broker/Orders.vue');
+const BrokerTax = () => import('../components/Dashboard/Views/Broker/Tax.vue');
+const CryptoBalance = () => import('../components/Dashboard/Views/Crypto/CryptoBalance.vue');
+const CryptoOrder = () => import('../components/Dashboard/Views/Crypto/CryptoOrder.vue');
+const CryptoTax = () => import('../components/Dashboard/Views/Crypto/CryptoTax.vue');
+const Analysis = () => import('../components/Dashboard/Views/Analysis_old.vue');
+const Comments = () => import('../components/Dashboard/Views/Comments.vue');
 
 
 let pagesMenu = {
@@ -44,9 +43,9 @@ let pagesMenu = {
             component: Analysis
         },
         {
-            path: 'comments',
-            name: 'Comments',
-            component: Comments
+             path: 'comments',
+             name: 'Comments',
+             component: Comments
         }
     ]
 };
@@ -54,7 +53,7 @@ let stockMenu = {
     path: '/stock',
     component: DashboardLayout,
     meta: {middleware: auth},
-    redirect: '/stock',
+    //redirect: '/stock',
     children: [
         {
             path: 'balance',
@@ -79,26 +78,27 @@ let stockMenu = {
 let cryptoMenu = {
     path: '/crypto',
     component: DashboardLayout,
-    redirect: '/crypto',
+    meta: {middleware: auth},
+    //redirect: '/crypto',
     children: [
         {
             path: 'balance',
-            name: 'Balance',
+            name: 'CryptoBalance',
             component: CryptoBalance,
             meta: {middleware: auth},
         },
         {
             path: 'orders',
-            name: 'Orders',
+            name: 'CryptoOrders',
             component: CryptoOrder
         },
         {
             path: 'taxes',
-            name: 'Tax',
+            name: 'CryptoTax',
             component: CryptoTax
         }
     ]
-}
+};
 let loginPage = {
     path: '/login',
     name: 'Login',
@@ -113,19 +113,19 @@ let registerPage = {
     meta: {middleware: guest}
 }
 
-let forgotPassword = {
-    path: "/password/reset",
-    name: "Password Reset",
-    component: PasswordReset,
-    meta: {middleware: guest}
-}
-
-let resetPassword = {
-    path: "/password/email",
-    name: "Password Reset",
-    component: PasswordEmail,
-    meta: {middleware: guest}
-}
+// let forgotPassword = {
+//     path: "/password/reset",
+//     name: "Password Reset",
+//     component: PasswordReset,
+//     meta: {middleware: guest}
+// }
+//
+// let resetPassword = {
+//     path: "/password/email",
+//     name: "Password Reset",
+//     component: PasswordEmail,
+//     meta: {middleware: guest}
+// }
 
 
 const routes = [
@@ -134,8 +134,8 @@ const routes = [
     cryptoMenu,
     loginPage,
     registerPage,
-    forgotPassword,
-    resetPassword,
+    //forgotPassword,
+    //resetPassword,
     {
         path: '/',
         component: DashboardLayout,
@@ -150,7 +150,7 @@ const routes = [
             }
         ]
     },
-    {path: '*', component: NotFound}
+    {path: '/:catchAll(.*)', component: NotFound}
 ];
 
 export default routes

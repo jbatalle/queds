@@ -5,14 +5,14 @@
         <stats-card type="success"
                     icon="fa fa-chart-line"
                     small-title="Win/Loses"
-                    :title="benefits | toCurrency(base_currency)">
+                    :title="$filters.toCurrency(benefits, base_currency)">
         </stats-card>
       </div>
       <div class="col-lg-4 col-md-6 col-sm-6">
         <stats-card type="danger"
                     icon="nc-icon nc-money-coins"
                     small-title="Fees"
-                    :title="fees | toCurrency(base_currency)">
+                    :title="$filters.toCurrency(fees, base_currency)">
         </stats-card>
       </div>
     </div>
@@ -26,10 +26,8 @@
               </div>
               <div class="col-md-6">
                 <div class="pull-right">
-                  <el-select class="select-default" v-model="tax_year" placeholder="Year">
-                    <el-option
-                        class="select-default"
-                        v-for="item in years" :key="item" :label="item" :value="item">
+                  <el-select class="m-2" v-model="tax_year" placeholder="Year" style="width: 100px">
+                    <el-option v-for="item in years" :key="item" :label="item" :value="item">
                     </el-option>
                   </el-select>
                 </div>
@@ -43,28 +41,29 @@
               <el-table-column label="Symbol" property="pair"></el-table-column>
               <el-table-column label="Date" property="value_date" sortable></el-table-column>
               <el-table-column label="Amount" property="amount">
-                <template slot-scope="scope">
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.amount, scope.row.source_currency, 8) }}
                   {{ scope.row.amount | toCurrency(scope.row.source_currency, 8) }}
                 </template>
               </el-table-column>
               <el-table-column label="Price" property="price">
-                <template slot-scope="scope">
-                  {{ scope.row.price | toCurrency(scope.row.target_currency, 8) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.price, scope.row.target_currency, 8) }}
                 </template>
               </el-table-column>
               <el-table-column label="Fees" property="fee">
-                <template slot-scope="scope">
-                  {{ scope.row.fee | toCurrency(scope.row.target_currency, 8) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.fee, scope.row.target_currency, 8) }}
                 </template>
               </el-table-column>
               <el-table-column label="Cost" property="cost">
-                <template slot-scope="scope">
-                  {{ scope.row.cost | toCurrency(scope.row.target_currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.cost, scope.row.target_currency) }}
                 </template>
               </el-table-column>
               <el-table-column label="Benefits" property="benefits">
-                <template slot-scope="scope">
-                  {{ scope.row.benefits | toCurrency(scope.row.target_currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.benefits, scope.row.target_currency) }}
                 </template>
               </el-table-column>
             </el-table>
@@ -76,26 +75,26 @@
 </template>
 <script>
 
-import {Table, TableColumn, Select, Option} from 'element-ui'
+import {ElTable} from 'element-plus';
+import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import axios from "axios";
-import StatsCard from "../../../UIComponents/Cards/StatsCard";
+
 
 export default {
   name: "Taxes",
   components: {
-    Table, TableColumn, StatsCard,
-    [Select.name]: Select,
-    [Option.name]: Option,
+    ElTable, StatsCard,
   },
   data() {
     return {
       base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
-      years: [2019, 2020, 2021, 2022],
-      tax_year: new Date().getFullYear(),
+      years: Array.from({length: 5}, (v, k) => new Date().getFullYear()-k).sort(),
+      tax_year: new Date().getFullYear() - 1,
       value: 0,
       benefits: 0,
-      fees: 0
+      fees: 0,
+      loading: true
     };
   },
   watch: {
@@ -143,9 +142,11 @@ export default {
         vm.benefits += s.benefits;
         vm.benefits = Number((vm.benefits).toFixed(2));
       });
+      this.loading = false;
     },
     async getData() {
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/tax?year=" + this.tax_year).then(this.fillTaxes);
+      this.loading = true;
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
     testClass(item) {
       if (item.column.property == 'benefits') {
@@ -160,11 +161,4 @@ export default {
 };
 </script>
 <style>
-.red {
-  color: red
-}
-
-.green {
-  color: green
-}
 </style>

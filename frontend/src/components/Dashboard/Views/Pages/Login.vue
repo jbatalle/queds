@@ -19,19 +19,19 @@
             </div>
             <div class="col-lg-4 col-md-6 ml-auto mr-auto">
               <form @submit.prevent="login">
-                <card type="login">
+                <card type="signup">
                   <h3 slot="header" class="header text-center">Login</h3>
 
                   <el-input v-model="email" addon-left-icon="nc-icon nc-single-02" placeholder="Email"
-                          class="mb-2 mt-1"/>
+                            class="mb-2 mt-1"/>
                   <validation-error :errors="apiValidationErrors.email"/>
                   <el-input v-model="password" addon-left-icon="nc-icon nc-key-25" placeholder="Password"
                             type="password"
-                          class="mb-2 mt-1"/>
+                            class="mb-2 mt-1"/>
                   <validation-error :errors="apiValidationErrors.password"/>
                   <div slot="footer">
-                    <p-button native-type="submit" slot="footer" type="warning" round block class="mb-3">Get started
-                    </p-button>
+                    <el-button native-type="submit" slot="footer" type="warning" round block class="mb-3">Log in
+                    </el-button>
 
                     <div class="pull-left">
                       <h6><a href="/password/reset" class="link footer-link">Forgot Password?</a></h6>
@@ -49,13 +49,15 @@
   </div>
 </template>
 <script>
-import {Input} from 'element-ui';
-import {Card, Button} from 'src/components/UIComponents';
-import AppNavbar from './Layout/AppNavbar'
-import AppFooter from './Layout/AppFooter'
+import {ElInput, ElNotification, ElButton} from 'element-plus';
+import {Card} from '../../../UIComponents';
+import AppNavbar from '@/components/Dashboard/Views/Pages/Layout/AppNavbar.vue';
+import AppFooter from '@/components/Dashboard/Views/Pages/Layout/AppFooter.vue';
 import formMixin from "@/mixins/form-mixin";
-import ValidationError from "src/components/UIComponents/ValidationError.vue";
-import IsDemo from 'src/isDemo.js';
+//import ValidationError from "src/components/UIComponents/ValidationError.vue";
+import IsDemo from '@/isDemo.js';
+import { useStore } from 'vuex';
+import { mapActions } from 'vuex';
 
 export default {
   mixins: [formMixin],
@@ -63,10 +65,10 @@ export default {
     Card,
     AppNavbar,
     AppFooter,
-    [Button.name]: Button,
-    ValidationError,
+    ElButton,
+    //ValidationError,
     IsDemo,
-    [Input.name]: Input
+    [ElInput.name]: ElInput
   },
   data() {
     return {
@@ -101,16 +103,12 @@ export default {
       try {
         await this.$store.dispatch("login", {user, requestOptions})
       } catch (e) {
-        this.$notify({
-          message: 'Invalid credentials!',
-          type: 'danger',
-        });
-        this.setApiValidation(e.response.data.errors)
+        ElNotification({
+          title: 'Warning',
+          // ...
+        })
       }
     }
-  },
-  beforeDestroy() {
-    this.closeMenu()
   }
 }
 </script>

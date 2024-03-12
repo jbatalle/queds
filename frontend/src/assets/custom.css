@@ -1,5 +1,22 @@
+
+.red {
+  color: red
+}
+
+.green {
+  color: green
+}
+.blue {
+  color: blue
+}
+
 .login-page .full-page > .content {
   padding-top: 8vh;
+}
+
+.gap-2 {
+    grid-gap: 0.5rem;
+    gap: 0.5rem;
 }
 
 /*.badge-default {*/

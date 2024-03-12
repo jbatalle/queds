@@ -3,6 +3,7 @@
     padding-bottom: $navbar-padding-base;
     min-height: 53px;
     margin-bottom: 20px;
+  text-decoration: none;
 
     a{
         vertical-align: middle;
@@ -132,6 +133,7 @@
 
         .nav-link{
             text-transform: uppercase;
+          text-decoration: none;
             font-size: $font-size-mini;
             padding: $padding-base-vertical $padding-base-horizontal;
             line-height: $line-height-nav-link;

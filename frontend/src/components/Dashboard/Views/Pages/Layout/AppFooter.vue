@@ -5,7 +5,6 @@
         <nav class="footer-nav">
           <ul>
             <li>
-            <li>
               <a href="https://github.com/jbatalle/queds" class="nav-link" target="_blank" rel="noopener">ABOUT</a>
             </li>
           </ul>

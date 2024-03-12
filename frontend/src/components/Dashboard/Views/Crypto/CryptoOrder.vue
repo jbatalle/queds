@@ -7,6 +7,8 @@
             <h5 class="title">Orders </h5>
           </div>
           <div class="col-sm-4">
+          </div>
+          <div class="col-sm-4">
             <div class="pull-right">
               <el-input class="input-sm"
                         placeholder="Search"
@@ -19,30 +21,18 @@
               </el-input>
             </div>
           </div>
-          <div class="col-sm-4">
-            <div class="pull-right">
-              <el-select class="select-default" v-model="pagination.perPage" placeholder="Per page">
-                <el-option
-                    class="select-default"
-                    v-for="item in pagination.perPageOptions"
-                    :key="item"
-                    :label="item"
-                    :value="item">
-                </el-option>
-              </el-select>
-            </div>
-          </div>
         </div>
       </div>
       <div class="card-body row">
         <div class="col-sm-12 mt-2">
-          <el-table :data="orders.filter(data => !search || data.pair.toLowerCase().includes(search.toLowerCase()))"
+          <el-table v-loading="loading"
+                    :data="orders"
                     :default-sort="{property: 'value_date', order: 'descending'}"
                     :row-class-name="tableRowClassName"
                     @filter-change="filterChange"
                     :cell-style="{padding: '0', height: '20px'}">
             <el-table-column label="pair" sortable>
-              <template #default="scope">
+              <template v-slot:default="scope">
                 <span type="info"><i class="nc-icon" :class="iconClassName(scope.row)"></i> {{ scope.row.pair }}</span>
               </template>
             </el-table-column>
@@ -56,28 +46,28 @@
             </el-table-column>
             <el-table-column label="Value date" prop="value_date" sortable/>
             <el-table-column label="amount" prop="amount" sortable>
-              <template slot-scope="scope">
-                {{ scope.row.amount | toCurrency(scope.row.currency_source, 8) }}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.amount, scope.row.currency_source, 8) }}
               </template>
             </el-table-column>
             <el-table-column label="price" prop="price">
-              <template slot-scope="scope">
-                {{ scope.row.price | toCurrency(scope.row.currency_target) }}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.price, scope.row.currency_source, 8) }}
               </template>
             </el-table-column>
             <el-table-column label="fees" sortable>
-              <template slot-scope="scope">
-                {{ scope.row.fee | toCurrency(scope.row.currency_target) }}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.fee, scope.row.currency_source, 8) }}
               </template>
             </el-table-column>
             <el-table-column label="total" sortable>
-              <template slot-scope="scope">
-                {{ scope.row.total | toCurrency(scope.row.currency_target, 8) }}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.total, scope.row.currency_source, 8) }}
               </template>
             </el-table-column>
             <el-table-column label="cost" sortable>
-              <template slot-scope="scope">
-                {{ scope.row.cost | toCurrency(scope.row.currency_target, 8) }}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.cost, scope.row.currency_source, 8) }}
               </template>
             </el-table-column>
           </el-table>
@@ -87,33 +77,26 @@
           <p class="category">Showing {{ from + 1 }} to {{ to }} of {{ total }} entries</p>
         </div>
         <div class="col-sm-6">
-          <p-pagination class="pull-right"
-                        v-model="pagination.currentPage"
-                        :per-page="pagination.perPage"
-                        :total="total">
-          </p-pagination>
+          <div class="pull-right">
+            <el-pagination small layout="sizes, prev, pager, next"
+                           :total="total"
+                           :page-sizes="pagination.perPageOptions"
+                           :page-size="pagination.perPage"
+                           :current-page="pagination.currentPage"
+                           @size-change="handleSizeChange"
+                           @current-change="handlePageChange"
+            />
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
 <script>
-import {Table, TableColumn, Select, Option, Tooltip, Tag, Icon, Input} from 'element-ui';
-import PPagination from 'src/components/UIComponents/Pagination.vue'
 import axios from "axios";
 
 export default {
-  components: {
-    PPagination,
-    [Select.name]: Select,
-    [Option.name]: Option,
-    [Table.name]: Table,
-    [Tooltip.name]: Tooltip,
-    [TableColumn.name]: TableColumn,
-    [Tag.name]: Tag,
-    [Input.name]: Input,
-    [Icon.name]: Icon,
-  },
+  components: {},
 
   data: () => ({
     accounts: [],
@@ -126,7 +109,9 @@ export default {
       currentPage: 1,
       perPageOptions: [5, 20, 50, 100, 1000],
     },
-    total: 0
+    total: 0,
+    total_orders: 0,
+    loading: true
   }),
   watch: {
     pagination: {
@@ -134,6 +119,19 @@ export default {
         this.getData();
       },
       deep: true
+    },
+    search: {
+      handler(val) {
+        if (this.search_loading) {
+          return;
+        }
+        // wait 2 seconds before make the request
+        this.search_loading = true;
+        setTimeout(() => {
+          this.getData();
+          this.search_loading = false;
+        }, 2000);
+      }
     }
   },
   computed: {
@@ -152,6 +150,12 @@ export default {
     this.getData();
   },
   methods: {
+    handleSizeChange(val) {
+      this.pagination.perPage = val;
+    },
+    handlePageChange(val) {
+      this.pagination.currentPage = val;
+    },
     filterTag(value, row) {
       return row.account === value
     },
@@ -162,7 +166,6 @@ export default {
     },
     fillOrders(res) {
       let vm = this;
-      let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
         if (!vm.accounts.some(el => el.text === entry))
@@ -180,12 +183,16 @@ export default {
         s.total = s.amount * s.price;
         s.value_date = s.value_date.split(' ')[0];
       });
+      this.loading = false;
     },
     async getData() {
+      this.loading = true;
       let f = ""
       if (this.filter_accounts.length > 0)
         f = "&exchange=" + this.filter_accounts.join();
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
+      if (this.search.length > 0)
+        f += "&search=" + this.search.toLowerCase();
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
     tableRowClassName(item) {
       if (item.row.type === 'Sell')
@@ -203,11 +210,4 @@ export default {
 }
 </script>
 <style>
-.red {
-  color: red
-}
-
-.blue {
-  color: blue
-}
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-dialog title="Adding account" :visible.sync="dialogVisible" width="60%" :close-on-press-escape="true"
+    <el-dialog title="Adding account" v-model="dialogVisible" width="60%" :close-on-press-escape="true"
                :before-close="handleClose">
       <div class="card-body">
         <form>
@@ -9,12 +9,10 @@
               <p>Account type</p>
               <el-select
                   label="Account type"
-                  class="select-default"
                   v-model="credential.entity"
                   :class="errors.entity ? 'select-danger' : ''"
                   placeholder="Select account">
                 <el-option
-                    class="select-default"
                     :error="errors.entity ? errors.entity : ''"
                     v-for="item in entities"
                     :key="item.id"
@@ -27,12 +25,10 @@
               <p>Currency</p>
               <el-select
                   label="Currency"
-                  class="select-default"
                   v-model="credential.currency"
                   :class="errors.currency ? 'select-danger' : ''"
                   placeholder="Currency">
                 <el-option
-                    class="select-default"
                     :error="errors.currency ? errors.currency : ''"
                     v-for="item in ['EUR', 'USD']"
                     :key="item"
@@ -42,9 +38,7 @@
               </el-select>
             </div>
             <div class="col-md-4">
-              <div class="sub-title my-2 text-sm text-gray-600">
-                Account name
-              </div>
+                <p>Account name</p>
               <el-input type="text"
                         label="Account name"
                         placeholder="Account name"
@@ -56,23 +50,24 @@
           <div class="clearfix"></div>
           <div class="row" v-if="credential.entity">
             <div class="col-md-12">
-              <div class="form-group">
+              <div class="form-group2">
                 <h4>Insert credentials</h4>
-                <el-input v-for="{cred_type, mode, id} in entity_credentials"
+                <el-input v-bind="$attrs"
+                          v-for="{ cred_type, mode, id } in entity_credentials"
+                          :key="id"
                           :type="mode"
                           class="w-100 m-2"
                           :name="cred_type"
-                          :id="id"
                           :placeholder="cred_type"
                           :error="errors.parameters ? errors.parameters : ''"
-                          v-model="credential.parameters[id]"
-                ></el-input>
+                          v-model="credential.parameters[id]">
+                </el-input>
               </div>
             </div>
           </div>
           <div class="row" v-if="credential.entity">
             <div class="col-md-12">
-              <div class="form-group">
+              <div class="form-group2">
                 <div class="sub-title my-2 text-sm text-gray-600">
                   Insert a passphrase for credential encryption
                 </div>
@@ -90,12 +85,17 @@
           <div class="clearfix"></div>
         </form>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template #footer>
+      <span class="dialog-footer">
+
         <el-button @click="dialogVisible = false">Cancel</el-button>
         <el-button type="primary" @click="addAccount" :disabled="$isDemo == 1">Confirm</el-button>
       </span>
+    </template>
+      <span slot="footer" class="dialog-footer">
+      </span>
     </el-dialog>
-    <el-dialog title="Read account" :visible.sync="readDialogVisible" width="60%" :close-on-press-escape="true"
+    <el-dialog title="Read account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
                :before-close="handleReadClose">
       <div class="card-body">
         <form>
@@ -121,7 +121,7 @@
         <el-button type="primary" @click="readAccount">Read</el-button>
       </span>
     </el-dialog>
-    <el-dialog title="Delete account" :visible.sync="deleteDialogVisible" width="60%" :close-on-press-escape="true"
+    <el-dialog title="Delete account" v-model="deleteDialogVisible" width="60%" :close-on-press-escape="true"
                :before-close="handleDeleteClose">
       <div class="card-body">
         <form>
@@ -154,8 +154,8 @@
               </div>
               <div class="col-md-6">
                 <div class="text-right mb-3">
-                  <p-button type="primary" size="sm" disabled>Read all</p-button>
-                  <p-button type="info" size="sm" @click="openCreateDialog(1)">Add account</p-button>
+                  <el-button type="primary" size="small" disabled>Read all</el-button>
+                  <el-button type="primary" size="small" @click="openCreateDialog(1)">Add account</el-button>
                 </div>
               </div>
             </div>
@@ -165,41 +165,37 @@
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="entity_name"></el-table-column>
               <el-table-column label="Fiat" property="balance">
-                <template slot-scope="scope">
-                  {{ scope.row.balance | toCurrency(scope.row.currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.balance, scope.row.currency) }}
                 </template>
               </el-table-column>
               <el-table-column label="Value" property="virtual_balance">
-                <template slot-scope="scope">
-                  {{ scope.row.virtual_balance | toCurrency(scope.row.currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.virtual_balance, scope.row.currency) }}
                 </template>
               </el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>
               <el-table-column label="actions">
-                <template slot-scope="scope">
+                <template v-slot:default="scope">
                   <el-tooltip content="Read" placement="top">
-                    <p-button type="info" aria-label="read button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openReadDialog(scope.$index, scope.row)">
+                    <el-button type="primary" aria-label="read" class="" @click="openReadDialog(scope.$index, scope.row)">
                       <i class="nc-icon nc-button-play"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                   <el-tooltip content="Upload" placement="top">
-                    <p-button type="success" aria-label="upload button" round icon class="btn-icon-mini btn-neutral"
-                              @click="" disabled>
+                    <el-button type="success" aria-label="upload button" icon @click="" disabled>
                       <i class="nc-icon nc-cloud-upload-94"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                   <el-tooltip content="Edit" placement="top">
-                    <p-button type="warning" aria-label="edit button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openCreateDialog(1, scope.row)">
+                    <el-button type="warning" aria-label="read" icon @click="openCreateDialog(1, scope.row)">
                       <i class="nc-icon nc-settings-gear-65"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                   <el-tooltip placement="top" content="Remove">
-                    <p-button type="danger" aria-label="remove button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openDeleteDialog(scope.row)">
+                    <el-button type="danger" aria-label="button" icon @click="openDeleteDialog(scope.row)">
                       <i class="nc-icon nc-simple-remove"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                 </template>
               </el-table-column>
@@ -218,8 +214,8 @@
               </div>
               <div class="col-md-6">
                 <div class="text-right mb-3">
-                  <p-button type="primary" size="sm" disabled>Read all</p-button>
-                  <p-button type="info" size="sm" @click="openCreateDialog(3)">Add account</p-button>
+                  <el-button type="primary" size="small" disabled>Read all</el-button>
+                  <el-button type="primary" size="small" @click="openCreateDialog(3)">Add account</el-button>
                 </div>
               </div>
             </div>
@@ -229,35 +225,32 @@
               <el-table-column label="Name" property="name"></el-table-column>
               <el-table-column label="Type" property="entity_name"></el-table-column>
               <el-table-column label="Fiat" property="balance">
-                <template slot-scope="scope">
-                  {{ scope.row.balance | toCurrency(scope.row.currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.balance, scope.row.currency) }}
                 </template>
               </el-table-column>
               <el-table-column label="Value" property="virtual_balance">
-                <template slot-scope="scope">
-                  {{ scope.row.virtual_balance | toCurrency(scope.row.currency) }}
+                <template v-slot:default="scope">
+                  {{ $filters.toCurrency(scope.row.virtual_balance, scope.row.currency) }}
                 </template>
               </el-table-column>
               <el-table-column label="Last update" property="updated_on"></el-table-column>
               <el-table-column label="actions">
-                <template slot-scope="scope">
+                <template v-slot:default="scope">
                   <el-tooltip content="Read" placement="top">
-                    <p-button type="info" aria-label="read button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openReadDialog(scope.$index, scope.row)">
+                    <el-button type="primary" aria-label="read" class="" @click="openReadDialog(scope.$index, scope.row)">
                       <i class="nc-icon nc-button-play"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                   <el-tooltip content="Edit" placement="top">
-                    <p-button type="warning" aria-label="edit button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openCreateDialog(3, scope.row)">
+                    <el-button type="warning" aria-label="read" icon @click="openCreateDialog(1, scope.row)">
                       <i class="nc-icon nc-settings-gear-65"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                   <el-tooltip placement="top" content="Remove">
-                    <p-button type="danger" aria-label="remove button" round icon class="btn-icon-mini btn-neutral"
-                              @click="openDeleteDialog(scope.row)">
+                    <el-button type="danger" aria-label="button" icon @click="openDeleteDialog(scope.row)">
                       <i class="nc-icon nc-simple-remove"></i>
-                    </p-button>
+                    </el-button>
                   </el-tooltip>
                 </template>
               </el-table-column>
@@ -269,26 +262,14 @@
   </div>
 </template>
 <script>
-import Vue from 'vue'
-import {Table, TableColumn, Select, Option} from 'element-ui'
 import axios from "axios";
-import ChartCard from 'src/components/UIComponents/Cards/ChartCard'
-import PieChart from 'src/components/UIComponents/Charts/PieChart'
-import StatsCard from "../../../UIComponents/Cards/StatsCard";
-import {Tooltip} from 'element-ui';
-import IsDemo from 'src/isDemo.js';
+import ChartCard from '@/components/UIComponents/Cards/ChartCard.vue'
+import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 
-Vue.use(Table)
-Vue.use(TableColumn)
 export default {
   components: {
     ChartCard,
-    [Select.name]: Select,
-    [Option.name]: Option,
-    [Tooltip.name]: Tooltip,
-    PieChart,
-    StatsCard,
-    IsDemo,
+    StatsCard
   },
   data() {
     return {
@@ -317,6 +298,12 @@ export default {
     this.getData()
   },
   watch: {
+    credential: {
+      handler(val, oldVal) {
+        this.errors = {};
+      },
+      deep: true
+    },
     "credential.entity": {
       handler(entity) {
         if (entity !== undefined) {
@@ -325,17 +312,25 @@ export default {
       },
       deep: true
     },
-    "credential": {
-      handler(val, oldVal) {
-        this.errors = {};
-      },
-      deep: true
-    },
+    // "credential.entity": {
+    //   handler(entity) {
+    //     if (entity !== undefined) {
+    //       this.getAccountCredentialTypes(entity);
+    //     }
+    //   },
+    //   deep: true
+    // },
+    // "credential": {
+    //   handler(val, oldVal) {
+    //     this.errors = {};
+    //   },
+    //   deep: true
+    // },
   },
   methods: {
     async deleteAccount() {
       let vm = this;
-      await axios.delete(process.env.VUE_APP_BACKEND_URL + "/entities/accounts/" + this.delete_account.id).then(function (d) {
+      await axios.delete(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.delete_account.id).then(function (d) {
         vm.$notify({
           message: 'Account deleted correctly',
           type: 'info',
@@ -364,7 +359,7 @@ export default {
       }
       this.read.encrypt_password = undefined;
       var vm = this;
-      await axios.post(process.env.VUE_APP_BACKEND_URL + "/entities/accounts/" + this.read.account_id + "/read", data).then(function (d) {
+      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.read.account_id + "/read", data).then(function (d) {
         vm.$notify({
           message: 'Reading account!',
           type: 'info',
@@ -411,13 +406,13 @@ export default {
       let vm = this;
       if (this.credential['id'] != undefined) {
         console.log("Update account!");
-        await axios.put(process.env.VUE_APP_BACKEND_URL + "/entities/accounts/" + this.credential['id'], data).then(function (res) {});
+        await axios.put(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.credential['id'], data).then(function (res) {});
         if (this.credential.parameters.length) {
           console.log("Update credential!");
           await this.createCredential(this.credential);
         }
       } else {
-        await axios.post(process.env.VUE_APP_BACKEND_URL + "/entities/accounts", data).then(function (res) {
+        await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts", data).then(function (res) {
           vm.createCredential(res.data);
         });
       }
@@ -436,7 +431,7 @@ export default {
         "parameters": parameters,
         "encrypt_password": this.credential.encrypt_password
       }
-      await axios.post(process.env.VUE_APP_BACKEND_URL + "/entities/accounts/" + account.id + '/credentials', data).then(this.checkCredential);
+      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + account.id + '/credentials', data).then(this.checkCredential);
       await this.getData()
     },
     checkCredential(res) {
@@ -460,7 +455,7 @@ export default {
       this.errors = [];
       this.entities = [];
       let vm = this;
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/").then(function (res) {
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/").then(function (res) {
         res.data.forEach(function (e) {
           if (e.type == account_type) {
             vm.entities.push(e);
@@ -503,20 +498,23 @@ export default {
     },
     fillCredentials(res) {
       let res_status = res.status === 200;
+      console.log(res);
+      console.log(res.data);
+      console.log(this.entity_credentials);
       this.entity_credentials = res.data;
     },
     async getData() {
       this.brokerAccounts = [];
       this.exchangeAccounts = [];
       this.crowdAccounts = [];
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     },
     async getEntities() {
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/").then(this.fillEntities);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/").then(this.fillEntities);
     },
     async getAccountCredentialTypes(entity_id) {
       this.entity_credentials = [];
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/" + entity_id + '/credentials').then(this.fillCredentials);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/" + entity_id + '/credentials').then(this.fillCredentials);
     }
   }
 }
