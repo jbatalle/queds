@@ -2,95 +2,91 @@
   <div>
     <div class="row">
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top">
-          <div>
-            <div class="popover-body">Value of your portfolio taking into account current prices</div>
-          </div>
-          <div slot="reference">
-            <stats-card type="success"
-                        icon="nc-icon nc-money-coins"
-                        small-title="Portfolio value"
-                        :title="total_value | toCurrency(base_currency)"
-            >
-              <div class="stats" slot="footer">
-                <i class="nc-icon nc-refresh-69"></i>
-                Current invests: {{ total_invested | toCurrency(base_currency) }}
-              </div>
-            </stats-card>
-          </div>
+        <el-popover trigger="hover" placement="top"
+                    content="Value of your portfolio taking into account current prices">
+          <template #reference>
+            <div slot="reference">
+              <stats-card type="success"
+                          icon="nc-icon nc-money-coins"
+                          small-title="Portfolio value"
+                          :title="$filters.toCurrency(total_value, base_currency)"
+              >
+                <div class="stats" slot="footer">
+                  <i class="nc-icon nc-refresh-69"></i>
+                  Cost: {{ $filters.toCurrency(total_invested, base_currency) }}
+                </div>
+              </stats-card>
+            </div>
+          </template>
         </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top">
-          <div>
-            <div class="popover-body">Materialized gain</div>
-          </div>
-          <div slot="reference">
-            <stats-card type="success"
-                        icon="nc-icon nc-globe"
-                        small-title="Gain"
-                        :title="gain | toCurrency(base_currency)">
-              <div class="stats" slot="footer">
-                <i class="nc-icon nc-refresh-69"></i>
-                Total buy: {{ buy | toCurrency(base_currency) }}. Total sell: {{ -sell | toCurrency(base_currency) }}
-              </div>
-            </stats-card>
-          </div>
+        <el-popover trigger="hover" placement="top" title="Benefits of closed operations gain">
+          <template #reference>
+            <div slot="reference">
+              <stats-card type="success"
+                          icon="nc-icon nc-globe"
+                          small-title="Closed positions"
+                          :title="$filters.toCurrency(gain, base_currency)">
+                <!--div class="stats" slot="footer">
+                  <i class="nc-icon nc-refresh-69"></i>
+                  Total buy: {{ buy | toCurrency(base_currency) }}. Total sell: {{ -sell | toCurrency(base_currency) }}
+                </div-->
+              </stats-card>
+            </div>
+          </template>
         </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top">
-          <div>
-            <div class="popover-body">Future gains. Materialized gains + portfolio value</div>
-          </div>
-          <div slot="reference">
+        <el-popover trigger="hover" placement="top"
+                    title="Total benefits; closed operations and current open positions">
+          <template #reference>
             <stats-card type="success"
                         icon="fa fa-chart-line"
-                        small-title="W/L"
-                        :title="(total_value + gain - total_invested) | toCurrency(base_currency)">
+                        small-title="Total W/L"
+                        :title="$filters.toCurrency(total_value + gain - total_invested, base_currency)">
               <div class="stats" slot="footer">
                 <i class="nc-icon nc-refresh-69"></i>
-                {{ (((total_value + gain) / total_invested) - 1) * 100 | round }}%
+                {{ (((total_value + gain) / total_invested) - 1) * 100 | round }}% - ROI: {{ roi }}
               </div>
             </stats-card>
-          </div>
+          </template>
         </el-popover>
       </div>
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top">
-          <div>
-            <div class="popover-body">Total fiat available in accounts</div>
-          </div>
-          <div slot="reference">
+        <el-popover trigger="hover" placement="top" title="Total fiat available in accounts">
+          <template #reference>
             <stats-card type="success"
                         icon="nc-icon nc-money-coins"
                         small-title="Fiat"
-                        :title="fiat | toCurrency(base_currency)">
+                        :title="$filters.toCurrency(fiat, base_currency)">
             </stats-card>
-          </div>
+          </template>
         </el-popover>
       </div>
     </div>
     <div class="row">
       <div class="col-md-4">
-        <chart-card :chart-data="totalChart"
+        <chart-card v-if="totalChart && totalChart.labels && totalChart.labels.length > 0"
+                    :chart-data="totalChart"
                     :chart-options="totalChart.options"
                     chart-type="Pie"
-                    title="Banks"
+                    title="Total"
                     :key="totalKey">
-          <template slot="header">
-            <h5 class="card-title">Total Portfolio</h5>
+          <template #header>
+            <h5 class="title">Total portfolio </h5>
           </template>
         </chart-card>
       </div>
       <div class="col-md-4">
-        <chart-card :chart-data="investChart"
+        <chart-card v-if="investChart && investChart.labels.length > 0"
+                    :chart-data="investChart"
                     :chart-options="investChart.options"
                     chart-type="Pie"
                     title="Investments"
                     description=""
                     :key="investKey">
-          <template slot="header">
+          <template #header>
             <h5 class="card-title">Invested</h5>
           </template>
         </chart-card>
@@ -101,11 +97,11 @@
   </div>
 </template>
 <script>
-import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
-import StatsCard from 'src/components/UIComponents/Cards/StatsCard';
+import ChartCard from '@/components/UIComponents/Cards/ChartCard.vue';
+//import StatsCard from '@/components/UIComponents/Cards/StatsCard.vue';
 import axios from "axios";
-import PieChart from "../../../UIComponents/Charts/PieChart";
-import {Popover} from 'element-ui'
+import {ElPopover} from 'element-plus';
+
 
 const tooltipOptions = {
   tooltipFillColor: "rgba(0,0,0,0.5)",
@@ -125,13 +121,16 @@ const tooltipOptions = {
 };
 export default {
   components: {
-    StatsCard,
+    //StatsCard,
     ChartCard,
-    PieChart,
-    [Popover.name]: Popover,
+    ElPopover
   },
-  created() {
-    this.getData()
+  async mounted() {
+    this.totalChart = {
+      "options": {},
+      "datasets": [{"data": [1, 99]}]
+    }
+    await this.getData();
   },
   methods: {
     calc_percentage(partial_balance, total) {
@@ -172,6 +171,7 @@ export default {
       this.investKey += 1;
     },
     createPortfolioChart() {
+      this.loaded = true;
       this.totalChart.labels = this.total_assets.map(function (el) {
         return el.name;
       });
@@ -182,6 +182,7 @@ export default {
         return "rgb(" + r + "," + g + "," + b + ")";
       });
       this.totalChart.datasets[0].data = this.total_assets.map(el => this.calc_percentage(el.virtual_balance, this.wallet_value));
+      console.log(this.investChart.datasets[0].data);
       this.totalKey += 1;
     },
     fillWallet(res) {
@@ -231,11 +232,11 @@ export default {
       this.fx_rate = Number(res.data.close).toFixed(2);
     },
     async getData() {
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/stats").then(this.fillStats);
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/fx_rate").then(this.fillFxRate);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/stats").then(this.fillStats);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/wallet").then(this.fillWallet);
       // await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillCryptoWallet);
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts").then(this.fillAccounts);
     }
   },
   data() {
@@ -247,7 +248,6 @@ export default {
       exchangeAccounts: [],
       totalKey: 0,
       investKey: 0,
-      componentKey2: 0,
       fiat: 0,
       gain: 0,
       total_value: 0,
@@ -255,36 +255,8 @@ export default {
       total_invested: 0,
       buy: 0,
       sell: 0,
-      totalChart: {
-        labels: [],
-        datasets: [{
-          label: "Banks",
-          pointRadius: 2,
-          pointHoverRadius: 1,
-          backgroundColor: [],
-          borderWidth: 0,
-          data: []
-        }],
-        options: {
-          tooltips: tooltipOptions,
-          legend: {display: true}
-        },
-      },
-      bankChart: {
-        labels: [],
-        datasets: [{
-          label: "Banks",
-          pointRadius: 2,
-          pointHoverRadius: 1,
-          backgroundColor: [],
-          borderWidth: 0,
-          data: []
-        }],
-        options: {
-          tooltips: tooltipOptions,
-          legend: {display: true}
-        },
-      },
+      loaded: false,
+      totalChart: {},
       investChart: {
         labels: [],
         datasets: [{
