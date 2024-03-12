@@ -1,44 +1,45 @@
 <template>
   <div>
-    <el-tabs value="first" class="demo-tabs">
-      <el-tab-pane label="Wallet" name="first">
+    <!--el-tabs class="demo-tabs" type="border-card" v-model="activeName">
+      <el-tab-pane class="sidebar-wrapper" label="Wallet" name="first"-->
+    <div class="row">
+      <div class="col-lg-12 col-md-6 col-sm-6">
         <div class="row">
-          <div class="col-lg-12 col-md-6 col-sm-6">
-            <div class="row">
-              <div class="col-lg-4 col-md-6 col-sm-6">
-                <stats-card type="warning"
-                            icon="nc-icon nc-money-coins"
-                            small-title="Cost"
-                            :title="total_cost | toCurrency(base_currency)">
-                </stats-card>
+          <div class="col-lg-4 col-md-6 col-sm-6">
+            <stats-card type="warning"
+                        icon="nc-icon nc-money-coins"
+                        small-title="Cost"
+                        :title="$filters.toCurrency(total_cost, base_currency)">
+            </stats-card>
+          </div>
+          <div class="col-lg-4 col-md-6 col-sm-6">
+            <stats-card type="success"
+                        icon="nc-icon nc-money-coins"
+                        small-title="Wallet Value"
+                        :title="$filters.toCurrency(value, base_currency)">
+            </stats-card>
+          </div>
+          <div class="col-lg-4 col-md-6 col-sm-6">
+            <el-popover trigger="hover"
+                        placement="bottom">
+              <div>
+                <div class="popover-body">Current wallet value. Benefits vs cost and benefits from previous day
+                </div>
               </div>
-              <div class="col-lg-4 col-md-6 col-sm-6">
+              <div slot="reference">
                 <stats-card type="success"
-                            icon="nc-icon nc-money-coins"
-                            small-title="Wallet Value"
-                            :title="value | toCurrency(base_currency)">
+                            icon="nc-icon nc-globe"
+                            small-title="Current W/L"
+                            :title="$filters.toCurrency(benefits, base_currency)">
                 </stats-card>
               </div>
-              <div class="col-lg-4 col-md-6 col-sm-6">
-                <el-popover trigger="hover"
-                            placement="bottom">
-                  <div>
-                    <div class="popover-body">Current wallet value. Benefits vs cost and benefits from previous day
-                    </div>
-                  </div>
-                  <div slot="reference">
-
-                    <stats-card type="success"
-                                icon="nc-icon nc-globe"
-                                small-title="Current W/L"
-                                :title="benefits | toCurrency(base_currency)">
-                    </stats-card>
-                  </div>
-                </el-popover>
-              </div>
-            </div>
+            </el-popover>
           </div>
         </div>
+      </div>
+    </div>
+    <el-tabs class="demo-tabs" type="border-card" v-model="activeName">
+      <el-tab-pane class="sidebar-wrapper" label="Wallet" name="first">
         <div class="row">
           <div class="col-md-12">
             <div class="card">
@@ -49,8 +50,8 @@
                   </div>
                   <div class="col-md-6">
                     <div class="text-right mb-3">
-                      <p-button type="info" size="sm" @click="reload">Reload</p-button>
-                      <p-button type="warning" size="sm" @click="recalculate">Recalculate</p-button>
+                      <el-button type="primary" size="small" @click="reload">Reload</el-button>
+                      <el-button type="warning" size="small" @click="recalculate">Recalculate</el-button>
                     </div>
                   </div>
                 </div>
@@ -60,33 +61,38 @@
                           :cell-class-name="colorClass" :cell-style="{padding: '0', height: '20px'}">
                   <el-table-column label="Coin" property="currency" width="100px" sortable></el-table-column>
                   <el-table-column label="Balance" property="amount">
-                    <template slot-scope="scope">
-                      {{ scope.row.amount | toCurrency(undefined, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.amount, undefined, 8) }}
                     </template>
                   </el-table-column>
-                  <el-table-column label="Buy Price" property="price">
-                    <template slot-scope="scope">
-                      {{ scope.row.price | toCurrency(scope.row.current_price_currency, 8) }}
+                  <el-table-column label="Average Price" property="price">
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.price, scope.row.current_price_currency, 2) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Break Even" property="price">
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.break_even, scope.row.current_price_currency, 2) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Cost" property="cost">
-                    <template slot-scope="scope">
-                      {{ scope.row.cost | toCurrency(scope.row.current_price_currency, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.cost, scope.row.current_price_currency, 2) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Market price" property="current_price">
-                    <template slot-scope="scope">
-                      {{ scope.row.current_price | toCurrency(scope.row.current_price_currency, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.current_price, scope.row.current_price_currency, 2) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Value">
-                    <template slot-scope="scope">
-                      {{ scope.row.current_value | toCurrency(scope.row.current_price_currency, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.current_value, scope.row.current_price_currency, 2) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="W/L" property="current_benefit" sortable>
-                    <template slot-scope="scope">
-                      {{ scope.row.current_benefit | toCurrency(scope.row.current_price_currency, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.current_benefit, scope.row.current_price_currency, 2) }}
                     </template>
                   </el-table-column>
                 </el-table>
@@ -104,7 +110,7 @@
                         title="Investments"
                         description=""
                         :key="investKey">
-              <template slot="header">
+              <template #header>
                 <h5 class="title">Positions </h5>
               </template>
             </chart-card>
@@ -123,8 +129,8 @@
                           :cell-class-name="colorClass">
                   <el-table-column label="Symbol" property="currency" width="100px" sortable></el-table-column>
                   <el-table-column label="cost" property="cost">
-                    <template slot-scope="scope">
-                      {{ scope.row.cost | toCurrency(scope.row.current_price_currency, 8) }}
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.cost, scope.row.current_price_currency, 8) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Value" property="current_value"></el-table-column>
@@ -140,10 +146,10 @@
 </template>
 <script>
 
-import {Table, TableColumn, Tabs, TabPane, Popover} from 'element-ui'
+import {ElPopover, ElTable, ElTableColumn, ElTabPane, ElTabs, ElIcon} from 'element-plus';
 import axios from "axios";
-import StatsCard from "../../../UIComponents/Cards/StatsCard";
-import ChartCard from 'src/components/UIComponents/Cards/ChartCard';
+import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
+import ChartCard from '@/components/UIComponents/Cards/ChartCard.vue';
 
 const tooltipOptions = {
   tooltipFillColor: "rgba(0,0,0,0.5)",
@@ -164,12 +170,13 @@ const tooltipOptions = {
 export default {
   name: "Wallet",
   components: {
-    Table, TableColumn, StatsCard, ChartCard, Tabs, TabPane,
-    [Popover.name]: Popover,
+    //Table, TableColumn, 
+    StatsCard, ChartCard, //Tabs, TabPane, [Popover.name]: Popover,
   },
   data() {
     return {
       base_currency: localStorage.getItem('base_currency'),
+      activeName: 'first',
       wallet: [],
       value: 0,
       benefits: 0,
@@ -186,7 +193,7 @@ export default {
           data: []
         }],
         options: {
-          tooltips: tooltipOptions,
+          tooltips: {},
           legend: {display: true}
         },
       },
@@ -198,7 +205,7 @@ export default {
   methods: {
     async recalculate() {
       let vm = this;
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/calculate").then(
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/calculate").then(
           vm.$notify({
             message: 'Recalculating balances/taxes!',
             type: 'info',
@@ -211,9 +218,9 @@ export default {
     createInvestChart(wallet_value) {
       this.investChart.labels = this.wallet.map(el => el.currency);
       this.investChart.datasets[0].backgroundColor = this.wallet.map(function (el) {
-        var r = Math.floor(Math.random() * 255);
-        var g = Math.floor(Math.random() * 255);
-        var b = Math.floor(Math.random() * 255);
+        let r = Math.floor(Math.random() * 255);
+        let g = Math.floor(Math.random() * 255);
+        let b = Math.floor(Math.random() * 255);
         return "rgb(" + r + "," + g + "," + b + ")";
       });
 
@@ -248,7 +255,7 @@ export default {
       });
     },
     async getData() {
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillWallet);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/wallet").then(this.fillWallet);
     },
     colorClass(item) {
       if (item.column.property == 'current_benefit') {

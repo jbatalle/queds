@@ -11,9 +11,9 @@
       .el-input__icon,
       input {
         &::placeholder{
-          color: white;
+          color: blue;
         }
-        color: white;
+        color: red;
       }
       input,
       .el-input__icon{
@@ -29,7 +29,7 @@
     }
 
     input{
-      background-color: white;
+      background-color: red;
       border-color: $color !important;
       border-width: 2px;
       border-radius: 20px;
@@ -39,20 +39,22 @@
       color:$color;
     }
   }
-  .select-#{$type}{
+  .select-#{$type} {
 
     .el-tag, .el-tag.el-tag--info {
       line-height: 24px;
-      background-color: $color !important;
+      background-color: red !important;
       border: none !important;
-      .el-tag__close{
+
+      .el-tag__close {
         width: 20px;
         height: 20px;
         color: white;
         background-color: transparent;
+
         &:hover {
-         background-color: white;
-         color: $color;
+          background-color: red;
+          color: $color;
         }
 
         &:before {
@@ -61,19 +63,24 @@
 
       }
     }
+
     &.el-select-dropdown__item.selected,
     &.el-select-dropdown__item.selected.hover {
-      background-color: $color;
+      background-color: red;
       color: white;
     }
-  }
 
-  &.el-select-dropdown.is-multiple
-  .el-select-dropdown__item.selected{
-    &.select-#{$type}{
-      color: $color;
+    &.el-select-dropdown.is-multiple
+    .el-select-dropdown__item.selected {
+      &.select-#{$type} {
+        color: $color;
+      }
     }
   }
+}
+
+.el-select-dropdown__item.hover {
+    background-color: #f5f7fa;
 }
 
 .el-select .el-input {
@@ -83,7 +90,7 @@
       &::placeholder {
         color: white;
       }
-      color: white;
+      color: black;
     }
   }
 }
@@ -91,9 +98,9 @@
   border-radius:10px;
 }
 
-@include select('default', $default-color)
-@include select('info', $info-color)
-@include select('primary', $primary-color)
-@include select('success', $success-color)
-@include select('warning', $warning-color)
-@include select('danger', $danger-color)
+@include select('default', $default-color);
+@include select('info', $info-color);
+@include select('primary', $primary-color);
+@include select('success', $success-color);
+@include select('warning', $warning-color);
+@include select('danger', $danger-color);

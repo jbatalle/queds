@@ -5,7 +5,7 @@
         :background-color="backgroundColor"
         type="sidebar"
     >
-      <template slot-scope="props" slot="links">
+      <ul class="props nav" slot="links">
         <sidebar-item
             :link="{
             name: 'Dashboard',
@@ -50,7 +50,7 @@
 
         <sidebar-item
             opened
-            class="example"
+            class=""
             :link="{ name: 'Crypto', icon: 'fab fa-vuejs fa-2x' }"
         >
           <sidebar-item
@@ -88,13 +88,13 @@
           }"
         >
         </sidebar-item>
-      </template>
+      </ul>
     </side-bar>
 
     <div class="main-panel">
       <top-navbar></top-navbar>
 
-      <dashboard-content @click.native="toggleSidebar"></dashboard-content>
+      <dashboard-content></dashboard-content>
 
       <content-footer></content-footer>
     </div>
@@ -106,14 +106,12 @@
 import TopNavbar from "./TopNavbar.vue";
 import ContentFooter from "./ContentFooter.vue";
 import DashboardContent from "./Content.vue";
-import SidebarItem from "../../UIComponents/SidebarPlugin/SidebarItem.vue";
 
 export default {
   components: {
     TopNavbar,
     ContentFooter,
-    DashboardContent,
-    SidebarItem,
+    DashboardContent
   },
   data() {
     return {
@@ -123,11 +121,6 @@ export default {
   },
 
   methods: {
-    toggleSidebar() {
-      if (this.$sidebar.showSidebar) {
-        this.$sidebar.displaySidebar(false);
-      }
-    },
   },
 };
 </script>

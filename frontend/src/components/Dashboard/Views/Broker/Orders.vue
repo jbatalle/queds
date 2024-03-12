@@ -7,11 +7,10 @@
             <h5 class="title">Orders </h5>
           </div>
           <div class="col-sm-4">
+          </div>
+          <div class="col-sm-4">
             <div class="pull-right">
-              <el-input class="input-sm"
-                        placeholder="Search"
-                        v-model="search"
-                        width="100%">
+              <el-input class="input-sm" placeholder="Search" v-model="search" width="100%">
                 <template #suffix>
                   <el-icon class="el-input__icon"></el-icon>
                   <i class="nc-icon nc-zoom-split"></i>
@@ -19,31 +18,18 @@
               </el-input>
             </div>
           </div>
-          <div class="col-sm-4">
-            <div class="pull-right">
-            <el-select class="select-default" v-model="pagination.perPage" placeholder="Per page">
-              <el-option
-                  class="select-default"
-                  v-for="item in pagination.perPageOptions"
-                  :key="item"
-                  :label="item"
-                  :value="item">
-              </el-option>
-            </el-select>
-            </div>
-          </div>
         </div>
       </div>
       <div class="card-body row">
         <div class="col-sm-12 mt-2">
-          <el-table
-              :data="orders"
-              :default-sort="{property: 'value_date', order: 'descending'}"
-              :row-class-name="tableRowClassName"
-              @filter-change="filterChange"
-              :cell-style="{padding: '0', height: '20px'}">
+          <el-table v-loading="loading"
+                    :data="orders"
+                    :default-sort="{property: 'value_date', order: 'descending'}"
+                    :row-class-name="tableRowClassName"
+                    @filter-change="filterChange"
+                    :cell-style="{padding: '0', height: '20px'}">
             <el-table-column label="ticker">
-              <template #default="scope">
+              <template v-slot:default="scope">
                 <el-tooltip :content="scope.row.ticker.name" placement="top">
                   <span type="info"><i class="nc-icon" :class="iconClassName(scope.row)"></i> {{
                       scope.row.ticker.ticker
@@ -53,7 +39,7 @@
             </el-table-column>
             <el-table-column
                 prop="account"
-                label="Broker"
+                label="Account"
                 :filters="accounts"
                 :filter-method="filterTag"
                 filter-placement="bottom-end"
@@ -63,28 +49,30 @@
             <!--el-table-column label="type" property="type" sortable></el-table-column-->
             <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
             <el-table-column label="price" width="100px">
-              <template slot-scope="scope" v-if="scope.row.ticker.currency !== undefined">
-                {{ scope.row.price | toCurrency(scope.row.ticker.currency) }}
+              <template v-slot:default="scope"> <!-- v-if="scope.row.ticker.currency !== undefined">-->
+                {{ $filters.toCurrency(scope.row.price, scope.row.ticker.currency) }}
               </template>
             </el-table-column>
             <el-table-column label="fee" property="fee">
-              <template slot-scope="scope">
-                {{scope.row.fee | toCurrency(base_currency)}}
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.fee, base_currency) }}
               </template>
             </el-table-column>
             <el-table-column label="Exchange Fee" property="exchange_fee">
-              <template slot-scope="scope">
-                {{scope.row.exchange_fee | toCurrency(base_currency)}}
-              </template></el-table-column>
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.exchange_fee, base_currency) }}
+              </template>
+            </el-table-column>
             <el-table-column label="Total" property="total" sortable>
-              <template slot-scope="scope" v-if="scope.row.ticker.currency !== undefined">
-                {{scope.row.total | toCurrency(scope.row.ticker.currency)}}
+              <template v-slot:default="scope"><!-- v-if="scope.row.ticker.currency !== undefined">-->
+                {{ $filters.toCurrency(scope.row.total, scope.row.ticker.currency) }}
               </template>
             </el-table-column>
             <el-table-column label="Cost" property="cost" sortable>
-              <template slot-scope="scope">
-                {{scope.row.cost | toCurrency(base_currency)}}
-              </template></el-table-column>
+              <template v-slot:default="scope">
+                {{ $filters.toCurrency(scope.row.cost, base_currency) }}
+              </template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -92,33 +80,26 @@
           <p class="category">Showing {{ from + 1 }} to {{ to }} of {{ total }} entries</p>
         </div>
         <div class="col-sm-6">
-          <p-pagination class="pull-right"
-                        v-model="pagination.currentPage"
-                        :per-page="pagination.perPage"
-                        :total="total">
-          </p-pagination>
+          <div class="pull-right">
+            <el-pagination small layout="sizes, prev, pager, next"
+                           :total="total"
+                           :page-sizes="pagination.perPageOptions"
+                           :page-size="pagination.perPage"
+                           :current-page="pagination.currentPage"
+                           @size-change="handleSizeChange"
+                           @current-change="handlePageChange"
+            />
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
 <script>
-import {Table, TableColumn, Select, Option, Tooltip, Tag, Icon, Input} from 'element-ui';
-import PPagination from 'src/components/UIComponents/Pagination.vue'
 import axios from "axios";
 
 export default {
-  components: {
-    PPagination,
-    [Select.name]: Select,
-    [Option.name]: Option,
-    [Table.name]: Table,
-    [Tooltip.name]: Tooltip,
-    [TableColumn.name]: TableColumn,
-    [Tag.name]: Tag,
-    [Input.name]: Input,
-    [Icon.name]: Icon,
-  },
+  components: {},
 
   data: () => ({
     base_currency: localStorage.getItem('base_currency'),
@@ -133,7 +114,8 @@ export default {
       perPageOptions: [5, 20, 50, 100, 1000],
     },
     total: 0,
-    total_orders: 0
+    total_orders: 0,
+    loading: true
   }),
   watch: {
     pagination: {
@@ -143,17 +125,17 @@ export default {
       deep: true
     },
     search: {
-        handler(val) {
-            if (this.search_loading){
-                return;
-            }
-            // wait 2 seconds before make the request
-            this.search_loading = true;
-            setTimeout(() => {
-                this.getData();
-                this.search_loading = false;
-            }, 2000);
+      handler(val) {
+        if (this.search_loading) {
+          return;
         }
+        // wait 2 seconds before make the request
+        this.search_loading = true;
+        setTimeout(() => {
+          this.getData();
+          this.search_loading = false;
+        }, 2000);
+      }
     }
   },
   computed: {
@@ -177,6 +159,12 @@ export default {
     this.getData();
   },
   methods: {
+    handleSizeChange(val) {
+      this.pagination.perPage = val;
+    },
+    handlePageChange(val) {
+      this.pagination.currentPage = val;
+    },
     filterTag(value, row) {
       return row.account === value
     },
@@ -187,7 +175,6 @@ export default {
     },
     fillOrders(res) {
       let vm = this;
-      let resStatus = res.status === 200 ? true : false;
       this.orders = res.data.results;
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
         if (!vm.accounts.some(el => el.text === entry))
@@ -205,14 +192,16 @@ export default {
           s.cost = s.total * s.currency_rate + s.fee + s.exchange_fee;
         }
       });
+      this.loading = false;
     },
     async getData() {
+      this.loading = true;
       let f = ""
       if (this.filter_accounts.length > 0)
         f = "&broker=" + this.filter_accounts.join();
       if (this.search.length > 0)
         f += "&search=" + this.search.toLowerCase();
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/stock/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
     tableRowClassName(item) {
       if (item.row.type === 'Sell')
@@ -230,11 +219,7 @@ export default {
 }
 </script>
 <style>
-.red {
-  color: red
-}
-
-.blue {
-  color: blue
+.example-showcase .el-loading-mask {
+  z-index: 9;
 }
 </style>

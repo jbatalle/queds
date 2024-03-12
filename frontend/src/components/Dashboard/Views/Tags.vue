@@ -3,8 +3,8 @@
     <div class="row">
       <el-tabs v-model="editableTabsValue" type="card" editable @edit="handleTabsEdit">
         <el-tab-pane
-            v-for="item in editableTabs"
-            :key="item.name"
+            v-for="(item, index) in editableTabs"
+            :key="index"
             :name="item.name"
         >
           <template #label>
@@ -21,33 +21,158 @@
         </el-tab-pane>
       </el-tabs>
     </div>
-<!--    <div class="row">-->
-<!--      <el-tabs v-model="editableTabsValue" type="card" editable @edit="handleTabsEdit">-->
-<!--        <el-tab-pane-->
-<!--            v-for="(item, index) in editableTabs"-->
-<!--            :key="item.name"-->
-<!--            :name="item.name"-->
-<!--        >-->
-<!--          <template #label>-->
-<!--            <div v-if="!item.editing" @dblclick="startEdit(item)">-->
-<!--              {{ item.title }}-->
-<!--            </div>-->
-<!--            <el-input v-else v-model="item.title" @blur="finishEdit(item)"/>-->
-<!--          </template>-->
-<!--          {{ item.content }}-->
-<!--        </el-tab-pane>-->
-<!--      </el-tabs>-->
-<!--    </div>-->
+    <div class="row">
+      <el-tabs v-model="editableTabsValue" type="card" editable @edit="handleTabsEdit">
+        <el-tab-pane
+            v-for="(item, index) in editableTabs"
+            :key="item.name"
+            :name="item.name"
+        >
+          <template #label>
+            <div v-if="!item.editing" @dblclick="startEdit(item)">
+              {{ item.title }}
+            </div>
+            <el-input v-else v-model="item.title" @blur="finishEdit(item)"/>
+          </template>
+          {{ item.content }}
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="tag-filter">
+          <!-- Input field to filter by tags -->
+          <el-input v-model="filterTag" placeholder="Enter a tag"></el-input>
+          <el-button @click="filterTable">Filter</el-button>
+          <el-table :data="filteredData" ref="tagTable" style="width: 100%">
+            <!-- Define your table columns here -->
+            <el-table-column prop="name" label="Name"></el-table-column>
+            <el-table-column prop="tags" label="Tags"></el-table-column>
+          </el-table>
+        </div>
+      </div>
+      <div>
+        <el-autocomplete
+            v-model="state1"
+            :fetch-suggestions="querySearch"
+            clearable
+            class="inline-input w-50"
+            placeholder="Please Input"
+            @select="handleSelect"
+        />
+      </div>
+    </div>
+    <div class="row">
+      Tags:
+      <div class="col-md-12">
+        <el-tag
+            :key="tag"
+            v-for="tag in dynamicTags"
+            closable
+            :disable-transitions="false"
+            @close="handleClose(tag)">
+          {{ tag }}
+        </el-tag>
+      </div>
+      <div class="row">
+        Input:
+        <el-input
+            class="input-new-tag"
+            v-if="inputVisible"
+            v-model="inputValue"
+            ref="saveTagInput"
+            size="mini"
+            @keyup.enter.native="handleInputConfirm"
+            @blur="handleInputConfirm"
+        >
+        </el-input>
+        <el-button v-else class="button-new-tag" size="small" @click="showInput">+ New Tag</el-button>
+      </div>
+    </div>
+    <br/><br/>
+    <div class="row">
+      Tags:
+      <div class="col-md-12">
+        <!-- Display the existing tags as el-tag components -->
+        <el-tag
+            :key="tag"
+            v-for="tag in dynamicTags"
+            closable
+            :disable-transitions="false"
+            @close="handleClose(tag)"
+        >
+          {{ tag }}
+        </el-tag>
+      </div>
+      <div class="row">
+        Input:
+        <!-- Show the el-autocomplete input field for new tags -->
+        <el-autocomplete
+            v-model="state1"
+            :fetch-suggestions="querySearch"
+            class="inline-input w-50"
+            placeholder="Please Input"
+            @select="handleSelect"
+        />
+        <!--el-button v-else class="button-new-tag" size="small" @click="showInput">+ New Tag</1--el-button-->
+      </div>
+    </div>
+    <br/><br/><br/> FInal stuff
+    <div class="row">
+      <div class="tags-input-container">
+        <div class="tags">
+      <span
+          class="tag"
+          v-for="(tag, index) in selectedTags"
+          :key="index"
+      >
+        {{ tag }}
+        <span class="remove-icon" @click="removeTag(index)">&times;</span>
+      </span>
+        </div>
+        <el-autocomplete
+            v-model="inputValue"
+            :fetch-suggestions="querySearch"
+            class="inline-input w-50"
+            placeholder="Please Input"
+            v-bind:select-when-unmatched=true
+            @select="handleSelect"
+            @keydown.enter="handleTagConfirm"
+            @blur="handleTagConfirm"
+            @keydown.delete="deleteTag"
+        />
+        <input
+            ref="saveTagInput"
+            class="input-new-tag"
+            v-model="inputValue"
+            @keydown.enter="handleTagConfirm"
+            @blur="handleTagConfirm"
+            @keydown.tab.prevent
+            @keydown.delete="deleteTag"
+        />
+      </div>
+    </div>
   </div>
 </template>
 <script>
 import axios from "axios";
-//import {Table, TableColumn, Input, Button, Dialog, Tabs, TabPane, Autocomplete} from 'element-uplus'
+import {Table, TableColumn, Input, Button, Dialog, Tabs, TabPane, Tag, Autocomplete} from 'element-ui'
+import Vue from 'vue';
+
+Vue.use(Table);
+Vue.use(TableColumn);
+Vue.use(Input);
+Vue.use(Button);
+Vue.use(Dialog);
+Vue.use(Tabs);
+Vue.use(TabPane);
+Vue.use(Tag);
+Vue.use(Autocomplete);
 
 export default {
   name: "Analysis",
   components: {
-    //Tabs, TabPane
+    Tabs, TabPane
   },
   data() {
     return {
@@ -66,8 +191,11 @@ export default {
         // Add more rows as needed
       ],
       filteredData: [],
+      filterTag: "",
+      dynamicTags: ['Tag 1', 'Tag 2', 'Tag 3'],
       inputVisible: false,
       inputValue: '',
+      selectedTags: [],
       activeTab: 'tab1',
       tabs: [
         {name: 'Tab 1', editing: false},
@@ -77,13 +205,13 @@ export default {
       editableTabs: [
         {
           title: 'Tab 1',
-          name: 'tab1',
+          name: '1',
           content: 'Tab 1 content',
           editing: false
         },
         {
           title: 'Tab 2',
-          name: 'tab2',
+          name: '2',
           content: 'Tab 2 content',
           editing: false
         }
@@ -98,6 +226,7 @@ export default {
   },
   methods: {
     handleClick(tab) {
+      console.log("Handle click")
       let editableTab = this.editableTabs.find(t => t.name === tab.name);
       if (editableTab) {
         editableTab.editing = true;
@@ -107,7 +236,6 @@ export default {
       item.editing = true;
     },
     finishEdit(item) {
-      console.log("Finish edit");
       item.editing = false;
       // This method will be called when the user finishes editing a tab name
       // You can add your own logic here to update the tab name on the server, etc.
@@ -116,28 +244,21 @@ export default {
       console.log(action);
       if (action === 'add') {
         console.log("Add tab");
-        this.tabIndex += 1
-        console.log(this.tabIndex)
-        console.log( `newTab${this.tabIndex}`);
-        const newTabName = `newTab${this.tabIndex}`
+        const newTabName = ++this.tabIndex;
         console.log(newTabName);
         this.editableTabs.push({
           title: 'New Tab',
           name: newTabName,
           editing: true,
-          content: 'New Tab content ' + newTabName,
+          content: 'New Tab content',
         })
         console.log(this.editableTabs);
         this.editableTabsValue = newTabName
         console.log(this.editableTabsValue);
       } else if (action === 'remove') {
-        console.log("Remove tab");
-        const tabs = this.editableTabs;
-        let activeName = this.editableTabsValue;
-        console.log(activeName);
-        console.log(targetName)
+        const tabs = this.editableTabs
+        let activeName = this.editableTabsValue
         if (activeName === targetName) {
-          console.log("Acativename === targetname");
           tabs.forEach((tab, index) => {
             if (tab.name === targetName) {
               const nextTab = tabs[index + 1] || tabs[index - 1]
@@ -147,12 +268,27 @@ export default {
             }
           })
         }
-        console.log(activeName);
+
         this.editableTabsValue = activeName
-        console.log(this.editableTabs);
         this.editableTabs = tabs.filter((tab) => tab.name !== targetName)
-        console.log(this.editableTabs);
       }
+    },
+    handleClose(tag) {
+      this.dynamicTags.splice(this.dynamicTags.indexOf(tag), 1);
+    },
+    showInput() {
+      this.inputVisible = true;
+      this.$nextTick(_ => {
+        this.$refs.saveTagInput.$refs.input.focus();
+      });
+    },
+    handleInputConfirm() {
+      let inputValue = this.inputValue;
+      if (inputValue) {
+        this.dynamicTags.push(inputValue);
+      }
+      this.inputVisible = false;
+      this.inputValue = '';
     }, filterTable() {
       console.log(this.filterTag);
       console.log(this.filterTag === "");
@@ -199,7 +335,16 @@ export default {
         this.selectedTags.push(this.inputValue);
         this.inputValue = '';
       }
-    }
+    },
+    removeTag(index) {
+      this.selectedTags.splice(index, 1);
+    },
+    deleteTag(event) {
+      if (this.inputValue === "" && this.selectedTags.length > 0) {
+        this.selectedTags.splice(this.selectedTags.length - 1, 1);
+        this.$refs.saveTagInput.focus();
+      }
+    },
   }
 };
 </script>

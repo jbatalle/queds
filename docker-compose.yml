@@ -30,8 +30,6 @@ services:
       - ./config:/usr/src/config
       - ./models:/usr/src/models
       - ./VERSION:/usr/VERSION
-    ports:
-      - 5001:5000
     environment:
       - FLASK_ENV=development
       - BACKEND_SETTINGS=config.local
@@ -61,12 +59,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VUE_APP_BACKEND_URL=/api
+        - VITE_APP_BACKEND_URL=/api
+        - VITE_APP_IS_DEMO=false
+    command: npm run dev
     volumes:
       - './frontend:/app'
       - '/app/node_modules'
-    ports:
-      - 3007:8080
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NODE_ENV=development
@@ -91,8 +89,6 @@ services:
 
   redis:
     image: bitnami/redis
-    ports:
-      - 6379:6379
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     logging:
@@ -101,7 +97,7 @@ services:
       - api_bridge
 
   db:
-    image: timescale/timescaledb:2.8.1-pg12
+    image: timescale/timescaledb:2.14.2-pg16
     restart: always
     environment:
       POSTGRES_DB: queds

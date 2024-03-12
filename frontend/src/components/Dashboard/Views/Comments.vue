@@ -4,16 +4,13 @@
       <div class="card">
         <div class="card-body">
           <div class="col-sm-12 mt-12">
-            <!--          <el-table
-                :data="watchlist.filter(data => !search || data.symbol.toLowerCase().includes(search.toLowerCase()))"
-                :default-sort="{property: 'symbol', order: 'descending'}">-->
             <el-table class="table-striped"
                       :data="comments"
                       border :cell-style="{padding: '0', height: '20px'}">
-              <el-table-column label="Date" property="date"></el-table-column>
-              <el-table-column label="Source" property="source"></el-table-column>
-              <el-table-column label="Ticker" property="tickers"></el-table-column>
-              <el-table-column label="Message" property="message" sortable></el-table-column>
+              <el-table-column label="Date" property="date" width="180" sortable></el-table-column>
+              <el-table-column label="Source" property="source" width="120" sortable></el-table-column>
+              <el-table-column label="Ticker" property="tickers" width="180"></el-table-column>
+              <el-table-column label="Message" property="message"></el-table-column>
             </el-table>
           </div>
         </div>
@@ -23,32 +20,26 @@
 </template>
 <script>
 import axios from "axios";
-import {Table, TableColumn, Input, Button, Dialog} from 'element-ui'
-import Vue from 'vue'
+import {ElTable, ElTableColumn, ElInput, ElButton, ElDialog} from 'element-plus'
+//import Vue from 'vue';
 
 const tableColumns = ['symbol', 'market_time', 'price_change', 'price', 'high', 'low']
-Vue.use(Table);
-Vue.use(TableColumn);
-Vue.use(Input);
-Vue.use(Button);
-Vue.use(Dialog);
+// Vue.use(ElTable);
+// Vue.use(ElTableColumn);
+// Vue.use(ElInput);
+// Vue.use(ElButton);
+// Vue.use(ElDialog);
 export default {
   name: "Analysis",
-  components: {
-
-  },
+  components: {},
   //extends: LTable,
   data() {
     return {
-      add_watchlist: '',
       dialogVisible: false,
-      current_watchlist: {},
-      watchlists: [],
-      watchlist: [],
       search: '',
       options: {},
       comments: [],
-      componentKey: 0,
+      componentKey: 0
     };
   },
   created() {
@@ -58,16 +49,12 @@ export default {
     fillComments(res) {
       let resStatus = res.status === 200 ? true : false;
       this.comments = res.data;
-      console.log(this.comments)
     },
     async getComments() {
-      console.log("Get comments");
       this.componentKey += 1;
-
-      await axios.get(process.env.VUE_APP_BACKEND_URL + "/analysis/comments").then(this.fillComments);
-
-    },
-  },
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/comments").then(this.fillComments);
+    }
+  }
 };
 </script>
 <style>

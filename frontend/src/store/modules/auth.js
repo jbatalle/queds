@@ -1,22 +1,10 @@
-import Vue from "vue";
-import router from "@/main";
-import {VueAuthenticate} from "vue-authenticate";
-
+import router from "@/router";
 import axios from "axios";
-import VueAxios from "vue-axios";
-
-Vue.use(VueAxios, axios);
-
-const vueAuth = new VueAuthenticate(Vue.prototype.$http, {
-    baseUrl: process.env.VUE_APP_BACKEND_URL,
-    tokenName: "access_token",
-    loginUrl: "/users/login",
-    registerUrl: "/users/register"
-});
+const API_URL = "http://localhost:6060/api/users";
 
 export default {
     state: {
-        token: localStorage.getItem("vue-authenticate.vueauth_access_token") || ''
+        token: localStorage.getItem("access_token") || ''
     },
 
     getters: {
@@ -30,38 +18,73 @@ export default {
             state.token = token;
         },
         logout(state) {
+            console.log("Mutation state to null");
             state.status = '';
             state.token = '';
         },
     },
 
     actions: {
-        login(context, payload) {
-            return vueAuth.login(payload.user, payload.requestOptions).then(response => {
-                let token = response.data['token'];
-                localStorage.setItem("vue-authenticate.vueauth_access_token", token);
-                localStorage.setItem("base_currency", response.data['base_currency']);
+        initialize(context) {
+            const token = localStorage.getItem("access_token");
+            if (token) {
                 axios.defaults.headers.common['Authorization'] = token;
                 context.commit("auth_success", token);
-                router.push({path: "/"});
-            });
+            }
+        },
+        login(context, payload) {
+            return axios
+                .post(API_URL + '/login', {
+                    email: payload.user.email,
+                    password: payload.user.password
+                })
+                .then(response => {
+                    let token = "Bearer " + response.data['token'];
+                    localStorage.setItem("access_token", token);
+                    localStorage.setItem("base_currency", response.data['base_currency']);
+                    axios.defaults.headers.common['Authorization'] = token;
+
+                    context.commit("auth_success", token);
+                    router.push({path: "/"});
+                }).catch(function (error) {
+                    console.log("Unable to login: " + error);
+                    context.commit('logout');
+                    router.push({name: "Login"});
+                });
         },
         register(context, payload) {
-            return vueAuth.register(payload.user, payload.requestOptions).then(response => {
-                router.push({path: "/"});
-            });
+            return axios
+                .post(API_URL + '/register', {
+                    email: payload.user.email,
+                    password: payload.user.password,
+                    password_confirmation: payload.user.password_confirmation
+                })
+                .then(response => {
+                    router.push({path: "/"});
+                });
         },
         logout(context, payload) {
-            return vueAuth.logout().then(response => {
-                commit('logout');
-                localStorage.removeItem("vue-authenticate.vueauth_access_token");
-                router.push({name: "Login"});
-            }).catch(function (error) {
-                console.log("Error with logout, redirect to login page");
-                localStorage.removeItem("vue-authenticate.vueauth_access_token");
-                context.commit('logout');
-                router.push({name: "Login"});
-            });
+            console.log("Logout!")
+            return axios
+                .post(API_URL + '/logout', {
+                    current_user: ""
+                })
+                .then(response => {
+                    console.log("Context");
+                    context.commit('logout');
+                    console.log("Context2")
+                    localStorage.removeItem("vue-authenticate.vueauth_access_token");
+                    console.log("Context3")
+                    router.push({name: "Login"});
+                    //return response.data;
+                }).catch(function (error) {
+                    console.log("Error with logout, redirect to login page");
+                    localStorage.removeItem("vue-authenticate.vueauth_access_token");
+                    //context.commit('logout');
+                    console.log("Forward to login");
+                    router.push({name: "Login"});
+                    console.log("Done=!");
+                });
         }
     }
 };

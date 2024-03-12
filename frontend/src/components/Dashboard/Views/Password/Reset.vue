@@ -26,7 +26,7 @@
   </div>
 </template>
 <script>
-import ValidationError from "src/components/UIComponents/ValidationError.vue";
+import ValidationError from "components/UIComponents/ValidationError.vue";
 import formMixin from "@/mixins/form-mixin";
 import AppNavbar from 'src/components/Dashboard/Views/Pages/Layout/AppNavbar'
 import AppFooter from 'src/components/Dashboard/Views/Pages/Layout/AppFooter'

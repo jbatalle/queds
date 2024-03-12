@@ -31,16 +31,16 @@
               <div class="col-lg-4 col-md-6 mr-auto">
                 <form @submit.prevent="register">
                 <card type="signup">
-                  <template slot="header">
-                    <h4 class="card-title text-center">Register</h4>
-                  </template>
+                  <h3 slot="header" class="header text-center">Register</h3>
+
+                  <!--el-input v-model="email" addon-left-icon="nc-icon nc-single-02" placeholder="Email" class="mb-2 mt-1"/-->
 
                   <el-input v-model="email" class="mb-2 mt-1" addon-left-icon="nc-icon nc-email-85" placeholder="Email"/>
                   <validation-error :errors="apiValidationErrors.email"/>
                   <el-input v-model="password" class="mb-2 mt-1" addon-left-icon="nc-icon nc-key-25" placeholder="Password" type="password"/>
                   <validation-error :errors="apiValidationErrors.password"/>
                   <el-input v-model="password_confirmation" class="mb-2 mt-1" addon-left-icon="nc-icon nc-key-25" placeholder="Password confirmation" type="password"/>
-                  <p-button native-type="submit" slot="footer" type="info" round>Get Started</p-button>
+                  <el-button native-type="submit" slot="footer" type="primary" round block class="mb-3">Get started</el-button>
                 </card>
                 </form>
               </div>
@@ -53,22 +53,17 @@
   </div>
 </template>
 <script>
-  import {Input} from 'element-ui';
-  import AppNavbar from './Layout/AppNavbar'
-  import AppFooter from './Layout/AppFooter'
-  import { Card, Button, InfoSection} from 'src/components/UIComponents';
-  import formMixin from "@/mixins/form-mixin";
-  import ValidationError from "src/components/UIComponents/ValidationError.vue";
+import {ElInput, ElNotification, ElButton} from 'element-plus';
+import AppNavbar from '@/components/Dashboard/Views/Pages/Layout/AppNavbar.vue';
+import AppFooter from '@/components/Dashboard/Views/Pages/Layout/AppFooter.vue';
+import {Card} from '../../../UIComponents';
+import formMixin from "@/mixins/form-mixin";
   export default {
     mixins: [formMixin],
     components: {
       Card,
       AppNavbar,
       AppFooter,
-      InfoSection,
-      [Button.name]: Button,
-      ValidationError,
-      [Input.name]: Input
     },
     data() {
       return {
@@ -98,9 +93,10 @@
             message: 'Successfully registered.',
           })
         } catch (error) {
+          let error_msg = error.response.data.errors || error.response.data.message;
           this.$notify({
             type: 'danger',
-            message: 'Oops, something went wrong!',
+            message: error.response.data.message,
           })
           this.setApiValidation(error.response.data.errors);
         }
