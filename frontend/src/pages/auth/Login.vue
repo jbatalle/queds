@@ -50,14 +50,11 @@
 </template>
 <script>
 import {ElInput, ElNotification, ElButton} from 'element-plus';
-import {Card} from '../../../UIComponents';
-import AppNavbar from '@/components/Dashboard/Views/Pages/Layout/AppNavbar.vue';
-import AppFooter from '@/components/Dashboard/Views/Pages/Layout/AppFooter.vue';
+import {Card} from '@/components/UIComponents';
+import AppNavbar from '@/components/Dashboard/Layout/AppNavbar.vue';
+import AppFooter from '@/components/Dashboard/Layout/AppFooter.vue';
 import formMixin from "@/mixins/form-mixin";
-//import ValidationError from "src/components/UIComponents/ValidationError.vue";
 import IsDemo from '@/isDemo.js';
-import { useStore } from 'vuex';
-import { mapActions } from 'vuex';
 
 export default {
   mixins: [formMixin],

@@ -76,3 +76,33 @@ class CRUD:
             else:
                 d[k] = v
         return d
+
+    def to_dict(self):
+        a =  {field.name: getattr(self, field.name) for field in self.__table__.c}
+        return {field.name: getattr(self, field.name) for field in self.__table__.columns}
+
+    @property
+    def dto(self):
+        dto_dict = {field.name: getattr(self, field.name) for field in self.__table__.c}
+        options = self.query._with_options
+
+        for relationship in self.__mapper__.relationships:
+            rel_name = relationship.key
+            rel_value = getattr(self, rel_name)
+
+            if rel_name in self.__mapper__.relationships.keys():
+                if rel_value is not None:
+                    if isinstance(rel_value, list):
+                        dto_dict[rel_name] = [item.dto for item in rel_value]
+                    else:
+                        dto_dict[rel_name] = rel_value.dto
+
+        return type(
+            f"{self.__class__.__name__}DTO",
+            (object,),
+            dto_dict
+        )
+
+    @classmethod
+    def get_type(cls, type):
+        return {v: n for n, v in vars(cls.Type).items() if n.isupper()}[type]

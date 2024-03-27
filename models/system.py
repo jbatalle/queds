@@ -121,10 +121,11 @@ class EntityCredentialType(Base, CRUD):
 
 class Account(Base, CRUD):
     __tablename__ = 'accounts'
+    __table_args__ = (UniqueConstraint('name', 'user_id', name='_name_user_id_unique'),)
 
     id = Column(Integer, primary_key=True)
     updated_on = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
-    name = Column(String(20), unique=True)
+    name = Column(String(20))
     account = Column(String(20), unique=True)
     currency = Column(String(50), nullable=False)
     entity_id = Column(Integer, ForeignKey('entities.id'))

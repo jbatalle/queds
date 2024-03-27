@@ -41,7 +41,6 @@ export default {
       if (props.datasets == undefined) {
         return
       }
-      console.log(props)
       let data = {
         labels: props.labels || [],
         datasets: props.datasets,

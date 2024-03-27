@@ -3,7 +3,7 @@ from models.system import Account
 from models.crypto import ExchangeWallet, ExchangeOrder, ExchangeTransaction, ExchangeBalance
 from finance_reader.entities.exchanges import SUPPORTED_EXCHANGES
 
-logger = logging.getLogger("broker_read")
+logger = logging.getLogger("exchange_read")
 
 
 class ExchangeReader:

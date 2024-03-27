@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from flask import request, jsonify
 from flask_restx import Resource, Namespace
 from models.crypto import ExchangeWallet, ExchangeOrder, ExchangeClosedOrder
@@ -19,7 +20,7 @@ class List(Resource):
 
     def get(self):
         """Returns all exchange."""
-        result = Entity.query.filter(Entity.type==Entity.Type.EXCHANGE)
+        result = Entity.query.filter(Entity.type == Entity.Type.EXCHANGE)
         items = []
         for r in result:
             items.append(r.json)
@@ -145,22 +146,6 @@ class OrdersCollection(Resource):
         }
         return jsonify(results)
 
-
-@namespace.route('/calculate')
-class Calculate(Resource):
-
-    @demo_check
-    @jwt_required()
-    def get(self):
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
-        data = {
-            "user_id": user_id,
-            "mode": "crypto"
-        }
-        queue_process(data)
-
-
 @namespace.route('/tax')
 class CryptoTax(Resource):
 
@@ -169,7 +154,7 @@ class CryptoTax(Resource):
         """Returns all closed orders."""
         args = request.args.to_dict()
 
-        year = int(args.get('year', 2021))
+        year = int(args.get('year', datetime.now().year - 1))
         username = get_jwt_identity()
         user_id = User.find_by_email(username).id
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
@@ -195,3 +180,19 @@ class CryptoTax(Resource):
             item['children'] = children
             items.append(item)
         return jsonify(items)
+
+
+@namespace.route('/calculate')
+class Calculate(Resource):
+
+    @demo_check
+    @jwt_required()
+    def get(self):
+        current_user_email = get_jwt_identity()
+        user_id = User.find_by_email(current_user_email).id
+        data = {
+            "user_id": user_id,
+            "mode": "crypto"
+        }
+        queue_process(data)
+
