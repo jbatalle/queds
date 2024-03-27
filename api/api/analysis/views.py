@@ -28,8 +28,8 @@ class WatchlistList(Resource):
 
     @jwt_required()
     def post(self):
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
+        username = get_jwt_identity()
+        user_id = User.find_by_email(username).id
         post_data = request.get_json()
         w = Watchlists()
         w.name = post_data.get('name')
@@ -52,6 +52,7 @@ class WatchlistItems(Resource):
             items = Wallet.query.filter(Wallet.user_id==user_id).all()
             tickers = Ticker.query.filter(Ticker.id.in_([w.ticker_id for w in items])).all()
         else:
+            # watchlist = Watchlists.query.filter(Watchlists.user_id == user_id).filter(Watchlists.id == id).one()
             watchlist = Watchlist.query.filter_by(watchlists=int(id)).all()
             tickers = Ticker.query.filter(Ticker.id.in_([w.ticker for w in watchlist])).all()
 
@@ -73,8 +74,10 @@ class WatchlistItems(Resource):
             return [], 200
         r = y.get_current_tickers(symbols)
 
+        r = [q for q in r if q['symbol'] in symbols]
+
         # TODO: include ticker id here
-        [q.update({'id': tickers[q['symbol']].id}) for q in r]
+        [q.update({'id': tickers[q['symbol']].id}) for q in r if q['symbol'] in tickers]
 
         return r, 200
 

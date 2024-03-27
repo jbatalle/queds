@@ -11,7 +11,6 @@ const defaultOptions = {
   },
   scales: {
     yAxes: [{
-
       ticks: {
         display: false
       },
@@ -20,7 +19,6 @@ const defaultOptions = {
         zeroLineColor: "transparent",
         color: 'rgba(255,255,255,0.05)'
       }
-
     }],
     xAxes: [{
       barPercentage: 1.6,
@@ -34,7 +32,6 @@ const defaultOptions = {
       }
     }]
   },
-
 };
 
 export default {
@@ -65,6 +62,12 @@ export default {
       type: String,
       description: 'Chart title'
     },
+  },
+  data() {
+    return {
+      chartData: null,
+      options: null
+    }
   },
   methods: {
     assignChartData() {

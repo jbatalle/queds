@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from flask import request, jsonify
 from flask_restx import Resource, Namespace
 from models.crypto import ExchangeWallet, ExchangeOrder, ExchangeClosedOrder
@@ -11,7 +12,6 @@ from sqlalchemy.orm import joinedload
 
 
 log = logging.getLogger(__name__)
-
 namespace = Namespace("crypto")
 
 
@@ -20,7 +20,7 @@ class List(Resource):
 
     def get(self):
         """Returns all exchange."""
-        result = Entity.query.filter(Entity.type==Entity.Type.EXCHANGE)
+        result = Entity.query.filter(Entity.type == Entity.Type.EXCHANGE)
         items = []
         for r in result:
             items.append(r.json)
@@ -101,11 +101,12 @@ class OrdersCollection(Resource):
 
     @jwt_required()
     def get(self):
+        """Returns all user exchange orders."""
         args = request.args
-        pagination = args.to_dict()
         exchange_names = args.get('exchange', None)
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        pagination = args.to_dict()
+        search = args.get('search', None)
+        user_id = User.find_by_email(get_jwt_identity()).id
 
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.EXCHANGE))
 
@@ -114,8 +115,11 @@ class OrdersCollection(Resource):
             accounts = accounts.filter(Account.name.in_(exchange_list))
         accounts = accounts.all()
 
-        query = ExchangeOrder.query.filter(ExchangeOrder.account_id.in_([a.id for a in accounts])).order_by(
-            ExchangeOrder.value_date.desc())
+        query = ExchangeOrder.query.filter(ExchangeOrder.account_id.in_([a.id for a in accounts]))\
+            .order_by(ExchangeOrder.value_date.desc())
+
+        if search:
+            query = query.filter(ExchangeOrder.pair.ilike(f"%{search}%"))
 
         limit = int(pagination['limit'])
         page = int(pagination['page']) - 1
@@ -142,22 +146,6 @@ class OrdersCollection(Resource):
         }
         return jsonify(results)
 
-
-@namespace.route('/calculate')
-class Calculate(Resource):
-
-    @demo_check
-    @jwt_required()
-    def get(self):
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
-        data = {
-            "user_id": user_id,
-            "mode": "crypto"
-        }
-        queue_process(data)
-
-
 @namespace.route('/tax')
 class CryptoTax(Resource):
 
@@ -166,7 +154,7 @@ class CryptoTax(Resource):
         """Returns all closed orders."""
         args = request.args.to_dict()
 
-        year = int(args.get('year', 2021))
+        year = int(args.get('year', datetime.now().year - 1))
         username = get_jwt_identity()
         user_id = User.find_by_email(username).id
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
@@ -192,3 +180,19 @@ class CryptoTax(Resource):
             item['children'] = children
             items.append(item)
         return jsonify(items)
+
+
+@namespace.route('/calculate')
+class Calculate(Resource):
+
+    @demo_check
+    @jwt_required()
+    def get(self):
+        current_user_email = get_jwt_identity()
+        user_id = User.find_by_email(current_user_email).id
+        data = {
+            "user_id": user_id,
+            "mode": "crypto"
+        }
+        queue_process(data)
+

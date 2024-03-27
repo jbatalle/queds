@@ -24,7 +24,8 @@ class BrokerReader:
             return False
         return True
 
-    def _get_start_date(self, account_id):
+    @staticmethod
+    def _get_start_date(account_id):
         logger.info("Reading last transaction in order to extract start_date")
         last_transaction = StockTransaction.query.filter(StockTransaction.account_id==account_id).order_by(StockTransaction.value_date.desc()).first()
         if last_transaction:
@@ -60,6 +61,35 @@ class BrokerReader:
         self._parse_read(account_id, entity_account, transactions)
         logger.info("Read done!")
 
+    def _parse_read(self, account_id, entity_account, transactions):
+        logger.info(f"Updating account: {account_id}")
+        broker_account = self._update_account(account_id, entity_account)
+
+        logger.info("Creating/updating tickers..")
+        transaction_tickers = list(set([t.ticker.ticker for t in transactions]))
+        # we use ticker.ticker, the last saved, because some brokers change the ISIN of old transactions to new ISIN
+        tickers = {ticker.ticker: ticker for ticker in Ticker.query.filter(Ticker.ticker.in_(transaction_tickers)).all()}
+
+        logger.info(f"Processing {len(transactions)} transactions")
+        for t in transactions:
+            self._create_or_update_ticker(tickers, t)
+
+        logger.info("Inserting tickers to DB...")
+        # insert/update tickers
+
+        Ticker.bulk_insert(list(tickers.values()))
+        tickers = {ticker.ticker: ticker for ticker in list(Ticker.query.all())}
+
+        logger.info("Inserting transactions to DB...")
+        trans_list = []
+        for t in transactions:
+            r = t.to_dict()
+            r['account_id'] = str(broker_account.id)
+            r['ticker_id'] = tickers[t.ticker.ticker].id
+            trans_list.append(r)
+
+        StockTransaction.bulk_insert(trans_list)
+
     @staticmethod
     def _update_account(account_id, entity_account):
         broker_account = Account.get_by_account_id(account_id)
@@ -70,60 +100,35 @@ class BrokerReader:
         broker_account.save()
         return broker_account
 
-    def _parse_read(self, account_id, entity_account, trans):
-        logger.info(f"Updating account: {account_id}")
-        broker_account = self._update_account(account_id, entity_account)
-
-        logger.info("Get tickers")
-        tickers = list(Ticker.query.all())
-        tickers = {ticker.isin: ticker for ticker in tickers}
-
-        logger.info(f"Processing {len(trans)} transactions")
-        transactions = []
-        for t in trans:
-            r = t.to_dict()
-            r['account_id'] = str(broker_account.id)
-
-            if t.ticker.isin in list(tickers.keys()):
-                if tickers[t.ticker.isin].status != t.ticker.active:
-                    tickers[t.ticker.isin].save()
-            else:
-                ticker = self._create_new_ticker(tickers, t)
-                tickers[t.ticker.isin] = ticker
-
-            r['ticker_id'] = tickers[t.ticker.isin].id
-            transactions.append(r)
-
-        StockTransaction.bulk_insert(transactions)
-
     @staticmethod
-    def _create_new_ticker(tickers, t):
-        logger.info(f"Creating new ticker {t.ticker.ticker} - {t.ticker.isin}!")
+    def _create_or_update_ticker(tickers, t):
+        # logger.debug(f"Check ticker {t.ticker.ticker} - {t.ticker.isin}!")
+
+        if t.ticker.ticker not in tickers:
+            logger.info(f"Creating new ticker {t.ticker.ticker} - {t.ticker.isin}!")
+            ticker = Ticker(ticker=t.ticker.ticker,
+                            isin=t.ticker.isin,
+                            name=t.ticker.name,
+                            currency=t.currency,
+                            status=t.ticker.active,
+                            # market=t.ticker.exchange
+                            )
+            tickers[t.ticker.ticker] = ticker
 
         if t.ticker.active == Ticker.Status.ACTIVE:
             # check if some ticker with this ticker already exists, and set to status INACTIVE
             try:
-                old_tickers = [tick for tick in tickers.values() if
-                               tick.ticker == t.ticker.ticker and tick.status == Ticker.Status.ACTIVE]
-                for old_ticker in old_tickers:
-                    logger.info(f"Old ticker already exists! Disabling {t.ticker.ticker} - {old_ticker.isin}")
-                    old_ticker.status = Ticker.Status.INACTIVE
-                    old_ticker.save()
+                for db_ticker in tickers.values():
+                    if db_ticker.ticker == t.ticker.ticker and db_ticker.status == Ticker.Status.ACTIVE:
+                        logger.debug(f"Old ticker already exists! Disabling {t.ticker.ticker} - {db_ticker.isin}")
+                        tickers[t.ticker.ticker].status = Ticker.Status.INACTIVE
             except:
                 pass
 
-        yahoo_ticker = YahooClient().get_ticker(t.ticker)
-        logger.info(f"Ticker {t.ticker.ticker} - Yahoo ticker: {yahoo_ticker}!")
-        ticker = Ticker(ticker=t.ticker.ticker,
-                        isin=t.ticker.isin,
-                        name=t.ticker.name,
-                        currency=t.currency,
-                        status=t.ticker.active,
-                        ticker_yahoo=yahoo_ticker  # , market=exchange
-                        )
-        try:
-            ticker.save()
-        except Exception as e:
-            logger.info(f"Unable to store ticker {ticker.ticker.ticker}: {e}")
+        if not tickers[t.ticker.ticker].ticker_yahoo:
+            yahoo_ticker = YahooClient().get_ticker(t.ticker)
+            logger.info(f"Ticker {t.ticker.ticker} - Yahoo ticker: {yahoo_ticker}!")
+            tickers[t.ticker.ticker].ticker_yahoo = yahoo_ticker  # , market=exchange
 
-        return ticker
+        tickers[t.ticker.ticker].status = t.ticker.active
+        return

@@ -1,4 +1,4 @@
-<template>
+<template class="nav">
   <component
     :is="baseComponent"
     :to="link.path ? link.path : '/'"
@@ -17,13 +17,15 @@
         <b class="caret" :class="{ rotated: !collapsed }"></b>
       </p>
     </a>
-    <collapse-transition v-if="$slots.default || this.isMenu">
+    <!--collapse-transition v-if="$slots.default || this.isMenu"-->
+    <el-collapse-transition>
       <div v-show="!collapsed" class="collapse-menu">
         <ul class="nav">
           <slot></slot>
         </ul>
       </div>
-    </collapse-transition>
+    </el-collapse-transition>
+    <!--/collapse-transition-->
     <slot
       name="title"
       v-if="children.length === 0 && !$slots.default && link.path"
@@ -49,11 +51,11 @@
   </component>
 </template>
 <script>
-import { CollapseTransition } from "vue2-transitions";
+import {ElCollapseTransition} from 'element-plus';
 
 export default {
   components: {
-    CollapseTransition,
+    ElCollapseTransition
   },
   props: {
     menu: {
@@ -96,7 +98,8 @@ export default {
   },
   computed: {
     baseComponent() {
-      return this.isMenu || this.link.isRoute ? "li" : "router-link";
+      return "li";
+      //return this.isMenu || this.link.isRoute ? "li" : "router-link";
     },
     isMenu() {
       return this.children.length > 0 || this.menu === true;
@@ -115,8 +118,10 @@ export default {
   },
   methods: {
     addChild(item) {
-      const index = this.$slots.default.indexOf(item.$vnode);
+      const index = 0;
+      //const index = this.$slots.default.indexOf(item.$vnode);
       this.children.splice(index, 0, item);
+      this.children.push(item);
     },
     removeChild(item) {
       const tabs = this.children;
@@ -131,15 +136,17 @@ export default {
       }
     },
     collapseMenu() {
+      console.log("Collapse menu!");
       this.collapsed = !this.collapsed;
     },
     onItemClick() {
       if (this.autoClose) {
-        this.$sidebar.showSidebar = false;
+        //this.$sidebar.showSidebar = false;
       }
     },
   },
   mounted() {
+    //console.log("Mounted sidebar item")
     if (this.addLink) {
       this.addLink(this);
     }

@@ -38,7 +38,7 @@ def test_user_signup(client):
     data = json.loads(response.data.decode())
     print(response.data)
     assert response.status_code == 200
-    assert "The user was successfully registered" in data["msg"]
+    assert "The user was successfully registered" in data["message"]
 
 
 def test_user_signup_invalid_data(client):
@@ -58,7 +58,7 @@ def test_user_signup_invalid_data(client):
 
     data = json.loads(response.data.decode())
     assert response.status_code == 400
-    # assert "'' is too short" in data["msg"]
+    # assert "'' is too short" in data["message"]
 
 
 def test_user_login_correct(client):
@@ -96,4 +96,4 @@ def test_user_login_error(client):
 
     data = json.loads(response.data.decode())
     assert response.status_code == 400
-    assert "Wrong credentials." in data["msg"]
+    assert "Wrong credentials." in data["message"]

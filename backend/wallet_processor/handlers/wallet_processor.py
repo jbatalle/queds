@@ -37,31 +37,34 @@ class WalletProcessor:
             logger.warning(f"Unhandled mode: {mode}")
             return
 
-        logger.info("Processor initialized. Retrieving orders")
+        logger.info("Processor initialized. Retrieving orders and transactions...")
         accounts = self.processor.get_accounts(user_id)
         orders = self.processor.get_orders(accounts)
         transactions = self.processor.get_transactions(accounts)
-        orders = sorted(orders + transactions, key=lambda x: x.value_date)
+        orders = sorted(orders + transactions, key=lambda x: (x.value_date, x.external_id))
 
+        logger.info("Preprocessing orders...")
         orders = self.processor.preprocess(orders)
 
-        logger.info(f"Found: {len(orders)} orders and {len(transactions)} transactions. Starting wallet calculation..")
+        logger.info(f"Found: {len(orders)} orders and {len(transactions)} transactions. Starting wallet calculation...")
         tracked_orders = []
         queue = BalanceQueue()
-
         for order in orders:
             sell_order = self.processor.trade(queue, order)
             if sell_order:
                 tracked_orders.append(sell_order)
 
+        logger.info("Validating wallet results...")
         try:
             self.validate_wallet(queue, orders)
         except Exception as e:
             logger.error(f"Error validating wallet calculations: {e}")
             logger.exception(e)
 
-        logger.info("Calculation done. Generating wallet...")
+        logger.info("Calculation done. Generating closed orders...")
         self.processor.create_closed_orders(orders, tracked_orders)
+
+        logger.info("Generating wallet...")
         self.processor.calc_wallet(user_id, orders, queue, tracked_orders)
 
         logger.info("Done")
@@ -72,14 +75,12 @@ class WalletProcessor:
         """
 
         wallet_balance = self.calc_balance_with_queue(queue)
-        wallet_balance = {k: round(v, 8) for k, v in wallet_balance.items() if v > 0.000000001}
-        wallet_balance = collections.OrderedDict(sorted(wallet_balance.items()))
+        wallet_balance = self.round_filter_and_order_balance(wallet_balance)
 
         order_balance = self.processor.calc_balance_with_orders(orders)
-        order_balance = {k: round(v, 8) for k, v in order_balance.items() if v > 0.000000001}
-        order_balance = collections.OrderedDict(sorted(order_balance.items()))
+        order_balance = self.round_filter_and_order_balance(order_balance)
 
-        # check diff
+        # compare balances
         diffs = set(wallet_balance.items()) ^ set(order_balance.items())
         diffs_dict = {}
         for d in diffs:
@@ -89,6 +90,11 @@ class WalletProcessor:
 
         if diffs_dict:
             logger.warning(f"Found following diffs between orders and wallet calculation: {diffs_dict}")
+
+    @staticmethod
+    def round_filter_and_order_balance(balance):
+        balance = {k: round(v, 8) for k, v in balance.items() if v > 0.000000001}
+        return collections.OrderedDict(sorted(balance.items()))
 
     @staticmethod
     def calc_balance_with_queue(queue):

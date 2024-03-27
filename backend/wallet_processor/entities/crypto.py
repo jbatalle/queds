@@ -5,6 +5,8 @@ from models.crypto import ExchangeOrder, ExchangeTransaction, ExchangeWallet, Ex
 from wallet_processor.utils import BalanceQueue, Transaction
 from wallet_processor.utils.crypto_prices import get_price
 
+from sqlalchemy.orm import joinedload, eagerload
+
 
 class CryptoProcessor(AbstractEntity):
 
@@ -14,7 +16,7 @@ class CryptoProcessor(AbstractEntity):
     @staticmethod
     def preprocess(orders):
         for order in orders:
-            if isinstance(order, ExchangeTransaction):
+            if order.__name__ == 'ExchangeTransactionDTO':
                 order.currency = order.currency.upper().replace("IOT", "IOTA").replace("IOTAA", "IOTA").\
                     replace("XRB", "NANO").replace("XBT", "BTC")
             else:
@@ -24,8 +26,9 @@ class CryptoProcessor(AbstractEntity):
 
     @staticmethod
     def clean(orders):
-        ExchangeProxyOrder.query.filter(ExchangeProxyOrder.order_id.in_([t.id for t in orders])).delete()
-        ExchangeClosedOrder.query.filter(ExchangeClosedOrder.sell_order_id.in_([t.id for t in orders])).delete()
+        ids = [o.id for o in orders]
+        ExchangeProxyOrder.query.filter(ExchangeProxyOrder.order_id.in_(ids)).delete()
+        ExchangeClosedOrder.query.filter(ExchangeClosedOrder.sell_order_id.in_(ids)).delete()
 
     @staticmethod
     def get_accounts(user_id):
@@ -34,31 +37,39 @@ class CryptoProcessor(AbstractEntity):
 
     @staticmethod
     def get_orders(accounts):
-        orders = ExchangeOrder.query.filter(
-            ExchangeOrder.account_id.in_([a.id for a in accounts])).order_by(
-            ExchangeOrder.value_date.asc(), ExchangeOrder.type.asc()).all()
-        return orders
+        orders = (
+            ExchangeOrder.query
+            .options(eagerload(ExchangeOrder.account))
+            .filter(ExchangeOrder.account_id.in_([a.id for a in accounts]))
+            .order_by(ExchangeOrder.value_date.asc(), ExchangeOrder.type.asc()).with_entities(ExchangeOrder)
+            .all()
+        )
+        return [o.dto for o in orders]
 
     @staticmethod
     def get_transactions(accounts):
-        transactions = ExchangeTransaction.query.filter(
-            ExchangeTransaction.account_id.in_([a.id for a in accounts])).order_by(
-            ExchangeTransaction.value_date.asc(), ExchangeTransaction.type.asc()).all()
-        return transactions
+        transactions = (
+            ExchangeTransaction.query
+            .options(joinedload(ExchangeTransaction.account)).options(joinedload('account.entity'))
+            .filter(ExchangeOrder.account_id.in_([a.id for a in accounts]))
+            .order_by(ExchangeOrder.value_date.asc(), ExchangeOrder.type.asc())
+            .all()
+        )
+        return [o.dto for o in transactions]
 
     def trade(self, queue, order):
         """
         This function calculates the trade operations. Creates the queue and returns the sell orders
         """
         value_date = order.value_date
-        if isinstance(order, ExchangeTransaction):
+        if order.__name__ == 'ExchangeTransactionDTO':
             if order.type == ExchangeTransaction.Type.DEPOSIT:  # and order.currency == 'EUR':
                 queue.deposit(order)
             elif order.type == ExchangeTransaction.Type.WITHDRAWAL:  # and order.currency == 'EUR':
                 queue.withdrawal(order)
 
             self._logger.debug(
-                f"{value_date} - {order.get_type()} - {order.amount}{order.currency} to/from {order.account.entity}. "
+                f"{value_date} - {ExchangeTransaction.get_type(order.type)} - {order.amount}{order.currency} to/from {order.account.entity}. "
                 f"Current: {queue.current_amount(order.currency)}{order.currency}")
             return
 
@@ -118,13 +129,20 @@ class CryptoProcessor(AbstractEntity):
         return None
 
     def create_closed_orders(self, orders, tracked_orders):
-        self._logger.info("Cleaning closed/wallet/proxy orders")
+        """
+        Insert closed orders to database
+        """
+        self._logger.debug("Cleaning closed/wallet/proxy orders")
         self.clean(orders)
 
-        self._logger.info("Generating new crypto wallet")
+        self._logger.debug("Generating new crypto wallet")
+
+        # Prepare objects to be saved
+        closed_orders = []
+        proxy_orders = []
         for sell_order in tracked_orders:
             closed_order = ExchangeClosedOrder(sell_order_id=sell_order.sell_trade.transaction_id)
-            closed_order.save()
+            closed_orders.append(closed_order)
 
             for buy_order in sell_order.buy_items:
                 if not buy_order.trade:
@@ -140,12 +158,18 @@ class CryptoProcessor(AbstractEntity):
                     except:
                         self._logger.warning("Amount is 0!")
                         partial_fee = 0
-                ExchangeProxyOrder(
-                    closed_order_id=closed_order.id,
+
+                proxy_order = ExchangeProxyOrder(
+                    closed_order=closed_order,
                     order_id=buy_order.trade.transaction_id,
                     amount=buy_order.amount,
                     partial_fee=partial_fee
-                ).save()
+                )
+                proxy_orders.append(proxy_order)
+
+        # Save the objects in a single database query
+        ExchangeClosedOrder.bulk_save_objects(closed_orders)
+        ExchangeProxyOrder.bulk_save_objects(proxy_orders)
 
     def calc_wallet(self, user_id, orders, queue, tracked_orders):
         """
@@ -209,17 +233,17 @@ class CryptoProcessor(AbstractEntity):
             w.open_orders.extend(open_orders)
             to_insert.append(w)
 
-        ExchangeOpenOrder.query.filter(ExchangeOpenOrder.order_id.in_([t.id for t in orders])).delete()
+        ids = [t.id for t in orders]
+        ExchangeOpenOrder.query.filter(ExchangeOpenOrder.order_id.in_(ids)).delete()
 
         ExchangeWallet.query.delete()
         ExchangeWallet.bulk_object(to_insert)
         self._logger.info("Wallet calculation done")
 
-    @staticmethod
-    def calc_balance_with_orders(orders):
+    def calc_balance_with_orders(self, orders):
         balance = {}
         for order in sorted(orders, key=lambda x: x.value_date):
-            if isinstance(order, ExchangeTransaction):
+            if order.__name__ == 'ExchangeTransactionDTO':
                 if order.currency not in balance:
                     balance[order.currency] = 0
 
@@ -228,6 +252,8 @@ class CryptoProcessor(AbstractEntity):
                 else:
                     balance[order.currency] -= order.amount
                 continue
+            else:
+                self._logger.warning("Check order type and remove this ELSE!")
 
             source = order.pair.split("/")[0]
             target = order.pair.split("/")[1]

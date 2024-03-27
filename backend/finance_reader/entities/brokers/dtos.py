@@ -11,6 +11,9 @@ class Ticker:
         self.active = True
         self.exchange = None
 
+    def __str__(self):
+        return f"{self.name}-{self.isin}-{'inactive' if self.active else 'active'}"
+
 
 class BrokerAccount:
     def __init__(self):
@@ -27,6 +30,8 @@ class Transaction:
     class Type:
         BUY = 0
         SELL = 1
+        REVERSE_SPLIT_BUY = 2
+        REVERSE_SPLIT_SELL = 3
 
     def __init__(self):
         self.name = ''
@@ -40,6 +45,9 @@ class Transaction:
         self.fee = 0
         self.exchange_fee = 0
         self.currency_rate = 1
+
+    def __str__(self):
+        return f"{self.name}-{self.ticker.ticker}-{self.shares}-{self.price}"
 
     def to_dict(self):
         d = {
