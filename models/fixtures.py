@@ -36,15 +36,6 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "October", "type": Entity.Type.CROWD, "active": True,
-            "creds": [{
-                "cred_type": EntityCredentialType.Type.USERNAME.name,
-                "mode": EntityCredentialType.Mode.TEXT.name
-            }, {
-                "cred_type": EntityCredentialType.Type.PASSWORD.name,
-                "mode": EntityCredentialType.Mode.PASSWORD.name
-            }]
-        }, {
             "name": "BBVA", "type": Entity.Type.BANK, "active": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.USERNAME.name,
@@ -85,6 +76,15 @@ def list_entities():
             }]
         }, {
             "name": "Binance", "type": Entity.Type.EXCHANGE, "active": True,
+            "creds": [{
+                "cred_type": EntityCredentialType.Type.API_KEY.name,
+                "mode": EntityCredentialType.Mode.TEXT.name
+            }, {
+                "cred_type": EntityCredentialType.Type.API_SECRET.name,
+                "mode": EntityCredentialType.Mode.PASSWORD.name
+            }]
+        }, {
+            "name": "Kucoin", "type": Entity.Type.EXCHANGE, "active": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name

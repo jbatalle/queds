@@ -37,7 +37,7 @@ class YahooClient:
                 }
 
     def get_ticker(self, ticker):
-        r = self.client.get(f"https://query2.finance.yahoo.com/v1/finance/search?q={ticker.ticker}")
+        r = self.client.get(f"https://query2.finance.yahoo.com/v1/finance/search?q={ticker.isin}")
         d = r.json()['quotes']
         items = [c for c in d if c['typeDisp'] == 'Equity']
         yahoo_symbol = None
@@ -60,6 +60,6 @@ class YahooClient:
                     break
 
         if not yahoo_symbol:
-            logger.error("Unable to detect the Yahoo symbol")
+            logger.error(f"Unable to detect the Yahoo symbol for {ticker.ticker}")
             return None
         return yahoo_symbol

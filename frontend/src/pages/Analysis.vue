@@ -21,23 +21,23 @@
         </el-tab-pane>
       </el-tabs>
     </div>
-<!--    <div class="row">-->
-<!--      <el-tabs v-model="editableTabsValue" type="card" editable @edit="handleTabsEdit">-->
-<!--        <el-tab-pane-->
-<!--            v-for="(item, index) in editableTabs"-->
-<!--            :key="item.name"-->
-<!--            :name="item.name"-->
-<!--        >-->
-<!--          <template #label>-->
-<!--            <div v-if="!item.editing" @dblclick="startEdit(item)">-->
-<!--              {{ item.title }}-->
-<!--            </div>-->
-<!--            <el-input v-else v-model="item.title" @blur="finishEdit(item)"/>-->
-<!--          </template>-->
-<!--          {{ item.content }}-->
-<!--        </el-tab-pane>-->
-<!--      </el-tabs>-->
-<!--    </div>-->
+    <div class="row">
+      <el-tabs v-model="editableTabsValue" type="card" editable @edit="handleTabsEdit">
+        <el-tab-pane
+            v-for="(item, index) in editableTabs"
+            :key="item.name"
+            :name="item.name"
+        >
+          <template #label>
+            <div v-if="!item.editing" @dblclick="startEdit(item)">
+              {{ item.title }}
+            </div>
+            <el-input v-else v-model="item.title" @blur="finishEdit(item)"/>
+          </template>
+          {{ item.content }}
+        </el-tab-pane>
+      </el-tabs>
+    </div>
   </div>
 </template>
 <script>
@@ -107,7 +107,6 @@ export default {
       item.editing = true;
     },
     finishEdit(item) {
-      console.log("Finish edit");
       item.editing = false;
       // This method will be called when the user finishes editing a tab name
       // You can add your own logic here to update the tab name on the server, etc.

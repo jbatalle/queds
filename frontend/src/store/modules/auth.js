@@ -70,11 +70,9 @@ export default {
                     current_user: ""
                 })
                 .then(response => {
-                    console.log("Context");
                     context.commit('logout');
-                    console.log("Context2")
                     localStorage.removeItem("vue-authenticate.vueauth_access_token");
-                    console.log("Context3")
+                    console.log("Redirect to login")
                     router.push({name: "Login"});
                     //return response.data;
                 }).catch(function (error) {
@@ -83,7 +81,7 @@ export default {
                     //context.commit('logout');
                     console.log("Forward to login");
                     router.push({name: "Login"});
-                    console.log("Done=!");
+                    console.log("Redirected");
                 });
         }
     }

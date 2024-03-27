@@ -42,46 +42,9 @@
             </div>
           </div>
           <div class="card-body table-full-width">
-            <el-table v-loading="loading" name="tax_items" :data="this.closedOrders"
-                      :default-sort="{property: 'id', order: 'descending'}"
-                      row-key="id" :cell-class-name="colorClass" default-expand-all
-                      :cell-style="{padding: '0', height: '20px'}">
-              <el-table-column label="Symbol">
-                <template v-slot:default="scope">
-                  <el-tooltip :content="scope.row.name" placement="top">
-                    <span type="info">{{ scope.row.ticker.ticker }}</span>
-                  </el-tooltip>
-                </template>
-              </el-table-column>
-              <el-table-column label="ISIN" property="ticker.isin"></el-table-column>
-              <el-table-column label="Date" property="value_date" sortable></el-table-column>
-              <el-table-column label="Shares" property="shares" width="100px"></el-table-column>
-              <el-table-column label="Price">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.price, scope.row.currency) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Fees" property="fees">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.fees, base_currency) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Currency Rate" property="rate">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.price, base_currency) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Cost" property="cost">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.cost, base_currency) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Benefits" property="benefits">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.benefits, base_currency) }}
-                </template>
-              </el-table-column>
-            </el-table>
+            <taxes-table :base_currency="base_currency" :orders="closedOrders" :loading="loading"
+                          type="broker"
+            />
           </div>
         </div>
       </div>
@@ -93,6 +56,7 @@
 import {ElTable, ElTableColumn, ElSelect, ElOption, ElTooltip, ElTag, ElIcon, ElInput} from 'element-plus';
 import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import axios from "axios";
+import TaxesTable from "@/components/Dashboard/Views/TaxesTable.vue";
 
 
 export default {
@@ -103,6 +67,7 @@ export default {
     ElOption,
     ElTooltip,
     ElIcon,
+    TaxesTable
   },
   data() {
     return {
@@ -136,6 +101,7 @@ export default {
       this.closedOrders.forEach(function (s) {
         s.fees = s.fee + s.exchange_fee;
         s.cost = s.shares * s.price * s.currency_rate + s.fees;
+
         if (s.currency_rate === 0) {
           s.currency_rate = "-";
         }
@@ -154,7 +120,7 @@ export default {
           c.fees = c.partial_fee; //c.fee + c.exchange_fee;
           s.benefits += c.price * c.shares * c.currency_rate + c.partial_fee;
           c.cost = c.shares * c.price * c.currency_rate + c.partial_fee;
-          s.fees += c.fees;
+          //s.fees += c.fees;
         });
         vm.benefits += s.benefits;
         vm.fees += s.fees;
@@ -165,24 +131,9 @@ export default {
       this.loading = true;
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
-    colorClass(item) {
-      if (item.column.property == 'benefits' || item.column.property == 'shares') {
-        if (parseInt(item.row[item.column.property]) > 0)
-          return "green";
-        else
-          return "red"
-      } else
-        return "black"
-    },
+
   },
 };
 </script>
 <style>
-.red {
-  color: red
-}
-
-.green {
-  color: green
-}
 </style>

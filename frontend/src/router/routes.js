@@ -7,23 +7,22 @@ import guest from "../middleware/guest";
 // Not Found page
 import NotFound from '../components/Dashboard/Layout/NotFoundPage.vue'
 // Dashboard pages
-const Overview = () => import('../components/Dashboard/Views/Overview.vue');
+const Overview = () => import('../pages/Overview.vue');
 
-import Login from '../components/Dashboard/Views/Pages/Login.vue';
-import Register from '../components/Dashboard/Views/Pages/Register.vue';
+import Login from '../pages/auth/Login.vue';
+import Register from '../pages/auth/Register.vue';
 
-//import PasswordReset from "../components/Dashboard/Views/Password/Reset.vue";
-//import PasswordEmail from "../components/Dashboard/Views/Password/Email.vue";
-//
-const Accounts = () => import('../components/Dashboard/Views/Accounts.vue');
-const BrokerBalance = () => import('../components/Dashboard/Views/Broker/Balance.vue');
-const BrokerOrder = () => import('../components/Dashboard/Views/Broker/Orders.vue');
-const BrokerTax = () => import('../components/Dashboard/Views/Broker/Tax.vue');
-const CryptoBalance = () => import('../components/Dashboard/Views/Crypto/CryptoBalance.vue');
-const CryptoOrder = () => import('../components/Dashboard/Views/Crypto/CryptoOrder.vue');
-const CryptoTax = () => import('../components/Dashboard/Views/Crypto/CryptoTax.vue');
-const Analysis = () => import('../components/Dashboard/Views/Analysis_old.vue');
-const Comments = () => import('../components/Dashboard/Views/Comments.vue');
+//import PasswordReset from "../pages/auth/Reset.vue";
+//import PasswordEmail from "../pages/auth/Email.vue";
+const Accounts = () => import('../pages/accounts/Accounts.vue');
+const BrokerBalance = () => import('../pages/broker/BrokerBalance.vue');
+const BrokerOrder = () => import('../pages/broker/BrokerOrders.vue');
+const BrokerTax = () => import('../pages/broker/BrokerTax.vue');
+const CryptoBalance = () => import('../pages/crypto/CryptoBalance.vue');
+const CryptoOrder = () => import('../pages/crypto/CryptoOrders.vue');
+const CryptoTax = () => import('../pages/crypto/CryptoTax.vue');
+const Analysis = () => import('../pages/Analysis_old.vue');
+const Comments = () => import('../pages/Comments.vue');
 
 
 let pagesMenu = {

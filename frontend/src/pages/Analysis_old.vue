@@ -1,10 +1,10 @@
 <template>
   <div>
     <div class="row">
-      <div class="col-md-6">
+        <div class="col-md-6">
         <el-tabs type="card" editable class="demo-tabs" @edit="handleTabsEdit" @tab-click="handleTabClick">
           <el-tab-pane class="sidebar-wrapper" v-for="item in watchlists" :key="item.id" :label="item.name"
-                       :name="item.name" @click="get_watchlist(item)">
+                       :name="item.name" @tab-click="get_watchlist(item)">
             <div class="card">
               <div class="card-header">
                 <div class="row">
@@ -13,9 +13,7 @@
                   </div>
                   <div class="col-md-6">
                     <div class="text-right mb-3">
-                      <el-button @click="addSymbol(input)" type="primary" :disabled="current_watchlist == undefined">Add
-                        symbol
-                      </el-button>
+                      <el-button @click="addSymbol(input)" type="primary" :disabled="current_watchlist == undefined">Add symbol</el-button>
                     </div>
                   </div>
                 </div>
@@ -26,32 +24,32 @@
                     :default-sort="{ property: 'ticker.ticker', order: 'descending' }" max-height="650"
                     :cell-style="{ padding: '0', height: '20px' }">
                   <el-table-column label="Symbol" property="ticker.ticker">
-                    <template slot="header" slot-scope="scope">
+                    <template #header>
                       <el-input v-model="search" size="mini" placeholder="Symbol search"/>
                     </template>
-                    <template slot-scope="scope">
+                    <template v-slot:default="scope">
                       <a @click="handleClick(scope.$index, scope.row)">{{ scope.row.symbol }}</a>
                     </template>
                   </el-table-column>
                   <el-table-column label="Time" property="market_time"></el-table-column>
                   <el-table-column label="Change" property="price_change" sortable>
-                    <template slot-scope="scope">
-                      {{ scope.row.price_change | round(2) }}%
+                    <template v-slot:default="scope">
+                      {{ $filters.toCurrency(scope.row.price_change) }}
                     </template>
                   </el-table-column>
                   <el-table-column label="Price" property="price"></el-table-column>
                   <el-table-column label="High" property="high"></el-table-column>
                   <el-table-column label="Low" property="low"></el-table-column>
                   <el-table-column fixed="right" class-name="td-actions" label="Actions">
-                    <template slot-scope="props">
-                      <p-button type="info" size="small" icon @click="onProFeature()"
-                                :disabled="current_watchlist == undefined">
+                    <template v-slot:default="props">
+                      <el-button type="info" size="small" icon @click="onProFeature()"
+                                 :disabled="current_watchlist == undefined">
                         <i class="fa fa-bell"></i>
-                      </p-button>
-                      <p-button type="danger" size="small" icon @click="openDeleteDialog(props.row)"
-                                :disabled="current_watchlist == undefined">
+                      </el-button>
+                      <el-button type="danger" size="small" icon @click="openDeleteDialog(props.row)"
+                                 :disabled="current_watchlist == undefined">
                         <i class="fa fa-times"></i>
-                      </p-button>
+                      </el-button>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -59,6 +57,7 @@
             </div>
           </el-tab-pane>
         </el-tabs>
+          </div>
         <div class="col-md-6">
           <div class="card" style="padding: 5px; border-radius: revert;">
             <VueTradingView :key=componentKey :options="options"/>
@@ -73,9 +72,8 @@
                   </div>
                 </div-->
         </div>
-      </div>
     </div>
-    <el-dialog title="Delete watchlist" :visible.sync="deleteDialogVisible" width="60%" :close-on-press-escape="true"
+    <el-dialog title="Delete watchlist" v-model="deleteDialogVisible" width="60%" :close-on-press-escape="true"
                :before-close="handleDeleteClose">
       <div class="card-body">
         <form>
@@ -92,25 +90,68 @@
           <div class="clearfix"></div>
         </form>
       </div>
+      <template #footer>
       <span slot="footer" class="dialog-footer">
         <el-button @click="deleteDialogVisible = false">Cancel</el-button>
         <el-button type="danger" @click="deleteWatchlistForm">Delete</el-button>
       </span>
+      </template>
     </el-dialog>
-    <el-dialog title="Add watchlist" :visible.sync="dialogVisible" width="30%" :close-on-press-escape="true"
+
+    <el-dialog title="Read account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
+               :before-close="handleReadClose" v-loading="loading">
+      <div v-loading="loading">
+        <div class="card-body">
+          <form>
+            <div class="row">
+              <div class="col-md-12">
+                <div class="form-group2">
+                  <div class="sub-title my-2 text-sm text-gray-600">
+                    Insert a passphrase for credential encryption
+                  </div>
+                  <el-input type="password"
+                            label="Insert a passphrase for credential encryption"
+                            placeholder="passphrase">
+                  </el-input>
+                </div>
+              </div>
+            </div>
+            <div class="clearfix"></div>
+          </form>
+        </div>
+        <footer class="el-dialog__footer">
+          <el-button @click="readDialogVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="readAccount">Read</el-button>
+        </footer>
+      </div>
+    </el-dialog>
+
+    <el-dialog title="Add watchlist" v-model="dialogVisible" width="40%" :close-on-press-escape="true"
                :before-close="handleClose">
-      <el-input placeholder="Insert watchlist name" v-model="add_watchlist"></el-input>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">Cancel</el-button>
+      <div class="card-body">
+        <form>
+          <div class="row">
+            <div class="col-md-12">
+              <div class="form-group2">
+                <div class="sub-title my-2 text-sm text-gray-600">
+                  Insert the watchlist name
+                </div>
+                <el-input type="text" label="" v-model="add_watchlist"></el-input>
+              </div>
+            </div>
+          </div>
+          <div class="clearfix"></div>
+        </form>
+      </div>
+      <footer class="el-dialog__footer">
+        <el-button @click="readDialogVisible = false">Cancel</el-button>
         <el-button type="primary" @click="addWatchlist">Confirm</el-button>
-      </span>
+      </footer>
     </el-dialog>
   </div>
 </template>
 <script>
 import axios from "axios";
-// import VueTradingView from 'vue-trading-view';
-//import {Table, TableColumn, Input, Button, Dialog, Tabs, TabPane, Tag, Autocomplete} from 'element-ui'
 import VueTradingView from 'vue-trading-view/src/';
 
 export default {
@@ -152,7 +193,7 @@ export default {
   methods: {
     async handleTabClick(tab, a) {
       this.watchlist = [];
-      let watchlist = this.watchlists.filter((w) => w.name == tab.name);
+      let watchlist = this.watchlists.filter((w) => w.name == tab.props.name);
       await this.get_watchlist(watchlist[0]);
     },
     handleDeleteClose() {
@@ -163,17 +204,18 @@ export default {
       await this.get_watchlist(this.current_watchlist);
     },
     async handleTabsEdit(targetName, action) {
+      console.log("Handle Tabs edit", action, targetName)
       if (action === 'add') {
         this.dialogVisible = true;
       } else if (action === 'remove') {
         let watchlist = this.watchlists.filter((w) => w.name == targetName);
-
         this.deleteDialogVisible = true;
         this.delete_watchlist = watchlist[0];
       }
     },
     async deleteWatchlistForm() {
       let vm = this;
+      console.log(this.delete_watchlist);
       await this.deleteWatchlist(this.delete_watchlist).then(function (d) {
         vm.$notify({
           message: 'Watchlist deleted correctly',
@@ -214,6 +256,8 @@ export default {
       await this.getWallet();
     },
     async get_watchlist(item) {
+      console.log(this.watchlists)
+      console.log(item);
       this.current_watchlist = item;
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/watchlist/" + item.id).then(this.fillWatchlist);
     },
@@ -242,8 +286,9 @@ export default {
       let data = {
         "ticker": input
       }
+      this.input = "";
       let vm = this;
-      await axios.post(process.env.VUE_APP_BACKEND_URL + "/analysis/watchlist/" + this.current_watchlist.id, data)
+      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/watchlist/" + this.current_watchlist.id, data)
           .then(function (r) {
             // vm.getData();
             vm.get_watchlist({id: vm.current_watchlist.id})
@@ -252,8 +297,9 @@ export default {
           });
     },
     async deleteWatchlist(watchlist) {
+      console.log("delete list " + watchlist.id)
       let vm = this;
-      await axios.delete(process.env.VUE_APP_BACKEND_URL + "/analysis/watchlist/" + watchlist.id)
+      await axios.delete(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/watchlist/" + watchlist.id)
           .then(function (r) {
             console.log(r);
           }).catch(function (r) {
@@ -261,8 +307,9 @@ export default {
           });
     },
     async deleteTickerWatchlist(watchlist, ticker) {
+      console.log("delete ticker" + watchlist.id + " " + ticker.id)
       let vm = this;
-      await axios.delete(process.env.VUE_APP_BACKEND_URL + "/analysis/watchlist/" + watchlist.id + "/" + ticker.id)
+      await axios.delete(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/watchlist/" + watchlist.id + "/" + ticker.id)
           .then(function (r) {
             console.log(r);
           }).catch(function (r) {
@@ -315,10 +362,10 @@ export default {
       console.log(queryString);
       console.log(this.tableData);
       const results = this.tableData;
-       cb(results);
-    },createFilter(queryString) {
-  return  this.tableData;
-}
+      cb(results);
+    }, createFilter(queryString) {
+      return this.tableData;
+    }
   },
 };
 </script>
@@ -327,15 +374,13 @@ export default {
   border-radius: inherit;
 }
 
-.demo-tabs > .el-tabs__header .el-tabs__item.is-active {
-  background-color: #212120;
+.el-tabs__item.is-active {
+  background-color: #ffffff;
   color: #3cab79 !important;
 }
 
-.demo-tabs > .el-tabs__item.is-closable:hover {
+.el-tabs__item:hover {
+  background-color: #ffffff;
   color: #3cab79 !important;
-}
-
-.demo-tabs .custom-tabs-label .el-icon {
 }
 </style>

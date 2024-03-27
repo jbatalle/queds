@@ -27,8 +27,8 @@
   </div>
 </template>
 <script>
-  import AppNavbar from '@/components/Dashboard/Views/Pages/Layout/AppNavbar.vue';
-  import AppFooter from '@/components/Dashboard/Views/Pages/Layout/AppFooter.vue';
+  import AppNavbar from '@/components/Dashboard/Layout/AppNavbar.vue';
+  import AppFooter from '@/components/Dashboard/Layout/AppFooter.vue';
 
   export default {
     components: {

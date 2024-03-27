@@ -14,7 +14,7 @@ class Transaction:
         SELL = 1
 
     def __init__(self, type, order, ticker, amount, price, fees=None):
-        self.order_type = order.__class__.__name__
+        self.order_type = order.__name__
         self.transaction_id = order.id
         self.type = type
         self.time = order.value_date
@@ -26,7 +26,7 @@ class Transaction:
 
     @property
     def cost(self):
-        return round(self.amount * self.price - self.fees, 4)
+        return round(self.amount * self.price, 4)
 
     @property
     def cost_base_currency(self):
@@ -70,7 +70,7 @@ class PartialOrder:
         if self.trade is None:
             return 0
 
-        return self.trade.price * self.amount + self.trade.fees
+        return self.trade.price * self.amount# + self.trade.fees
 
 
 class SellInfo:
@@ -102,8 +102,18 @@ class SellInfo:
         """
         Cost when selling (in tax currency).
         """
-
+        # take into account that fees can be in other currency!
         return self.sell_trade.amount * self.sell_trade.price - self.sell_trade.fees
+
+    @property
+    def cost_sell_eur(self):
+        """
+        Cost when selling (in tax currency).
+        """
+        currency_rate = 1
+        if self.sell_trade.currency_rate is not None:
+            currency_rate = self.sell_trade.currency_rate
+        return self.sell_trade.amount * self.sell_trade.price * currency_rate + self.sell_trade.fees
 
     @property
     def cost_buy(self):
@@ -119,7 +129,8 @@ class SellInfo:
         Cost when buying (in tax currency).
         Summarize cost of all buy items
         """
-        return reduce(lambda a, b: a + b.cost * b.trade.currency_rate if hasattr(b.trade, 'currency_rate') else 1, self.buy_items, 0.0)
+        # TODO: fees should be splited between the buys
+        return reduce(lambda a, b: a + b.cost * b.trade.currency_rate - b.trade.fees if hasattr(b.trade, 'currency_rate') else 1, self.buy_items, 0.0)
 
     @property
     def benefits(self):
@@ -138,7 +149,11 @@ class SellInfo:
         #     return self.cost_sell - self.cost_buy
 
         # return self.cost_sell * self.sell_trade.currency_rate - self.cost_buy * self.sell_trade.currency_rate
-        return self.cost_sell * (self.sell_trade.currency_rate or 1) - self.cost_buy_in_eur
+        if self.sell_trade.currency_rate is None:
+            currency_rate = 0
+        else:
+            currency_rate = self.sell_trade.currency_rate
+        return self.cost_sell_eur - self.cost_buy_in_eur
 
 
 class BalanceQueue:
@@ -146,6 +161,7 @@ class BalanceQueue:
     def __init__(self):
         self.queues = defaultdict(lambda: deque())
         self.withdrawals = defaultdict()
+        self.reverse_splits = defaultdict()
 
     def current_amount(self, ticker):
         return round(sum([o.amount for o in self.queues[ticker]]), 8)
@@ -222,7 +238,7 @@ class BalanceQueue:
                 logger.error("Unhandled condition. Please check!")
 
     def buy(self, order):
-        if order.order_type == 'StockTransaction':
+        if order.order_type == 'StockTransactionDTO':
             amount = order.amount
         else:
             amount = order.amount - order.fees
@@ -232,7 +248,7 @@ class BalanceQueue:
         remaining_sell_amount = order.amount
         items_bought = []
         queue = self.queues[order.ticker]
-        fees = order.fees if order.order_type != 'StockTransaction' else 0
+        fees = order.fees if order.order_type != 'StockTransactionDTO' else 0
 
         while remaining_sell_amount > 0:
 
@@ -260,29 +276,20 @@ class BalanceQueue:
 
         return SellInfo(order, items_bought)
 
+    def apply_reverse(self, order):
+        items_bought = []
+        queue = self.queues[order.ticker]
 
-class StackOrder(PartialOrder):
-    def __init__(self, amount, order, open_order):
-        super(StackOrder, self).__init__(amount, order)
-        self.open_order = open_order
+        if order.type == Transaction.Type.SELL:
+            # we update the new order with the previous data
+            item = self._pop(queue)
+            items_bought.append(item)
+            self.reverse_splits[order.ticker] = item.trade
+        else:
+            amount = order.amount
+            original_order = self.reverse_splits.pop(order.ticker)
+            order.fees = original_order.fees
+            order.currency_rate = original_order.currency_rate
 
-    @property
-    def cost_with_fees(self):
-        if self.trade is None:
-            return 0
-
-        return self.trade.price * self.amount - self.trade.fee - self.trade.exchange_fee
-
-    @property
-    def benefits(self):
-        if self.trade is None or self.open_order is None:
-            return 0
-
-        return self.cost - self.amount * self.open_order.price
-
-    @property
-    def benefits_in_eur(self):
-        if self.trade is None or self.open_order is None:
-            return 0
-
-        return self.cost * self.trade.currency_rate - self.amount * self.open_order.price * self.open_order.currency_rate
+            # TODO: update that order with old fee and currency_rate
+            self._put(self.queues[order.ticker], PartialOrder(amount, order))

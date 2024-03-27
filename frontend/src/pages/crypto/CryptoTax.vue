@@ -35,38 +35,9 @@
             </div>
           </div>
           <div class="card-body table-full-width">
-            <el-table name="tax_items" :data="this.closedOrders" :default-sort="{property: 'id', order: 'descending'}"
-                      row-key="id" :cell-class-name="testClass" default-expand-all
-                      :cell-style="{padding: '0', height: '20px'}">
-              <el-table-column label="Symbol" property="pair"></el-table-column>
-              <el-table-column label="Date" property="value_date" sortable></el-table-column>
-              <el-table-column label="Amount" property="amount">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.amount, scope.row.source_currency, 8) }}
-                  {{ scope.row.amount | toCurrency(scope.row.source_currency, 8) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Price" property="price">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.price, scope.row.target_currency, 8) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Fees" property="fee">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.fee, scope.row.target_currency, 8) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Cost" property="cost">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.cost, scope.row.target_currency) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="Benefits" property="benefits">
-                <template v-slot:default="scope">
-                  {{ $filters.toCurrency(scope.row.benefits, scope.row.target_currency) }}
-                </template>
-              </el-table-column>
-            </el-table>
+            <taxes-table :base_currency="base_currency" :orders="closedOrders" :loading="loading"
+                          type="exchange"
+            />
           </div>
         </div>
       </div>
@@ -78,12 +49,14 @@
 import {ElTable} from 'element-plus';
 import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import axios from "axios";
+import TaxesTable from "@/components/Dashboard/Views/TaxesTable.vue";
 
 
 export default {
   name: "Taxes",
   components: {
     ElTable, StatsCard,
+    TaxesTable
   },
   data() {
     return {

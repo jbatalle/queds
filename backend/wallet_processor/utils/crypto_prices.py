@@ -14,7 +14,7 @@ if os.path.exists(backup_prices):
 
 
 def get_nano_prices():
-    with open("utils/xno-eur-max.csv", newline='') as csvfile:
+    with open("wallet_processor/utils/xno-eur-max.csv", newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         prices = {}
         for idx, row in enumerate(reader):
@@ -28,7 +28,7 @@ def get_nano_prices():
 
 
 def get_iota_prices():
-    with open("utils/miota-eur-max.csv", newline='') as csvfile:
+    with open("wallet_processor/utils/miota-eur-max.csv", newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         prices = {}
         for idx, row in enumerate(reader):
@@ -116,7 +116,10 @@ def get_price(source, target, timestamp):
     if data.get('Data').get('Data')[1].get('close') == 0:
         print("HEY!! price is 0!")
         return data.get('Data').get('Data')[1].get('close')
-    prices[source][target][timestamp] = data.get('Data').get('Data')[1].get('close')
+    try:
+        prices[source][target][timestamp] = data.get('Data').get('Data')[1].get('close')
+    except:
+        print(f"Error: {data.get('Data')}")
 
     with open(backup_prices, "w") as f:
         json.dump(prices, f)
