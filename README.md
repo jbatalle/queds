@@ -1,5 +1,5 @@
 # Queds Finance
-Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers, crypto exchanges, and banks, making it easier for you to manage your investments.
+Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions and crypto transactions. It automatically reads data from various brokers and crypto exchanges, making it easier for you to manage your investments.
 
 
 
