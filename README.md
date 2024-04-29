@@ -1,13 +1,11 @@
 # Queds Finance
 Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions and crypto transactions. It automatically reads data from various brokers and crypto exchanges, making it easier for you to manage your investments.
 
-
-
 ## Demo
-Check out the demo at https://queds.fly.dev/overview
+See Queds Finance in action: https://queds.fly.dev/overview
 
 ## Features
-* Stock-Portfolio and Crypto-Portfolio tracking
+* Track stock and crypto portfolios
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
 * Watchlist for monitoring assets
@@ -15,10 +13,10 @@ Check out the demo at https://queds.fly.dev/overview
 * Automatic data import from exchanges: Bitstamp, Kraken, Bittrex and Binance
 * TradingView graphs for visualizing asset performance
 
-## In progress
+## Roadmap
 * Set price alerts via Telegram
 * Dividends tracking
-* Import broker/crypto data from CSV
+* Import broker/crypto data from CSV files
 * Set default portfolio currency
 * Investment fund tracking
 * Include Kucoin Exchange
