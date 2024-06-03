@@ -16,7 +16,6 @@ export default {
       }
     },
     datasets(datasets) {
-      console.log('Dataset change')
       this.chartData = this.assignChartData({ datasets });
     }
   }

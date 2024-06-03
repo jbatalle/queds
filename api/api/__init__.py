@@ -17,7 +17,7 @@ def demo_check(f):
     @wraps(f)
     def decorator(*args, **kwargs):
         if settings.DEMO_MODE:
-            return {"success": False, "msg": "Demo mode"}, 400
+            return {"success": False, "message": "Demo mode"}, 400
         return f(*args, **kwargs)
 
     return decorator

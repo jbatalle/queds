@@ -9,15 +9,18 @@ from sqlalchemy.dialects.postgresql import insert
 class StockTransaction(Base, CRUD):
 
     __tablename__ = 'stock_transactions'
+    __table_args__ = (UniqueConstraint('account_id', 'external_id', name='_account_id_external_id'),)
 
     class Type:
         BUY = 0
         SELL = 1
+        REVERSE_SPLIT_BUY = 2
+        REVERSE_SPLIT_SELL = 3
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
-    external_id = Column(String(70), unique=True)
+    external_id = Column(String(70))
     value_date = Column(Date, nullable=False, default=datetime.now)
     name = Column(String(150))
     ticker_id = Column(Integer, ForeignKey('tickers.id'))
@@ -26,7 +29,7 @@ class StockTransaction(Base, CRUD):
     type = Column(Integer)
     currency = Column(String(5))  # duplicated, should be extracted from ticker
     price = Column(Float)  # according to currency
-    fee = Column(Float)  # according to currency
+    fee = Column(Float)  # in €
     exchange_fee = Column(Float)  # in €
     currency_rate = Column(Float)
 
@@ -35,8 +38,6 @@ class StockTransaction(Base, CRUD):
         if len(transactions) == 0:
             return
 
-        # insert_command = cls.__table__.insert().prefix_with(' IGNORE').values(transactions)
-        # db_session.execute(insert_command)
         q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
 
     def to_dict(self):
@@ -110,12 +111,21 @@ class ProxyOrder(Base, CRUD):
     __tablename__ = 'stock_proxy_orders'
 
     id = Column(Integer, primary_key=True)
+    closed_order = relationship("ClosedOrder")
     closed_order_id = Column(Integer, ForeignKey('stock_closed_orders.id'))
 
     transaction = relationship("StockTransaction")
     transaction_id = Column(Integer, ForeignKey('stock_transactions.id', ondelete="CASCADE"))
     shares = Column(Integer)  # shares for each transaction
     partial_fee = Column(Float)
+
+    @classmethod
+    def bulk_save_objects(cls, orders):
+        if len(orders) == 0:
+            return
+
+        db_session.bulk_save_objects(orders)
+        db_session.flush()
 
 
 class ClosedOrder(Base, CRUD):
@@ -124,10 +134,18 @@ class ClosedOrder(Base, CRUD):
     id = Column(Integer, primary_key=True)
     sell_transaction = relationship("StockTransaction")
     sell_transaction_id = Column(Integer, ForeignKey('stock_transactions.id', ondelete="CASCADE"))
-    buy_transaction = relationship("ProxyOrder")
+    buy_transaction = relationship("ProxyOrder", back_populates='closed_order')
 
     def __str__(self):
         return f"{self.sell_transaction.name}-{self.sell_transaction.shares}@{self.sell_transaction.price}"
+
+    @classmethod
+    def bulk_save_objects(cls, orders):
+        if len(orders) == 0:
+            return
+
+        a = db_session.bulk_save_objects(orders, return_defaults=True)
+        db_session.flush()
 
 
 class Ticker(Base, CRUD):
@@ -144,11 +162,12 @@ class Ticker(Base, CRUD):
     currency = Column(String(5))
     isin = Column(String(50))
     ticker_yahoo = Column(String(10))
+    # trading_view = Column(String(10))
     status = Column(Integer, default=Status.ACTIVE)
     # market = Column(String(50))
 
     def __str__(self):
-        return self.name
+        return f"{self.id}-{self.ticker}-{self.name}"
 
     def get_currency(self):
         if self.currency == 'USD':
@@ -166,9 +185,43 @@ class Ticker(Base, CRUD):
             "currency": self.currency,
             "isin": self.isin,
             "ticker_yahoo": self.ticker_yahoo,
-            "status": self.status
+            "status": self.status,
+            #"market": self.market
             }
+        if not self.id:
+            del d['id']
         return d
+
+    @classmethod
+    def bulk_insert(cls, transactions: list):
+        if len(transactions) == 0:
+            return
+
+        not_registered_tickers = [t.to_dict() for t in transactions if not t.id]
+        registered_tickers = [t.to_dict() for t in transactions if t.id]
+        if not_registered_tickers:
+            q = db_session.execute(insert(cls).values(not_registered_tickers).on_conflict_do_update(
+                index_elements=['ticker', 'isin', 'status'],
+                set_={
+                    "status": cls.status
+                }))
+
+        if registered_tickers:
+            stmt = insert(cls).values(registered_tickers)
+            update_cols = ["status"]
+
+            b = db_session.execute(stmt.on_conflict_do_update(
+                constraint='tickers_pkey',
+                set_={k: getattr(stmt.excluded, k) for k in update_cols}
+            ))
+            #
+            # db_session.execute(insert(cls).values().on_conflict_do_update(
+            #     constraint='tickers_pkey',
+            #     set_={
+            #         "status": cls.status
+            #     }))
+
+        db_session.flush()
 
 
 class StockPrice(Base, CRUD):
@@ -245,10 +298,11 @@ class CrowdTransaction(Base, CRUD):
 
 class Watchlists(Base, CRUD):
     __tablename__ = 'watchlists'
+    __table_args__ = (UniqueConstraint('user_id', 'name', name='_watchlist_user_id_name_unique'),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    name = Column(String(150), unique=True)
+    name = Column(String(150))
     # watchlist = Column(Integer, ForeignKey('watchlist.id'))
 
 

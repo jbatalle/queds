@@ -49,8 +49,8 @@ class PostModelTestCase(BaseTestClass):
         response = res.get_json()
 
         self.assertEqual(400, res.status_code)
-        self.assertIn('msg', response)
-        self.assertEqual(response['msg'], "Wrong credentials.")
+        self.assertIn('message', response)
+        self.assertEqual(response['message'], "Wrong credentials.")
 
     @patch('models.system.User.get_by_email')
     def test_register_exists(self, mock):
@@ -64,8 +64,8 @@ class PostModelTestCase(BaseTestClass):
         response = res.get_json()
 
         self.assertEqual(400, res.status_code)
-        self.assertIn('msg', response)
-        self.assertEqual(response['msg'], "Email already taken.")
+        self.assertIn('message', response)
+        self.assertEqual(response['message'], "Email already taken.")
 
     @patch('models.system.User.save')
     @patch('models.system.User.get_by_email')
@@ -81,8 +81,8 @@ class PostModelTestCase(BaseTestClass):
         response = res.get_json()
 
         self.assertEqual(200, res.status_code)
-        self.assertIn('msg', response)
-        self.assertEqual(response['msg'], "The user was successfully registered.")
+        self.assertIn('message', response)
+        self.assertEqual(response['message'], "The user was successfully registered.")
 
     @patch('config.settings.DEMO_MODE')
     @patch('models.system.User.save')
@@ -101,8 +101,8 @@ class PostModelTestCase(BaseTestClass):
         response = res.get_json()
 
         self.assertEqual(400, res.status_code)
-        self.assertIn('msg', response)
-        self.assertEqual(response['msg'], "Demo mode")
+        self.assertIn('message', response)
+        self.assertEqual(response['message'], "Demo mode")
 
     def atest_title_slug(self):
         res = self.client.get('/api/crypto/accounts')

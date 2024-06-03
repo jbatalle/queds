@@ -133,8 +133,9 @@ class ExchangeTransaction(Base, CRUD):
 
         q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
 
-    def get_type(self):
-        return {v: n for n, v in vars(ExchangeTransaction.Type).items() if n.isupper()}[self.type]
+    @classmethod
+    def get_type(cls, type):
+        return {v: n for n, v in vars(ExchangeTransaction.Type).items() if n.isupper()}[type]
 
 
 class ExchangeWallet(Base, CRUD):
@@ -169,6 +170,7 @@ class ExchangeProxyOrder(Base, CRUD):
 
     id = Column(Integer, primary_key=True)
     closed_order_id = Column(Integer, ForeignKey('exchange_closed_orders.id'))
+    closed_order = relationship("ExchangeClosedOrder", back_populates="buy_order")
 
     order = relationship("ExchangeOrder")
     order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
@@ -176,13 +178,35 @@ class ExchangeProxyOrder(Base, CRUD):
     partial_fee = Column(Float)
 
 
+    @classmethod
+    def bulk_save_objects(cls, orders):
+        if len(orders) == 0:
+            return
+
+        db_session.bulk_save_objects(orders)
+        db_session.flush()
+        #db_session.add_all(tracked_orders)
+        #db_session.flush()
+
 class ExchangeClosedOrder(Base, CRUD):
     __tablename__ = 'exchange_closed_orders'
 
     id = Column(Integer, primary_key=True)
     sell_order = relationship("ExchangeOrder")
     sell_order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
-    buy_order = relationship("ExchangeProxyOrder")
+    # buy_order = relationship("ExchangeProxyOrder")
+    buy_order = relationship("ExchangeProxyOrder", back_populates="closed_order")
+
+
+    @classmethod
+    def bulk_save_objects(cls, orders):
+        if len(orders) == 0:
+            return
+
+        db_session.bulk_save_objects(orders)
+        db_session.flush()
+        #db_session.add_all(tracked_orders)
+        #db_session.flush()
 
 
 class ExchangeOpenOrder(Base, CRUD):
