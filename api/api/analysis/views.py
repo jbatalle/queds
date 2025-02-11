@@ -28,8 +28,7 @@ class WatchlistList(Resource):
 
     @jwt_required()
     def post(self):
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
         post_data = request.get_json()
         w = Watchlists()
         w.name = post_data.get('name')
@@ -45,8 +44,7 @@ class WatchlistItems(Resource):
     @jwt_required()
     def get(self, id):
         """Returns a watchlist."""
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
         if id == 0:
             # get wallet items
             items = Wallet.query.filter(Wallet.user_id==user_id).all()

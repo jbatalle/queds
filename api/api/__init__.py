@@ -7,8 +7,7 @@ from functools import wraps
 
 
 def filter_by_username(object):
-    username = get_jwt_identity()
-    user_id = User.find_by_email(username).id
+    user_id = get_jwt_identity()
     return object.query.filter(object.user_id == user_id)
 
 
