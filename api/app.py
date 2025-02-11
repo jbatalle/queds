@@ -13,8 +13,12 @@ from flask_sqlalchemy import SQLAlchemy
 # import config and models from main path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
 
-with open("../VERSION") as f:
-    VERSION = f.read()
+try:
+    with open("../VERSION") as f:
+        VERSION = f.read()
+except:
+    with open("VERSION") as f:
+        VERSION = f.read()
 
 from config import settings
 from models.sql import create_db_connection
@@ -28,6 +32,7 @@ app = Flask(__name__, static_folder="dist" if settings.DEMO_MODE else None)
 app.config['SQLALCHEMY_POOL_RECYCLE'] = 280
 app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+
 app.config['JWT_SECRET_KEY'] = settings.JWT_SECRET_KEY
 
 jwt = JWTManager(app)
@@ -54,7 +59,7 @@ def configure_app(flask_app):
                                                             settings.SQL_CONF['host'],
                                                             settings.SQL_CONF['port'],
                                                             settings.SQL_CONF['database'])
-    # app.config['SQLALCHEMY_DATABASE_URI'] = conn_string
+    app.config['SQLALCHEMY_DATABASE_URI'] = conn_string
     db.init_app(flask_app)
 
 
@@ -115,7 +120,7 @@ def main():
     try:
         initialize_app(app)
         log.info('>>>>> Starting development server at http://{}/api/ <<<<<'.format(app.config['SERVER_NAME']))
-        log.info(f"Demo mode; {settings.DEMO_MODE}. Debug mode: {settings.DEBUG}")
+        log.info(f"Demo mode: {settings.DEMO_MODE}. Debug mode: {settings.DEBUG} - Port: {os.getenv('PORT') or 5000}")
         app.run(host='0.0.0.0', port=os.getenv("PORT") or 5000, debug=settings.DEBUG)
     except Exception as e:
         log.exception(e)

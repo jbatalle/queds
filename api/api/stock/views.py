@@ -4,6 +4,7 @@ from flask_restx import Resource, fields, Namespace
 from models.broker import Watchlist, Watchlists, Wallet, StockTransaction, Ticker, OpenOrder, ClosedOrder, ProxyOrder
 from models.system import Account, Entity, User
 from flask import jsonify, request
+from sqlalchemy import or_
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from api import filter_by_username, demo_check
 from services.queue import queue_process
@@ -51,9 +52,7 @@ class WalletCollection(Resource):
     @jwt_required()
     def get(self):
         """Returns all open_orders."""
-
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
 
         wallet_items = Wallet.query.options(joinedload('ticker')).options(joinedload('open_orders'))\
             .options(joinedload('open_orders.transaction')).filter(Wallet.user_id == user_id).all()
@@ -76,6 +75,9 @@ class WalletCollection(Resource):
 
         tickers_by_ticker = {}
         for d in yahoo_prices:
+            if tickers_yahoo[d.get('symbol')] not in tickers_by_ticker:
+                log.warning(f"Symbol {d.get('symbol')} not in tickers")
+                continue
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
         fx_rate = y.get_currency() or 1
@@ -127,8 +129,7 @@ class OrdersCollection(Resource):
         broker_names = args.get('broker', None)
         pagination = args.to_dict()
         search = args.get('search', None)
-        user_id = User.find_by_email(get_jwt_identity()).id
-
+        user_id = get_jwt_identity()
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.BROKER))
 
         if broker_names:
@@ -141,7 +142,7 @@ class OrdersCollection(Resource):
             .order_by(StockTransaction.value_date.desc())
 
         if search:
-            query = query.filter(Ticker.ticker.ilike(f"%{search}%"))
+            query = query.filter(or_(Ticker.ticker.ilike(f"%{search}%"), Ticker.name.ilike(f"%{search}%")))
 
         limit = int(pagination.get('limit', 10))
         page = int(pagination.get('page', 1)) - 1
@@ -191,8 +192,7 @@ class Tax(Resource):
         args = request.args.to_dict()
 
         year = int(args.get('year', datetime.now().year - 1))
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.BROKER)).all()
 
@@ -202,7 +202,7 @@ class Tax(Resource):
             .join(ClosedOrder.sell_transaction) \
             .filter(StockTransaction.value_date >= f"{year}-01-01") \
             .filter(StockTransaction.value_date < f"{year + 1}-01-01") \
-            .filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).all()
+            .filter(StockTransaction.account_id.in_([a_id[0] for a_id in accounts])).all()
 
         items = []
         for r in closed_orders:
@@ -226,8 +226,7 @@ class Calculate(Resource):
     @demo_check
     @jwt_required()
     def get(self):
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
+        user_id = get_jwt_identity()
         data = {
             "user_id": user_id,
             "mode": "stock"
@@ -240,11 +239,10 @@ class CalcStats(Resource):
 
     @jwt_required()
     def get(self):
-        user_id = User.find_by_email(get_jwt_identity()).id
-
+        user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.BROKER)).all()
-        query = StockTransaction.query.filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).order_by(
+        query = StockTransaction.query.filter(StockTransaction.account_id.in_([a_id[0] for a_id in accounts])).order_by(
             StockTransaction.value_date.desc())
 
         orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price,
@@ -264,7 +262,7 @@ class CalcStats(Resource):
         closed_orders = ClosedOrder.query.options(joinedload('sell_transaction'))\
             .options(joinedload('buy_transaction')).options(joinedload('buy_transaction.transaction'))\
             .join(ClosedOrder.sell_transaction) \
-            .filter(StockTransaction.account_id.in_([a_id for a_id in accounts])).all()
+            .filter(StockTransaction.account_id.in_([a_id[0] for a_id in accounts])).all()
 
         gain = 0
         for o in closed_orders:

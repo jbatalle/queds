@@ -1,4 +1,5 @@
-FROM python:3.9-slim-buster
+# Base stage
+FROM python:3.9-slim-buster AS base
 
 RUN apt-get update && apt-get -y install libpq-dev gcc
 
@@ -6,15 +7,30 @@ WORKDIR /usr/src
 
 COPY ./requirements.txt /usr/src/requirements.txt
 
-# set environment variables
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# install python dependencies
-# RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . /usr/src
+# Install python dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# gunicorn
-#CMD ["gunicorn", "--config", "gunicorn-cfg.py", "run:app"]
-CMD python app.py run -h 0.0.0.0:${PORT}
+# API stage
+FROM base AS api
+
+WORKDIR /usr/src/api
+
+# Copy only API-related files
+COPY ./api /usr/src/api
+
+CMD ["python", "app.py", "run", "-h", "0.0.0.0:${PORT}"]
+
+# Backend stage
+FROM base AS backend
+
+WORKDIR /usr/src/backend
+
+# Copy only backend-related files
+COPY ./backend /usr/src/backend
+
+CMD ["python", "main.py"]

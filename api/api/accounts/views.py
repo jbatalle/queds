@@ -1,7 +1,7 @@
 import logging
 from flask_restx import Resource, fields, Namespace
 from models.system import Account, Entity, User, EntityCredentialType, AccountCredentialParam
-from flask import request, jsonify
+from flask import request, jsonify, render_template, make_response
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from api import filter_by_username, demo_check
 from services.queue import queue_read
@@ -52,9 +52,10 @@ class AccountList(Resource):
     @jwt_required()
     def get(self):
         """Returns all account accounts from authenticated user."""
-        result = filter_by_username(Account).all()
+        user_id = get_jwt_identity()
+        accounts = Account.query.filter(Account.user_id == user_id)
         items = []
-        for r in result:
+        for r in accounts:
             item = r.json
             item['entity_type'] = r.entity.type
             item['entity_name'] = r.entity.name
@@ -66,8 +67,7 @@ class AccountList(Resource):
     @jwt_required()
     def post(self):
         """Create an account."""
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
+        user_id = get_jwt_identity()
 
         content = request.get_json(silent=True)
 
@@ -241,7 +241,7 @@ class AccountStats(Resource):
 
     @jwt_required()
     def get(self):
-        user_id = User.find_by_email(get_jwt_identity()).id
+        user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id).all()
 
         # TODO:
@@ -256,3 +256,39 @@ class AccountStats(Resource):
         }
 
         return stats
+
+
+@namespace.route("/upload_csv")
+class UploadCSV(Resource):
+
+    def get(self):
+        accounts = Account.query.all()
+        # TODO: create templates models, return fields for each entity
+        return make_response(render_template('upload_csv.html', fields=["amount", "price"], accounts=accounts), 200)
+
+    @jwt_required()
+    def post(self):
+
+        account_id = request.form.get("account_id")  # Adjust key based on your form field name
+        log.info(f"Processing CSV file. Account ID: {account_id}")
+        uploaded_file = request.files.get("file")
+
+        if not uploaded_file:
+            return {'message': 'No file uploaded!'}, 400
+
+        account = filter_by_username(Account).filter(Account.id == account_id).one()
+
+        from services.csv_reader import SUPPORTED_CSV_READER
+        csv_handler = SUPPORTED_CSV_READER.get(account.entity.name.lower())
+        if not csv_handler:
+            return {'message': 'Unsupported entity type!'}, 400
+
+        try:
+            orders, transactions = csv_handler.process_csv(uploaded_file.read().decode("utf-8"), account)
+            log.info(f"Detected orders: {len(orders)}")
+            csv_handler.insert_db(orders, transactions)
+            return {'message': f'File inserted!'}
+        except Exception as e:
+            log.error(f"Error processing CSV: {e}")
+            # db_session.rollback()  # Rollback on errors
+            return {'message': f'Error processing file: {e}!'}, 400

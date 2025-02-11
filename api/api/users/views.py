@@ -77,8 +77,8 @@ class Login(Resource):
             return {"success": False, "message": "Wrong credentials."}, 400
 
         expires = timedelta(minutes=60*24*7)
-        access_token = create_access_token(identity=_email, expires_delta=expires)
-        refresh_token = create_refresh_token(identity=_email)
+        access_token = create_access_token(identity=user_exists.id, expires_delta=expires)
+        refresh_token = create_refresh_token(identity=user_exists.id)
 
         # TODO: get base currency from model
 
@@ -98,8 +98,7 @@ class EditUser(Resource):
     @demo_check
     @jwt_required()
     def post(self):
-        current_user_email = get_jwt_identity()
-        user_exists = User.find_by_email(current_user_email)
+        user_id = get_jwt_identity()
         req_data = request.get_json()
 
         _new_username = req_data.get("username")

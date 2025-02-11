@@ -46,8 +46,7 @@ class BalanceList(Resource):
     @jwt_required()
     def get(self):
         """Returns all open_orders."""
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
 
         # TODO: get open orders
         wallet_items = ExchangeWallet.query.options(joinedload('open_orders'))\
@@ -55,7 +54,7 @@ class BalanceList(Resource):
 
         # wallet_items = ExchangeWallet.query.filter(ExchangeWallet.user_id == user_id).all()
         if len(wallet_items) == 0:
-            return [], 400
+            return [], 200
 
         c = CryptoCompareClient()
         currencies = [p.currency for p in wallet_items]
@@ -68,6 +67,7 @@ class BalanceList(Resource):
             item = r.json
             if r.currency == 'EUR':
                 continue
+            print(item)
             if r.currency in prices_eur:
                 item['current_price'] = 1/prices_eur[r.currency]
                 item['current_price_eur'] = item['current_price']
@@ -82,6 +82,7 @@ class BalanceList(Resource):
                 item['current_price_currency'] = 'btc'
             else:
                 log.error(f"Unable to get prices of {r.currency}")
+                item['current_price'] = 0
 
             item['current_value'] = item['amount'] * item['current_price']
             item['current_benefit'] = item['current_value'] - item['cost'] #+ r.benefits + r.fees
@@ -106,7 +107,7 @@ class OrdersCollection(Resource):
         exchange_names = args.get('exchange', None)
         pagination = args.to_dict()
         search = args.get('search', None)
-        user_id = User.find_by_email(get_jwt_identity()).id
+        user_id = get_jwt_identity()
 
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.EXCHANGE))
 
@@ -146,6 +147,7 @@ class OrdersCollection(Resource):
         }
         return jsonify(results)
 
+
 @namespace.route('/tax')
 class CryptoTax(Resource):
 
@@ -155,8 +157,7 @@ class CryptoTax(Resource):
         args = request.args.to_dict()
 
         year = int(args.get('year', datetime.now().year - 1))
-        username = get_jwt_identity()
-        user_id = User.find_by_email(username).id
+        user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.EXCHANGE)).all()
 
@@ -168,7 +169,9 @@ class CryptoTax(Resource):
             .filter(ExchangeOrder.account_id.in_([a_id for a_id in accounts])).all()
 
         items = []
+        log.info(closed_orders)
         for r in closed_orders:
+            log.info(r.buy_order)
             item = r.sell_order.json
             children = []
             for q in r.buy_order:
@@ -188,8 +191,7 @@ class Calculate(Resource):
     @demo_check
     @jwt_required()
     def get(self):
-        current_user_email = get_jwt_identity()
-        user_id = User.find_by_email(current_user_email).id
+        user_id = get_jwt_identity()
         data = {
             "user_id": user_id,
             "mode": "crypto"
