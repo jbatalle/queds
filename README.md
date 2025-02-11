@@ -10,18 +10,18 @@ Check out the demo at https://queds.fly.dev/overview
 * Stock-Portfolio and Crypto-Portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
+* Coin tracking with FIFO
 * Watchlist for monitoring assets
 * Automatic data import from Degiro, Clicktrade and InteractiveBrokers
-* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex and Binance
+* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex, Binance and Kukoin
 * TradingView graphs for visualizing asset performance
+* Import broker/crypto data from CSV
 
 ## In progress
 * Set price alerts via Telegram
 * Dividends tracking
-* Import broker/crypto data from CSV
 * Set default portfolio currency
 * Investment fund tracking
-* Include Kucoin Exchange
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
