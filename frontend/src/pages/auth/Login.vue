@@ -102,6 +102,8 @@ export default {
       } catch (e) {
         ElNotification({
           title: 'Warning',
+          message: 'Invalid credentials',
+          type: 'warning'
           // ...
         })
       }

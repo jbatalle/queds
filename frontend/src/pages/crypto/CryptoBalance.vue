@@ -101,8 +101,8 @@ export default {
 
       let bar = new Promise((resolve, reject) => {
         res.data.forEach(function (t, index, array) {
-          console.log(t);
           t.children = t.open_orders;
+          t.ticker = {"ticker": t.currency, "name": t.currency};
           t.symbol = t.currency + "USD"; // change here the symbol by trading_view symbol
           t.container_id = t.symbol; // div id for trading view
           t.style = "3";
@@ -123,7 +123,6 @@ export default {
           // vm.benefits += t.benefits;
           vm.benefits += t.current_benefit;
         });
-
       });
 
       let wallet_value = Number(this.wallet.reduce((a, b) => a + b.amount, 0)).toFixed(2);

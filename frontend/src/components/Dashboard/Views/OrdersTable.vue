@@ -6,18 +6,23 @@
               :row-class-name="tableRowClassName"
               @filter-change="filterChange"
               :cell-style="{padding: '0', height: '20px'}">
+      <el-table-column label="type" width="60px">
+        <template v-slot:default="scope">
+          <el-tooltip :content="scope.row.type" placement="top">
+            <span type="info"><i class="nc-icon" :class="iconClassName(scope.row)"></i></span>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column v-if="type==='broker'" label="ticker">
         <template v-slot:default="scope">
           <el-tooltip v-if="scope.row.ticker" :content="scope.row.ticker.name" placement="top">
-            <span type="info"><i class="nc-icon" :class="iconClassName(scope.row)"></i> {{
-                scope.row.ticker.ticker
-              }}</span>
+            <span type="info"> {{ scope.row.ticker.ticker }}</span>
           </el-tooltip>
         </template>
       </el-table-column>
       <el-table-column v-else label="pair" sortable>
         <template v-slot:default="scope">
-          <span type="info"><i class="nc-icon" :class="iconClassName(scope.row)"></i> {{ scope.row.pair }}</span>
+          <span type="info"> {{ scope.row.pair }}</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -128,9 +133,7 @@ export default {
     tableRowClassName(item) {
       if (item.row.type === 'Sell')
         return 'table-success';
-      else if (item.row.type === 'Reverse_buy')
-        return "table-danger";
-      else if (item.row.type === 'Reverse_sell')
+      else if (item.row.type === 'Reverse_buy' || item.row.type === 'Reverse_sell' || item.row.type === 'OTC_buy' | item.row.type === 'OTC_sell')
         return "table-danger";
       else
         return 'table-information';
@@ -138,9 +141,7 @@ export default {
     iconClassName(item) {
       if (item.type === 'Sell')
         return "nc-minimal-left blue";
-      else if (item.type === 'Reverse_buy')
-        return "nc-refresh-69 orange";
-      else if (item.type === 'Reverse_sell')
+      else if (item.type === 'Reverse_buy' || item.type === 'Reverse_sell' || item.type === 'OTC_buy' | item.type === 'OTC_sell')
         return "nc-refresh-69 orange";
       else
         return 'nc-minimal-right red';

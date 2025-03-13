@@ -37,7 +37,8 @@
               </el-button>
             </el-tooltip>
             <el-tooltip content="Upload" placement="top">
-              <el-button type="success" size="small" aria-label="upload button" icon @click="" disabled>
+              <el-button type="success" size="small" aria-label="upload button" icon
+                         @click="openUploadCsvDialog(scope.$index, scope.row)">
                 <i class="nc-icon nc-cloud-upload-94"></i>
               </el-button>
             </el-tooltip>
@@ -67,12 +68,23 @@ export default {
     tableColumns: Array,
     accountType: Number
   },
+  components: {
+    //ElDialogComponent: UploadCsvDialog
+  },
+  emits: ['open-create-dialog', 'open-read-dialog', 'open-delete-dialog', 'open-upload-dialog'],
+  data() {
+    return {
+    }
+  },
   methods: {
     openCreateDialog(accountType, account) {
       this.$emit('open-create-dialog', accountType, account);
     },
     openReadDialog(index, account) {
       this.$emit('open-read-dialog', index, account);
+    },
+    openUploadCsvDialog(index, account) {
+      this.$emit('open-upload-dialog', index, account);
     },
     openDeleteDialog(account) {
       this.$emit('open-delete-dialog', account);

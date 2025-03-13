@@ -118,6 +118,10 @@ export default {
           s.type = "Reverse_buy";
         } else if (s.type === 3) {
           s.type = "Reverse_sell";
+        } else if (s.type === 4) {
+          s.type = "OTC_buy";
+        } else if (s.type === 5) {
+          s.type = "OTC_sell";
         }  else {
           s.type = "Sell";
           s.cost = s.total * s.currency_rate + s.fee + s.exchange_fee;

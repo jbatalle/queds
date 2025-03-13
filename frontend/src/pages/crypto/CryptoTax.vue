@@ -62,7 +62,7 @@ export default {
     return {
       base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
-      years: Array.from({length: 5}, (v, k) => new Date().getFullYear()-k).sort(),
+      years: Array.from({length: 9}, (v, k) => new Date().getFullYear() - k).sort(),
       tax_year: new Date().getFullYear() - 1,
       value: 0,
       benefits: 0,

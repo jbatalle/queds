@@ -1,6 +1,6 @@
 import router from "@/router";
 import axios from "axios";
-const API_URL = "http://localhost:6060/api/users";
+const API_URL = "api/users";
 
 export default {
     state: {
@@ -46,11 +46,11 @@ export default {
 
                     context.commit("auth_success", token);
                     router.push({path: "/"});
-                }).catch(function (error) {
+                })/*.catch(function (error) {
                     console.log("Unable to login: " + error);
                     context.commit('logout');
                     router.push({name: "Login"});
-                });
+                })*/;
         },
         register(context, payload) {
             return axios
@@ -64,20 +64,19 @@ export default {
                 });
         },
         logout(context, payload) {
-            console.log("Logout!")
             return axios
                 .post(API_URL + '/logout', {
                     current_user: ""
                 })
                 .then(response => {
                     context.commit('logout');
-                    localStorage.removeItem("vue-authenticate.vueauth_access_token");
+                    localStorage.removeItem("access_token");
                     console.log("Redirect to login")
                     router.push({name: "Login"});
                     //return response.data;
                 }).catch(function (error) {
                     console.log("Error with logout, redirect to login page");
-                    localStorage.removeItem("vue-authenticate.vueauth_access_token");
+                    localStorage.removeItem("access_token");
                     //context.commit('logout');
                     console.log("Forward to login");
                     router.push({name: "Login"});

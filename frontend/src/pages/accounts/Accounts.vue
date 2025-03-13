@@ -144,7 +144,42 @@
       </span>
     </template>
   </el-dialog>
-
+  <el-dialog title="Upload CSV" v-model="uploadDialogVisible" width="60%" :close-on-press-escape="true"
+             :before-close="handleUploadClose">
+    <div class="card-body">
+      <form>
+        <el-upload
+            action=""
+            ref="uploadRef"
+            :http-request="uploadAction"
+            class="upload-demo"
+            drag
+            :limit="1"
+            :auto-upload="false"
+        >
+          <el-icon class="el-icon--upload">
+            <!--upload-filled/-->
+          </el-icon>
+          <el-button type="primary">Select file</el-button>
+          <template #tip>
+            <div class="el-upload__tip text-red" v-if="upload_ko">
+              Error uploading file: {{ upload_ko }}
+            </div>
+            <div class="el-upload__tip text-green" v-if="upload_ok">
+              File uplodaded correctly!
+            </div>
+          </template>
+        </el-upload>
+        <div class="clearfix"></div>
+      </form>
+    </div>
+    <template #footer>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="uploadDialogVisible = false">Close</el-button>
+        <el-button type="success" @click="submitCSV">Upload</el-button>
+      </span>
+    </template>
+  </el-dialog>
   <div class="row">
     <div class="col-md-12">
       <account-table
@@ -155,6 +190,7 @@
           @open-create-dialog="openCreateDialog"
           @open-read-dialog="openReadDialog"
           @open-delete-dialog="openDeleteDialog"
+          @open-upload-dialog="openUploadDialog"
       >
       </account-table>
     </div>
@@ -167,6 +203,7 @@
           @open-create-dialog="openCreateDialog"
           @open-read-dialog="openReadDialog"
           @open-delete-dialog="openDeleteDialog"
+          @open-upload-dialog="openUploadDialog"
       >
       </account-table>
     </div>
@@ -177,7 +214,10 @@ import axios from "axios";
 import ChartCard from '@/components/UIComponents/Cards/ChartCard.vue'
 import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import AccountTable from "@/pages/accounts/AccountTable.vue";
+import {ref} from 'vue'
+import {nextTick} from 'vue';
 
+const uploadRef = ref()
 export default {
   components: {
     ChartCard,
@@ -202,11 +242,18 @@ export default {
       dialogVisible: false,
       readDialogVisible: false,
       deleteDialogVisible: false,
+      uploadDialogVisible: false,
       delete_account: undefined,
       read: {
         account_id: undefined,
         encrypt_password: "",
       },
+      upload: {
+        account: undefined,
+        file: null
+      },
+      upload_ko: false,
+      upload_ok: false,
       exchangeAccounts: [],
       brokerAccounts: [],
       crowdAccounts: [],
@@ -273,6 +320,12 @@ export default {
     async openReadDialog(id, account) {
       this.readDialogVisible = true;
       this.read.account_id = account.id;
+    },
+    async openUploadDialog(id, account) {
+      this.upload_ko = false;
+      this.upload_ok = false;
+      this.uploadDialogVisible = true;
+      this.upload.account = account;
     },
     async readAccount() {
       this.loading = true;
@@ -395,6 +448,9 @@ export default {
     handleDeleteClose() {
       this.deleteDialogVisible = false;
     },
+    handleUploadClose() {
+      this.uploadDialogVisible = false;
+    },
     fillBrokers(broker_account) {
       this.brokerAccounts.push(broker_account);
       return broker_account;
@@ -435,6 +491,28 @@ export default {
     async getAccountCredentialTypes(entity_id) {
       this.entity_credentials = [];
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/entities/" + entity_id + '/credentials').then(this.fillCredentials);
+    },
+    async processUpload(res) {
+      let res_status = res.status === 200;
+      if (res_status) {
+        this.upload_ok = true;
+      } else {
+        this.upload_ko = res.response.data.message;
+      }
+    },
+    async submitCSV() {
+      this.upload_ko = false;
+      this.upload_ok = false;
+      await this.$nextTick();
+      await this.$refs.uploadRef.submit()
+    },
+    async uploadAction(option) {
+      let d = {
+        "account_id": this.upload.account.id,
+        "file": option.file
+      }
+      await axios.postForm(import.meta.env.VITE_APP_BACKEND_URL + "/entities/upload_csv", d).then(this.processUpload).catch(this.processUpload);
+      await this.$refs.uploadRef.clearFiles();
     }
   }
 }
@@ -442,5 +520,15 @@ export default {
 <style>
 .example-showcase .el-loading-mask {
   z-index: 9;
+}
+
+.text-red {
+  --un-text-opacity: 1;
+  color: rgba(248, 113, 113, var(--un-text-opacity));
+}
+
+.text-green {
+  --un-text-opacity: 1;
+  color: green;
 }
 </style>

@@ -21,7 +21,6 @@
     "vue-trading-view": "^1.0.1",
     "vuex": "^4.1.0"
   },
-
   "devDependencies": {
     "@vitejs/plugin-vue": "^3.0.1",
     "unplugin-vue-components": "^0.26.0",

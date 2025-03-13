@@ -16,8 +16,6 @@
                     <i class="nc-icon nc-zoom-split"></i>
                   </template>
                 </el-input>
-                <span></span>
-                <el-button type="primary" size="small" @click="addOrder">Add order</el-button>
               </el-space>
             </div>
           </div>
@@ -111,6 +109,7 @@ export default {
     fillOrders(res) {
       let vm = this;
       this.orders = res.data.results;
+      // TODO: list of accounts should be fetched from the accounts endpoint
       [...(new Set(this.orders.map(el => el.account))).values()].forEach(function (entry) {
         if (!vm.accounts.some(el => el.text === entry))
           vm.accounts.push({"text": entry, "value": entry});
@@ -140,7 +139,8 @@ export default {
         f = "&exchange=" + this.filter_accounts.join();
       if (this.search.length > 0)
         f += "&search=" + this.search.toLowerCase();
-      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f)
+          .then(this.fillOrders);
     },
   },
 }

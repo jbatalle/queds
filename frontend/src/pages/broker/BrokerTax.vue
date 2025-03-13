@@ -73,7 +73,7 @@ export default {
     return {
       base_currency: localStorage.getItem('base_currency'),
       closedOrders: [],
-      years: Array.from({length: 5}, (v, k) => new Date().getFullYear() - k).sort(),
+      years: Array.from({length: 6}, (v, k) => new Date().getFullYear() - k).sort(),
       tax_year: new Date().getFullYear() - 1,
       dividends: 0,
       benefits: 0,
@@ -105,12 +105,12 @@ export default {
         if (s.currency_rate === 0) {
           s.currency_rate = "-";
         }
-
+        s.benefits = 0;
         //TODO: sum fees of children items
         //s.benefits = Number(s.shares * s.price *s.currency_rate + s.fees).toFixed(2);
         s.benefits = s.cost;
         s.value_date = s.value_date.split(' ')[0];
-
+        let sell_shares = 0;
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
           c.shares = -c.shares;
@@ -121,7 +121,11 @@ export default {
           s.benefits += c.price * c.shares * c.currency_rate + c.partial_fee;
           c.cost = c.shares * c.price * c.currency_rate + c.partial_fee;
           //s.fees += c.fees;
+          sell_shares -= c.shares;
         });
+        s.shares = sell_shares;
+        s.cost = s.shares * s.price * s.currency_rate + s.fees;
+        s.benefits += s.cost;
         vm.benefits += s.benefits;
         vm.fees += s.fees;
       });
