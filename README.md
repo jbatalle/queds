@@ -1,7 +1,5 @@
 # Queds Finance
-Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers, crypto exchanges, and banks, making it easier for you to manage your investments.
-
-
+Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers abd crypto exchanges, making it easier for you to manage your investments.
 
 ## Demo
 Check out the demo at https://queds.fly.dev/overview
@@ -10,18 +8,19 @@ Check out the demo at https://queds.fly.dev/overview
 * Stock-Portfolio and Crypto-Portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
 * Tax calculation with FIFO
+* Coin tracking with FIFO
 * Watchlist for monitoring assets
 * Automatic data import from Degiro, Clicktrade and InteractiveBrokers
-* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex and Binance
+* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex, Binance and Kukoin
 * TradingView graphs for visualizing asset performance
+* Import broker/crypto data from CSV
 
 ## In progress
 * Set price alerts via Telegram
 * Dividends tracking
-* Import broker/crypto data from CSV
 * Set default portfolio currency
 * Investment fund tracking
-* Include Kucoin Exchange
+* Improving performance
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
@@ -57,11 +56,12 @@ docker-compose run migrate
 Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an overview of the directory structure:
 
     .
-    ├── api/ (flask app)
-    ├── backend/ (worker) 
-    ├── config/ (app configs)
-    ├── frontend/ (vue web page)
-    ├── models/ (DB models) 
+    ├── app
+    ├   ├── api/ (flask app)
+    ├   ├── backend/ (worker) 
+    ├   ├── config/ (app configs)
+    ├   ├── models/ (DB models)
+    ├── frontend/ (vue web page) 
     └── docker-compose.yml
     
 ### Configuration

@@ -20,7 +20,6 @@
       </slot>
       <slot name="subtitle"></slot>
       <component :is="chartComponent"
-                 :chart-id="chartId"
                  :labels="chartData.labels"
                  :color="color"
                  :title="chartTitle"
@@ -51,16 +50,16 @@
   </div>
 </template>
 <script>
-  import BarChart from '../Charts/BarChart'
-  import LineChart from '../Charts/LineChart'
-  import DoughNutChart from '../Charts/DoughnutChart'
-  import PieChart from '../Charts/PieChart'
+  // import BarChart from '../Charts/BarChart'
+  // import LineChart from '../Charts/LineChart'
+  // import DoughNutChart from '../Charts/DoughnutChart'
+   import PieChart from '../Charts/PieChart.vue'
   export default {
     name: 'chart-card',
     components: {
-      LineChart,
-      BarChart,
-      DoughNutChart,
+      // LineChart,
+      // BarChart,
+      // DoughNutChart,
       PieChart
     },
     props: {

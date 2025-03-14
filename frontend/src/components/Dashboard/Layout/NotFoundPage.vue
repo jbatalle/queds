@@ -27,16 +27,13 @@
   </div>
 </template>
 <script>
-  import {Card, Button, InfoSection} from '../../UIComponents';
-  import AppNavbar from '../Views/Pages/Layout/AppNavbar'
-  import AppFooter from '../Views/Pages/Layout/AppFooter'
+  import AppNavbar from '@/components/Dashboard/Layout/AppNavbar.vue';
+  import AppFooter from '@/components/Dashboard/Layout/AppFooter.vue';
+
   export default {
     components: {
-      Card,
       AppNavbar,
-      AppFooter,
-      InfoSection,
-      [Button.name]: Button
+      AppFooter
     },
     methods: {
       toggleNavbar () {

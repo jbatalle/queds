@@ -1,30 +1,22 @@
 <template>
-  <div
-      class="sidebar"
-      :data-color="backgroundColor"
-      :data-active-color="activeColor"
-  >
+  <div class="sidebar" :data-color="backgroundColor" :data-active-color="activeColor">
     <div class="logo">
-      <a
-          class="simple-text logo-mini"
-          aria-label="sidebar mini logo"
-          href=""
-      >
+      <a class="simple-text logo-mini" aria-label="sidebar mini logo" href="">
         <div class="logo-img">
           <img :src="logo" alt=""/>
         </div>
       </a>
-      <a
-          class="simple-text logo-normal"
-          href=""
-      >
+      <a class="simple-text logo-normal" href="">
         {{ title }}
       </a>
     </div>
     <div class="sidebar-wrapper" ref="sidebarScrollArea">
-      <slot></slot>
+      <slot class="nav"></slot>
+     <!-- slot - {{ sidebarLinks }}
       <ul class="nav">
+        nav
         <slot name="links">
+          links - {{sidebarLinks}}
           <sidebar-item
               v-for="(link, index) in sidebarLinks"
               :key="link.name + index"
@@ -39,12 +31,12 @@
           </sidebar-item>
         </slot>
       </ul>
+      -->
     </div>
   </div>
 </template>
 <script>
 import "perfect-scrollbar/css/perfect-scrollbar.css";
-import Vuex from "vuex";
 
 export default {
   props: {
@@ -80,7 +72,7 @@ export default {
     },
     logo: {
       type: String,
-      default: "/img/laravel-vue.svg",
+      default: "/img/queds.png",
       description: "Sidebar Logo",
     },
     sidebarLinks: {
@@ -110,7 +102,8 @@ export default {
     },
   },
   mounted() {
-    this.initScrollBarAsync();
+    //console.log("MOunted sidebar");
+    //this.initScrollBarAsync();
   },
   beforeDestroy() {
     if (this.$sidebar.showSidebar) {

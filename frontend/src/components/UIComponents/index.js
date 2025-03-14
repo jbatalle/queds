@@ -1,18 +1,8 @@
-import Button from './Button'
-import Card from './Cards/Card'
-import Pagination from './Pagination'
-import StatsCard from './Cards/StatsCard'
-import InfoSection from './InfoSection'
-import Navbar from './Navbar/Navbar'
-import NavbarToggleButton from './Navbar/NavbarToggleButton'
+import Card from './Cards/Card.vue';
+import Navbar from '../UIComponents/Navbar/Navbar.vue';
 
 
 export {
   Card,
-  Button,
-  Pagination,
-  NavbarToggleButton,
-  Navbar,
-  StatsCard,
-  InfoSection,
+  Navbar
 }
