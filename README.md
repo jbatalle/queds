@@ -56,11 +56,12 @@ docker-compose run migrate
 Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an overview of the directory structure:
 
     .
-    ├── api/ (flask app)
-    ├── backend/ (worker) 
-    ├── config/ (app configs)
-    ├── frontend/ (vue web page)
-    ├── models/ (DB models) 
+    ├── app
+    ├   ├── api/ (flask app)
+    ├   ├── backend/ (worker) 
+    ├   ├── config/ (app configs)
+    ├   ├── models/ (DB models)
+    ├── frontend/ (vue web page) 
     └── docker-compose.yml
     
 ### Configuration

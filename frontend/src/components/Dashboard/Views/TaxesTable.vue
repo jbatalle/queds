@@ -11,7 +11,9 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column v-else label="Symbol" property="pair"></el-table-column>
+      <el-table-column v-else label="Symbol" property="pair" sortable></el-table-column>
+      <el-table-column prop="account" label="Account">
+      </el-table-column>
       <el-table-column v-if="type==='broker'" label="ISIN" property="ticker.isin"></el-table-column>
       <el-table-column label="Date" property="value_date" sortable></el-table-column>
       <el-table-column v-if="type==='broker'" label="Shares" property="shares" width="100px"></el-table-column>
@@ -50,7 +52,7 @@
           {{ $filters.toCurrency(scope.row.cost, base_currency) }}
         </template>
       </el-table-column>
-      <el-table-column label="Benefits" property="benefits">
+      <el-table-column label="Benefits" property="benefits" sortable>
         <template v-slot:default="scope">
           {{ $filters.toCurrency(scope.row.benefits, base_currency) }}
         </template>

@@ -73,6 +73,20 @@
                         }}
                       </template>
                     </el-table-column>
+                    <el-table-column v-if="type==='broker'" label="Broker" prop="broker">
+                      <template v-slot:default="scope">
+                        {{
+                          scope.row.transaction.account_id
+                        }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column v-if="type==='exchange'" label="Exchange" prop="exchange">
+                      <template v-slot:default="scope">
+                        {{
+                          scope.row.order.account_id
+                        }}
+                      </template>
+                    </el-table-column>
                     <!--el-table-column label="Broker" prop="broker"/-->
                   </el-table>
                 </div>
@@ -155,13 +169,18 @@
           </el-table-column>
           <el-table-column v-if="type==='broker'" label="Day Change" property="market.price_change" sortable>
             <template v-slot:default="scope"><!-- v-if="scope.row.market.price_change"-->
+              <span v-if="scope.row.market.price_change">
               {{ $filters.round(scope.row.market.price_change, 2) }}%
+              </span>
+              <span v-else class="">
+                -
+              </span>
             </template>
           </el-table-column>
-          <el-table-column v-if="type==='broker'" label="Pre" property="market.pre_change">
+          <el-table-column v-if="type==='broker'" label="Pre" property="market.pre_change" sortable>
             <template v-slot:default="scope"><!-- v-if="scope.row.market.pre"-->
               {{ $filters.toCurrency(scope.row.market.pre, scope.row.ticker.currency) }}
-              <span v-if="scope.row.market.pre_change > 0" class="green">
+              <span v-if="scope.row.market.pre_change">
                 ({{ $filters.round(scope.row.market.pre_change, 2) }}%)
               </span>
               <span v-else class="">

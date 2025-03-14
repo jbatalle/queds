@@ -87,7 +87,7 @@
                     description=""
                     :key="investKey">
           <template #header>
-            <h5 class="card-title">Invested</h5>
+            <h5 class="title">Invested </h5>
           </template>
         </chart-card>
       </div>
