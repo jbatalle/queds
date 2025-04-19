@@ -9,7 +9,9 @@ Check out the demo at https://queds.fly.dev/overview
 ## Features
 * Stock-Portfolio and Crypto-Portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
+* Wallet movement tracking with tax basis explanation per transaction
 * Tax calculation with FIFO
+* Profit/Loss dashboard with realized and unrealized gain tracking
 * Watchlist for monitoring assets
 * Automatic data import from Degiro, Clicktrade and InteractiveBrokers
 * Automatic data import from exchanges: Bitstamp, Kraken, Bittrex and Binance
