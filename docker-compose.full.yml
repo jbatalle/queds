@@ -14,7 +14,7 @@ services:
       - ./VERSION:/usr/VERSION
     environment:
       - FLASK_ENV=development
-      - BACKEND_SETTINGS=config.local
+      - BACKEND_SETTINGS=config.full
 #      - PYTHON_FILE=app.py
 #      - PYTHON_ARGS="run -h 0.0.0.0:${PORT}"
     networks:
@@ -35,7 +35,7 @@ services:
       - ./app/config:/usr/src/config
       - ./app/models:/usr/src/models
     environment:
-      - BACKEND_SETTINGS=config.local
+      - BACKEND_SETTINGS=config.full
       - PYTHON_FILE=worker.py
       - PYTHON_ARGS=""
     networks:
@@ -54,7 +54,7 @@ services:
       - ./app/config:/usr/src/config
       - ./app/models:/usr/src/models
     environment:
-      - BACKEND_SETTINGS=config.local
+      - BACKEND_SETTINGS=config.full
     networks:
       - api_bridge
     depends_on:
@@ -75,7 +75,6 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NODE_ENV=development
-      - VITE_APP_BACKEND_URL=/api
     networks:
       - api_bridge
     depends_on:
@@ -94,6 +93,29 @@ services:
       - frontend
     networks:
       - api_bridge
+
+  redis:
+    image: bitnami/redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    logging:
+      driver: none
+    networks:
+      - api_bridge
+
+  db:
+    image: timescale/timescaledb:2.18.2-pg16
+    restart: always
+    environment:
+      POSTGRES_DB: queds
+      POSTGRES_USER: queds_user
+      POSTGRES_PASSWORD: Kbh85n7M6Fxo
+    volumes:
+      - users_data:/var/lib/postgresql/data/
+    networks:
+      - api_bridge
+    ports:
+      - 5432:5432
 
 networks:
   api_bridge:

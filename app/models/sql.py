@@ -13,18 +13,22 @@ def create_db_connection(SQL_CONF):
     global settings
 
     options = {'pool_size': 15}
-    return do_create_engine(SQL_CONF['user'], SQL_CONF['password'], SQL_CONF['host'], SQL_CONF['port'],
+    return do_create_engine(SQL_CONF['db_type'], SQL_CONF['user'], SQL_CONF['password'], SQL_CONF['host'], SQL_CONF['port'],
                             SQL_CONF['database'], options)
 
 
-def do_create_engine(user, password, host, port, database, options={}):
-    print("Create engine!")
+def do_create_engine(db_type, user, password, host, port, database, options={}):
     global mysql_engine, db_session, Base
 
-    conn_string = 'postgresql+psycopg2://{0}:{1}@{2}:{3}/{4}'.format(user, password, host, port, database)
+    if db_type == 'postgresql':
+        conn_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'
+    elif db_type == 'sqlite':
+        conn_string = f'sqlite:///{database}'
+    else:
+        raise ValueError(f"Unsupported database type: {db_type}")
+
     mysql_engine = create_engine(conn_string, pool_pre_ping=True, pool_timeout=20, pool_recycle=299, echo=False, isolation_level='AUTOCOMMIT', **options)
     db_session = scoped_session(sessionmaker(bind=mysql_engine))  # type: Session
-    # Base = declarative_base()
     Base.query = db_session.query_property()
     return mysql_engine
 

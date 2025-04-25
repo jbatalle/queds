@@ -32,15 +32,15 @@ You also have the flexibility to choose between different deployment configurati
 ### Deployment Options
 You can choose how to deploy the application based on your needs:
 
-1. `docker-compose.yml` for a complete environment
-   - Includes extra services: PostgreSQL (TimescaleDB) and Redis.
-2. `docker-compose.devel.yml` for simplified environment
+1. `docker-compose.yml` for a simplified environment
    - Uses SQLite instead of PostgreSQL and an internal dictionary instead of Redis.
+2. `docker-compose.full.yml` for a complete environment
+   - Includes extra services: PostgreSQL (TimescaleDB) and Redis.
 
 ### Docker compose
-Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
+Deploy everything with docker-compose:
 ```
-docker-compose build (also you can use --parallel)
+docker-compose build --parallel
 docker-compose up
 ```
 Check the VUE_APP_BACKEND_URL environment variable in docker-compose.yml. 
@@ -50,10 +50,10 @@ The database is created automatically via alembic migrations. To be sure, once e
 docker-compose run migrate
 ```
 
-#### Simplified environment
+#### Full environment
 ```
-docker-compose -f docker-compose.devel.yml build (also you can use --parallel)
-docker-compose -f docker-compose.devel.yml up
+docker-compose -f docker-compose.full.yml build --parallel
+docker-compose -f docker-compose.full.yml up
 ```
 
 ## Initial steps
@@ -75,8 +75,9 @@ Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an over
     │   ├── config/ (app configs)
     │   └── models/ (database models)
     ├── frontend/ (vue web page)
-    ├── docker-compose.devel.yml
-    └── docker-compose.yml
+    ├── docker-compose.full.yml
+    ├── docker-compose.yml
+    └── nginx_template.conf
     
 ### Configuration
 Edit the configuration file `app/config/local.py` and set the parameters according to your local environment.

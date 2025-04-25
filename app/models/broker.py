@@ -287,34 +287,6 @@ class Currency(Base, CRUD):
         db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
 
 
-class CrowdTransaction(Base, CRUD):
-    __tablename__ = 'crowd_transaction'
-
-    class Type:
-        FUND = 0
-        INVEST = 1
-        RETURN = 2
-        FUTURE_RETURN = 3
-
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('accounts.id'))
-    account = relationship("Account")
-    external_id = Column(String(70), unique=True)
-    value_date = Column(Date, nullable=False, default=datetime.now)
-    type = Column(Integer, nullable=False)
-    amount = Column(Float)
-    interest = Column(Float)
-    project_id = Column(String(70))
-    tax = Column(Float)
-
-    @classmethod
-    def bulk_insert(cls, transactions: list):
-        if len(transactions) == 0:
-            return
-
-        db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
-
-
 class Watchlists(Base, CRUD):
     __tablename__ = 'watchlists'
     __table_args__ = (UniqueConstraint('user_id', 'name', name='_watchlist_user_id_name_unique'),)

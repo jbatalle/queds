@@ -1,8 +1,7 @@
 DEMO_MODE = False
-DEBUG = True
+DEBUG = False
 
 SQL_CONF = {
-    'db_type': 'postgresql',
     'user': 'queds_user',
     'password': 'Kbh85n7M6Fxo',
     'host': 'db',
@@ -11,9 +10,7 @@ SQL_CONF = {
     'options': {}
 }
 
-SQL_CONF = {
-    'db_type': 'sqlite',
-    'database': 'queds.sqlite'
+REDIS = {
+    'host': 'redis',
+    'port': 6379
 }
-
-REDIS = None

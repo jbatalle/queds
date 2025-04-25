@@ -27,8 +27,10 @@ sys.path.insert(0, PROJ_DIR)
 from config import settings
 
 sql_conf = settings.SQL_CONF
-connection_string = f'postgresql://{sql_conf["user"]}:{sql_conf["password"]}@{sql_conf["host"]}:{sql_conf["port"]}/{sql_conf["database"]}'
-# url = "sqlite:///alembic_sample.sqlite"
+if sql_conf['db_type'] == 'postgresql':
+    connection_string = f'postgresql://{sql_conf["user"]}:{sql_conf["password"]}@{sql_conf["host"]}:{sql_conf["port"]}/{sql_conf["database"]}'
+else:
+    connection_string = f"sqlite:///{sql_conf["database"]}"
 
 from models import sql
 from models.broker import *
