@@ -4,7 +4,7 @@ Queds Finance is a finance portfolio management tool that allows you to track yo
 
 
 ## Demo
-Check out the demo at https://queds.fly.dev/overview
+Check out the demo at http://queds.alwaysdata.net/overview
 
 ## Features
 * Stock-Portfolio and Crypto-Portfolio tracking
