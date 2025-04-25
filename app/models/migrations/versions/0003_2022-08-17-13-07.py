@@ -22,7 +22,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('wallet_id', sa.Integer(), nullable=True),
     sa.Column('order_id', sa.Integer(), nullable=True),
-    sa.Column('amount', sa.Integer(), nullable=True),
+    sa.Column('amount', sa.Float(), nullable=True),
     sa.ForeignKeyConstraint(['order_id'], ['exchange_orders.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['wallet_id'], ['exchange_wallet.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -42,9 +42,9 @@ def upgrade():
     op.drop_column('exchange_balance', 'update_date')
     op.add_column('exchange_balance', sa.Column('update_date', sa.DateTime(), nullable=False))
     op.drop_column('exchange_orders', 'value_date')
-    op.add_column('exchange_orders', sa.Column('value_date', sa.DateTime(), nullable=False))
+    op.add_column('exchange_orders', sa.Column('value_date', sa.DateTime(timezone=True), nullable=False))
     op.drop_column('exchange_transactions', 'value_date')
-    op.add_column('exchange_transactions', sa.Column('value_date', sa.DateTime(), nullable=False))
+    op.add_column('exchange_transactions', sa.Column('value_date', sa.DateTime(timezone=True), nullable=False))
     # ### end Alembic commands ###
 
 

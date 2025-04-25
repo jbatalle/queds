@@ -6,236 +6,182 @@ import csv
 import time
 import logging
 from collections import defaultdict
+from typing import Dict, Optional
 
 logger = logging.getLogger("utils.crypto_prices")
 
-backup_prices = "backend/wallet_processor/utils/prices.json"
-prices = defaultdict(lambda: defaultdict(dict))
-if not os.path.exists(backup_prices):
-    backup_prices = "wallet_processor/utils/prices.json"
+# ----------------------------
+# File & Cache Initialization
+# ----------------------------
+backup_paths = [
+    "backend/wallet_processor/utils/prices.json",
+    "wallet_processor/utils/prices.json",
+    "app/backend/wallet_processor/utils/prices.json",
+]
+backup_prices = next((p for p in backup_paths if os.path.exists(p)), backup_paths[0])
 
+prices: Dict[str, Dict[str, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
 if os.path.exists(backup_prices):
-    print("Loading wallet prices...")
+    logger.debug("Loading cached crypto prices...")
     with open(backup_prices) as f:
-        prices = defaultdict(lambda: defaultdict(dict), json.load(f))
+        prices.update(json.load(f))
 
+# ----------------------------
+# CSV Price Loaders
+# ----------------------------
 
-def get_nano_prices():
-    with open("wallet_processor/utils/xno-eur-max.csv", newline='') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        prices = {}
-        for idx, row in enumerate(reader):
-            if idx == 0:
-                continue
-            # 2017-07-15 00:00:00 UTC
-            time = int(datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S %Z").strftime("%s"))
-            prices[time] = row[1]
-
+def load_csv_prices(file_path: str) -> Dict[int, float]:
+    prices = {}
+    if not os.path.exists(file_path):
+        logger.warning(f"Missing file: {file_path}")
+        return prices
+    with open(file_path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)  # Skip header
+        for row in reader:
+            try:
+                ts = int(datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S %Z").timestamp())
+                prices[ts] = float(row[1])
+            except Exception as e:
+                logger.warning(f"Skipping invalid row {row}: {e}")
     return prices
 
+def get_nano_prices() -> Dict[int, float]:
+    return load_csv_prices("wallet_processor/utils/xno-eur-max.csv")
 
-def get_iota_prices():
-    iota_file = "backend/wallet_processor/utils/miota-eur-max.csv"
-    if not os.path.exists(iota_file):
-        iota_file = "wallet_processor/utils/prices.json"
-    with open(iota_file, newline='') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        prices = {}
-        for idx, row in enumerate(reader):
-            if idx == 0:
-                continue
-            # 2017-07-15 00:00:00 UTC
-            time = int(datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S %Z").strftime("%s"))
-            prices[time] = row[1]
+def get_iota_prices() -> Dict[int, float]:
+    paths = [
+        "backend/wallet_processor/utils/miota-eur-max.csv",
+        "wallet_processor/utils/miota-eur-max.csv",
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            return load_csv_prices(path)
+    return {}
 
-    return prices
+# ----------------------------
+# Price Lookup Logic
+# ----------------------------
 
-# For old data:
-# url = "https://www.coingecko.com/es/monedas/nano/historical_data/eur?start_date=2017-01-02&end_date=2022-02-17"
-
-
-def get_price(source, target, timestamp):
+def get_price(source: str, target: str, timestamp) -> Optional[float]:
+    """Get historical price for a given crypto pair and timestamp."""
     try:
         timestamp = int(timestamp.strftime("%s"))
-    except:
-        timestamp = timestamp
+    except AttributeError:
+        timestamp = int(timestamp)
 
-    if source in prices:
-        if target in prices[source]:
-            if str(timestamp) in prices[source][target]:
-                return prices[source][target][str(timestamp)]
+    if source == 'BTTC':
+        source = 'BTT'
 
-    if source == 'XNO' or source == 'NANO':
-        nano_prices = get_nano_prices()
-        date = datetime.datetime.fromtimestamp(timestamp)
-        new_timestamp = int(datetime.datetime(date.year, date.month, date.day).strftime("%s"))
-        price = float(nano_prices[new_timestamp])
+    daily_ts = int(datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0).timestamp())
+    cache_key = str(timestamp)
 
-        if target not in prices[source]:
-            prices[source][target] = {}
-        prices[source][target][timestamp] = price
-
-        with open(backup_prices, "w") as f:
-            json.dump(prices, f)
-
+    if price := prices.get(source, {}).get(target, {}).get(cache_key):
         return price
+    
+    # Handle symbol aliases
+    if source in ['XNO', 'NANO']:
+        source = 'NANO'
+        return store_and_return(source, target, timestamp, get_offline_price(get_nano_prices(), daily_ts))
 
     if source == 'IOTA' and target == 'EUR':
-        nano_prices = get_iota_prices()
-        date = datetime.datetime.fromtimestamp(timestamp)
-        new_timestamp = int(datetime.datetime(date.year, date.month, date.day).strftime("%s"))
-        price = float(nano_prices[new_timestamp])
+        return store_and_return(source, target, timestamp, get_offline_price(get_iota_prices(), daily_ts))
 
-        if target not in prices[source]:
-            prices[source][target] = {}
-        prices[source][target][timestamp] = price
-
-        with open(backup_prices, "w") as f:
-            json.dump(prices, f)
-
-        return price
-
-        # coin_price = float(row[3]) / float(row[1])
-        usd_price = get_price("IOTA", "USD", timestamp)
-        eur_usd = get_price("USD", "EUR", timestamp)
-        if usd_price == 0:
-            usd_price = 0.01
-        prices[source][target][timestamp] = usd_price * eur_usd
-        return usd_price * eur_usd
-
-    if source != 'IOTA':
-        logger.debug("Downloading {}".format(source))
-
+    # CryptoCompare fetch
+    logger.debug(f"Fetching {source}/{target} at {timestamp}")
     url = f"https://min-api.cryptocompare.com/data/v2/histoday?fsym={source}&tsym={target}&limit=1&toTs={timestamp}"
-    # timestamp = int(timestamp.strftime("%s"))
-    # r = requests.get(url.format(source, target, timestamp))
+
+    price = fetch_price_from_url(url)
+    if price is not None:
+        return store_and_return(source, target, timestamp, price)
+
+    # Try HitBTC exchange
+    market = get_markets(source, target)
+    if not market:
+        url += f"&e={market}"
+        logger.warning(f"Retrying {source}/{target} using {market} exchange...")
+        price = fetch_price_from_url(url)
+        if price is not None:
+            return store_and_return(source, target, timestamp, price)
+    
+    if target == 'BTC':
+        raise
+
+    logger.info(f"Fallback: {source}→BTC→{target}")
+    try:
+        btc_price = get_price(source, "BTC", timestamp)
+        target_price = get_price("BTC", target, timestamp)
+        if btc_price and target_price:
+            return store_and_return(source, target, timestamp, btc_price * target_price)
+    except Exception as e:
+        logger.error(f"BTC fallback failed: {e}")
+    return 0
+
+# ----------------------------
+# Helpers
+# ----------------------------
+
+def get_markets(source, target):
+    url = f"https://min-api.cryptocompare.com/data/top/exchanges/full?fsym={source}&tsym={target}"
     r = requests.get(url)
     data = r.json()
-    if r.status_code != 200:
-        logger.error(f"Error: {data}")
-    try:
-        data.get('Data').get('Data')[1].get('close')
-    except:
-        logger.error("Unable to recover price of {}/{}: {}".format(source, target, data))
-        check_limit(data)
-        # get to USD
-        if target != "USD":
-            usd_price = get_price(source, "USD", timestamp)
-            usd_eur_price = get_price("USD", "EUR", timestamp)
-            return usd_price * usd_eur_price
-        return 1
-    if data.get('Data').get('Data')[1].get('close') == 0:
-        logger.error("HEY!! price is 0!")
-        return data.get('Data').get('Data')[1].get('close')
-    try:
-        prices[source][target][timestamp] = data.get('Data').get('Data')[1].get('close')
-    except:
-        logger.error(f"Error: {data.get('Data')}")
+    if 'Data' not in data:
+        return None
+    if 'Exchange' not in data['Data']:
+        return None
+    if len(data['Data']['Exchange']) > 0:
+        return data['Data']['Exchange'][0]['MARKET']
 
-    with open(backup_prices, "w") as f:
-        json.dump(prices, f)
-    return data.get('Data').get('Data')[1].get('close')
+def get_offline_price(price_dict: Dict[int, float], timestamp: int) -> float:
+    """Get price from local CSV by timestamp."""
+    return float(price_dict.get(timestamp, 0.0))
 
+def fetch_price_from_url(url: str) -> Optional[float]:
+    try:
+        # logger.debug(f"Url: {url}")
+        r = requests.get(url)
+        if r.status_code != 200:
+            logger.error(f"Error from API: {r.text}")
+            return None
+        data = r.json()
+        if not is_valid_price_data(data):
+            logger.warning(f"Invalid price data structure: {data}")
+            check_limit(data)
+            return None
+        price = data['Data']['Data'][1]['close']
+        if price == 0:
+            logger.warning(f"Price is 0 for {url}")
+        return data['Data']['Data'][1]['close']
+    except Exception as e:
+        logger.error(f"Exception fetching URL: {e}")
+        return None
+    
+
+
+def is_valid_price_data(data) -> bool:
+    try:
+        return (
+            'Data' in data and
+            'Data' in data['Data'] and
+            len(data['Data']['Data']) > 1 and 'close' in data['Data']['Data'][1]
+        )
+    except:
+        return False
 
 def check_limit(data):
-    if 'You are over' not in data.get('Message'):
-        logger.error(data.get('Message'))
-    time.sleep(2)
-    # TODO: check limits and retry after limits
+    if 'You are over' in data.get('Message', ''):
+        logger.warning("Rate limit exceeded. Waiting...")
+        time.sleep(2)
+    #else:
+        #logger.error("Error: ", data.get('Message'))
 
-
-def search_in_temporal(source, target, timestamp):
-
-    if source in prices:
-        if target in prices[source]:
-            if str(timestamp) in prices[source][target]:
-                return prices[source][target][str(timestamp)]
-
-    if source == 'XNO' or source == 'NANO':
-        nano_prices = get_nano_prices()
-        date = datetime.datetime.fromtimestamp(timestamp)
-        new_timestamp = int(datetime.datetime(date.year, date.month, date.day).strftime("%s"))
-        price = float(nano_prices[new_timestamp])
-
-        if target not in prices[source]:
-            prices[source][target] = {}
-        prices[source][target][timestamp] = price
-
-        with open(backup_prices, "w") as f:
-            json.dump(prices, f)
-
-        return price
-
-    if (source == 'IOTA' and target == 'EUR') or (target == 'IOTA'):
-        nano_prices = get_iota_prices()
-        date = datetime.datetime.fromtimestamp(timestamp)
-        new_timestamp = int(datetime.datetime(date.year, date.month, date.day).strftime("%s"))
-        price = float(nano_prices[new_timestamp])
-
-        if target not in prices[source]:
-            prices[source][target] = {}
-        prices[source][target][timestamp] = price
-
-        with open(backup_prices, "w") as f:
-            json.dump(prices, f)
-
-        return price
-
-        # coin_price = float(row[3]) / float(row[1])
-        usd_price = get_price("IOTA", "USD", timestamp)
-        eur_usd = get_price("USD", "EUR", timestamp)
-        if usd_price == 0:
-            usd_price = 0.01
-        prices[source][target][timestamp] = usd_price * eur_usd
-        return usd_price * eur_usd
-
-    if source != 'IOTA':
-        logger.debug("Downloading {}".format(source))
-
-    return False
-
-
-def get_prices(sources, target, timestamp):
-    try:
-        timestamp = int(timestamp.strftime("%s"))
-    except:
-        timestamp = timestamp
-
-    source_prices = []
-    for source in sources:
-        source_prices.append(search_in_temporal(source, target, timestamp))
-
-    if False not in source_prices:
-        return source_prices[0], source_prices[1]
-
-    logger.error(f"Get prices from {sources} to {target} at {timestamp}")
-    sources_str = ','.join(sources)
-    r = requests.get(f"https://min-api.cryptocompare.com/data/pricehistorical?fsym={target}&tsyms={sources_str}&ts={timestamp}")
-    data = r.json()
-
-    if r.status_code != 200:
-        if 'There is no data for the ' in data.get('Message'):
-            # TODO
-            return 1, 1
-
-        logger.error(f"Error: {data}")
-        check_limit(data)
-        return 1, 1
-
-    try:
-        for k, v in data[target].items():
-            if target not in prices[k]:
-                prices[k][target] = {}
-            prices[k][target][str(timestamp)] = v
-    except:
-        logger.error(f"Error: {data}")
-        check_limit(data)
-        return 1,1
+def store_and_return(source: str, target: str, timestamp: int, price: float) -> float:
+    """Store price in cache and return it."""
+    str_ts = str(timestamp)
+    prices.setdefault(source, {}).setdefault(target, {})[str_ts] = price
     try:
         with open(backup_prices, "w") as f:
             json.dump(prices, f)
-    except:
-        logger.error("Error saving prices")
-        return 1, 1
-
-    return data[target][sources[0]], data[target][sources[1]]
+    except Exception as e:
+        logger.warning(f"Could not write to price cache: {e}")
+    return price

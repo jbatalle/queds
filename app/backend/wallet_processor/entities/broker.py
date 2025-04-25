@@ -2,7 +2,7 @@ from wallet_processor.entities import AbstractEntity
 from models.system import Account, Entity
 from models.broker import StockTransaction, Wallet, ClosedOrder, OpenOrder, Ticker, ProxyOrder, SplitOrder
 from wallet_processor.utils import BalanceQueue, Transaction
-
+from typing import List, Tuple, Dict
 from sqlalchemy.orm import joinedload
 
 
@@ -12,9 +12,8 @@ class BrokerProcessor(AbstractEntity):
         super(BrokerProcessor, self).__init__()
         self.otc_orders = []
         self.split_orders = []
-
-        self.orders = []
-        self.wallet = {}  # Open positions by ticker_id
+        self.spinoff_orders = []
+        self.fractional_orders = []
         self.closed_orders = []
 
         self.isin_ticker = {}
@@ -24,8 +23,10 @@ class BrokerProcessor(AbstractEntity):
         return orders
 
     @staticmethod
-    def clean(transactions):
-        # Remove all closed orders and proxy orders
+    def clean(transactions) -> None:
+        """
+        Removes all closed and proxy orders from the database.
+        """
         ids = [o.id for o in transactions]
         ProxyOrder.query.filter(ProxyOrder.transaction_id.in_(ids)).delete()
         ClosedOrder.query.filter(ClosedOrder.sell_transaction_id.in_(ids)).delete()
@@ -38,9 +39,8 @@ class BrokerProcessor(AbstractEntity):
     @staticmethod
     def get_orders(accounts):
         """
-        Get all stock orders of user user_id in ASC order
+        Retrieve all stock orders for the provided accounts in ascending order.
         """
-        # .options(joinedload('account.entity')) \
         orders = StockTransaction.query\
             .options(joinedload(StockTransaction.account)) \
             .options(joinedload(StockTransaction.ticker)) \
@@ -53,7 +53,7 @@ class BrokerProcessor(AbstractEntity):
     def get_transactions(accounts):
         return []
 
-    def trade(self, queue, order):
+    def trade(self, queue, order) -> Tuple:
         """
         Processes stock orders, handling buys, sells, OTC, and splits.
 
@@ -71,13 +71,18 @@ class BrokerProcessor(AbstractEntity):
             self.isin_ticker[order.ticker.isin] = []
         self.isin_ticker[order.ticker.isin].append(order.ticker.isin)
 
-        sell_items = None
-        queue_result = None
+        sell_items, queue_result = None, None
         fees = order.fee + order.exchange_fee
-        if order.shares == 0:
-            self._logger.warning(f"Shares is 0 for {order.ticker.isin}!")
+        if (order.shares == 0 or order.price == 0) and order.type == StockTransaction.Type.SELL:
+            self.print_operation(queue, order, f"Sell Shares or price is 0. Shares: {order.shares}. Price: {order.price}. Type: {order.type}!")
+            # self._logger.warning(f"{order.value_date}-{order.ticker.isin} - Sell Shares or price is 0. Shares: {order.shares}. Price: {order.price}. Type: {order.type}!")
+            # TODO: analyze if return here when transaction is SELL
             pass
-            # return None
+            # return None, None
+        if (order.shares == 0 or order.price == 0) and order.type == StockTransaction.Type.BUY:
+            # self._logger.warning(f"{order.value_date}-{order.ticker.isin} - Buy Shares or price is 0. Shares: {order.shares}. Price: {order.price}. Type: {order.type}!")
+            pass
+            # return None, None
 
         if order.shares == 0 and order.type == StockTransaction.Type.SPLIT_SELL:
             # convert split to buy
@@ -90,33 +95,78 @@ class BrokerProcessor(AbstractEntity):
             original_currency_rate = queue.queues[order.ticker.isin][0].original_currency_rate
 
         if order.type in [StockTransaction.Type.BUY]:
+            self.print_operation(queue, order, 'Buy')
             order = Transaction(Transaction.Type.BUY, order, order.ticker.isin, order.shares, order.price, fees)
             queue.buy(order)
         elif order.type == StockTransaction.Type.SELL:
+            self.print_operation(queue, order, 'Sell')
             order = Transaction(Transaction.Type.SELL, order, order.ticker.isin, order.shares, order.price, fees)
             sell_items = queue.sell(order)
+        elif order.type == StockTransaction.Type.SPIN_OFF_SELL:
+            # check if order exists in spin_off list
+            # if not, do nothing
+            # else, match the buy spin_off and execute an ISIN change
+            self.print_operation(queue, order, 'Sell Spinoff')
+            spinoff_order = next((o for o in self.spinoff_orders if o.shares == order.shares), None)
+
+            if not spinoff_order:
+                self.print_operation(queue, order, 'Spinoff without sell!')
+                # TODO: check if we have previous fractional orders in self.fractional_orders
+                fractional_order = next((o for o in self.fractional_orders if o.amount == order.shares and o.sell_trade.ticker == order.ticker.isin), None)
+                if order.ticker.isin in queue.queues and not fractional_order:
+                    self.print_operation(queue, order, 'Selling Spinoff')
+                    order = Transaction(Transaction.Type.SELL, order, order.ticker.isin, order.shares, order.price, fees)
+                    sell_items = queue.sell(order)
+                    return sell_items, None
+                return None, None
+
+            if order.ticker.isin != spinoff_order.ticker.isin:
+                # queue.queues[order.ticker.isin] = queue.queues.pop(spinoff_order.ticker.isin)
+                queue.queues[spinoff_order.ticker.isin] = queue.queues.pop(order.ticker.isin)
+            #if order.ticker.isin not in queue.queues:
+                #self._logger.debug(
+#                    f"{order.value_date}-{order.ticker.isin}-{order.ticker.ticker}-Changing ISIN for SpinOff order. OLD: {spinoff_order.ticker.isin} - NEW: {order.ticker.isin}")
+#                queue.queues[order.ticker.isin] = queue.queues.pop(spinoff_order.ticker.isin)
+            else:
+                self._logger.info("Ticker already in queue! What to do here?")
+            self.spinoff_orders.remove(spinoff_order)
+        elif order.type == StockTransaction.Type.SPIN_OFF_BUY:
+            self.print_operation(queue, order, 'Buy SpinOff')
+            self.spinoff_orders.append(order)
+            order = Transaction(Transaction.Type.BUY, order, order.ticker.isin, order.shares, order.price, fees)
+            queue.buy(order)
         elif order.type == StockTransaction.Type.OTC_SELL:
+            self.print_operation(queue, order, 'FROM OTC')
             self.otc_orders.append(order)
         elif order.type in [StockTransaction.Type.OTC_BUY]:
-            self._logger.debug(f"{order.ticker.isin} - {order.ticker.ticker} TO OTC. {order.shares}@{order.price}")
+            # moving to otc
+            self.print_operation(queue, order, 'TO OTC')
 
-            if order.ticker.isin not in queue.queues:
-                # search the OLD isin and replace by the new one
-                otc_order = [o for o in self.otc_orders if o.shares == order.shares]
-                if not otc_order:
-                    self._logger.error(f"OTC order not found for {order.ticker.isin} - {order.ticker.ticker}!")
-                    return None, order
-                self._logger.info(f"Changing ISIN for OTC order. {order.ticker.ticker} - OLD: {otc_order[0].ticker.isin} - NEW: {order.ticker.isin}")
-                self.otc_orders.remove(otc_order[0])
-                queue.queues[order.ticker.isin] = queue.queues.pop(otc_order[0].ticker.isin)
+            otc_order = next((o for o in self.otc_orders if o.shares == order.shares), None)
+            if not otc_order:
+                self.print_operation(queue, order, 'OTC order not found for')
+                return None, order
+
+            if order.ticker.isin != otc_order.ticker.isin:
+                if otc_order.ticker.isin in queue.queues and queue.current_amount(otc_order.ticker.isin):
+                    queue.queues[order.ticker.isin] = queue.queues.pop(otc_order.ticker.isin)
+                elif order.ticker.isin in queue.queues and queue.current_amount(order.ticker.isin):
+                    queue.queues[otc_order.ticker.isin] = queue.queues.pop(order.ticker.isin)
+                else:
+                    self._logger.debug(f"Ticker found {order.ticker.isin} in queue. Check for {otc_order.ticker.isin}")
+            else:
+                self._logger.debug(f"Do nothing for Ticker {order.ticker.isin} not in queue. Check for {otc_order.ticker.isin}")
+
+            self.otc_orders.remove(otc_order)
+            return None, None
 
         elif order.type == StockTransaction.Type.SPLIT_BUY:
-            self._logger.info(f"Split buy: {order.ticker.ticker} - {order.ticker.isin} - {order.shares}@{order.price}")
+            self.print_operation(queue, order, 'Split buy')
             new_order = Transaction(Transaction.Type.BUY, order, order.ticker.isin, order.shares, order.price, fees)
             sell_items, queue_result = self.parse_split(order, new_order, queue)
 
         elif order.type == StockTransaction.Type.SPLIT_SELL:
-            self._logger.info(f"Split sell: {order.ticker.ticker} - {order.ticker.isin} - {order.shares}@{order.price}")
+            self.print_operation(queue, order, 'Split sell')
             sell_order = Transaction(Transaction.Type.SELL, order, order.ticker.isin, order.shares, order.price, fees)
             self.split_orders.append(sell_order)
         else:
@@ -125,50 +175,66 @@ class BrokerProcessor(AbstractEntity):
 
         return sell_items, queue_result
 
+    def print_operation(self, queue, order, operation):
+        self._logger.debug(f"{order.value_date}-{order.ticker.isin}-{order.ticker.ticker} - "
+                           f"{operation}: {order.shares}@{order.price}. "
+                           f"Queue amount ({order.ticker.ticker}): {queue.current_amount(order.ticker.isin)}")
+
     def parse_split(self, order_trs, order, queue):
         """
         Handles stock splits while preserving original currency rates
         """
-        if order.ticker in queue.queues:
+        if order.ticker in queue.queues and len(queue.queues[order.ticker]) > 0:
             split_order = next((o for o in self.split_orders if o.ticker == order.ticker), None)
         else:
-            self._logger.warning(f"Split with ISIN change {order.ticker}")
             split_order = next((o for o in self.split_orders if o.currency_rate == order.currency_rate
-                                and o.time == order.time), None)
+                                and o.value_date == order.value_date), None)
         if not split_order:
-            self._logger.warning(f"Requeue split order with ISIN {order.ticker} - {order.amount}@{order.price}")
+            self._logger.debug(f"{order.value_date}-{order.ticker} - Requeue split order {order.amount}@{order.price}")
             return None, order_trs
 
+        self.split_orders.remove(split_order)
+        return self._handle_split_order(order_trs, order, split_order, queue)
+
+    def _handle_split_order(self, order_trs, order, split_order, queue):
+        """
+        Handle the logic of processing a split order.
+        """
         total_shares_before_split = queue.current_amount(split_order.ticker)
 
         # Calculate split ratio
         if split_order.price != 0:
             ratio = round(order.price/split_order.price)
-            self._logger.info(f"Split buy: {order.ticker} - {split_order.ticker} - Ratio: {ratio}")
+            fractional_shares = total_shares_before_split % ratio
+        elif split_order.amount != 0 and order.amount > 0:
+            ratio = round(split_order.amount/order.amount)
             fractional_shares = total_shares_before_split % ratio
         else:
             ratio = 1
             fractional_shares = total_shares_before_split
 
+        self._logger.debug(f"{order.value_date}-{order.ticker} - Split old ISIN {split_order.ticker} - New: {order.ticker}. Ratio: {ratio}. Order price vs split price: {order.price} vs {split_order.price}")
         sell_order = None
-        # Handle fractional shares
+
+        # Handling fractional shares
         if fractional_shares > 0:
             # original_orders = queue.queues.get(split_order.ticker, deque())
             # original_currency_rate = original_orders[0].currency_rate if original_orders else order.currency_rate
-            self._logger.info(f"Selling off {fractional_shares} fractional shares due to split")
+            self._logger.debug(f"{order.value_date}-{order.ticker} - Selling off {fractional_shares} fractional shares due to split")
             # TODO: check if include order_trs or other
             #fractional_sell_order = Transaction(Transaction.Type.SELL, order_trs, split_order.ticker,
                                                 #fractional_shares, split_order.price, order.fees)
             # fractional_sell_info = queue.sell(fractional_sell_order)
             split_order.amount = fractional_shares
-            fractional_sell_info = queue.sell(split_order)
-            sell_order = fractional_sell_info
+            sell_order = queue.sell(split_order)
+            self.fractional_orders.append(sell_order)
 
         # Sell all remaining old shares
         remaining_shares = total_shares_before_split - fractional_shares
-        old_sell_order = Transaction(Transaction.Type.SELL, order_trs, split_order.ticker,
-                                     remaining_shares, split_order.price, 0)  # No fees for this internal operation
-        old_sell_info = queue.sell(old_sell_order)
+        if remaining_shares > 0:
+            old_sell_order = Transaction(Transaction.Type.SELL, order_trs, split_order.ticker,
+                                         remaining_shares, split_order.price, 0)  # No fees for this internal operation
+            old_sell_info = queue.sell(old_sell_order)
 
         # Calculate the new buy price based on the original purchase prices, keep buy currency_rate
 
@@ -192,18 +258,6 @@ class BrokerProcessor(AbstractEntity):
         self.isin_ticker[order.ticker].append(split_order.ticker)
 
         return sell_order, None
-
-    def create_split_order(self, sell_order, buy_order, ratio):
-        new_shares = 0
-        remain_shares = 0
-        split_order = SplitOrder(buy_transaction_id=buy_order.id,
-                                 sell_transaction_id=sell_order.id,
-                                 ratio=ratio,
-                                 price=sell_order.price,
-                                 shares=buy_order.shares,
-                                 new_shares=sell_order.shares)
-
-        SplitOrder.bulk_save_objects([split_order])
 
     def create_closed_orders(self, orders, tracked_orders):
         """
@@ -270,22 +324,23 @@ class BrokerProcessor(AbstractEntity):
             open_orders = []
 
             for order in partial_orders:
+                # TODO: currency rate should be consider the splits
                 if shares == 0:
                     shares += order.amount
                     avg_price = order.price
                     total_cost = shares * avg_price
-                    total_cost_eur += shares * avg_price * order.trade.currency_rate
+                    total_cost_eur += shares * avg_price * order.original_currency_rate
                     fees = order.fee
-                    open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=shares))
+                    open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=shares, price=avg_price, currency_rate=order.original_currency_rate))
                     continue
 
                 avg_price = (shares * avg_price + order.amount * order.price) / (shares + order.amount)
                 # TODO: calc average fee?
                 shares += order.amount
                 total_cost += order.price * order.amount
-                total_cost_eur += order.price * order.amount * order.trade.currency_rate
+                total_cost_eur += order.price * order.amount * order.original_currency_rate
                 fees += order.fee
-                open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=order.amount))
+                open_orders.append(OpenOrder(transaction_id=order.trade.transaction_id, shares=order.amount, price=avg_price, currency_rate=order.original_currency_rate))
 
             if shares == 0:
                 # self._logger.info(f"Shares is 0 for ticker {ticker}!")
@@ -318,9 +373,17 @@ class BrokerProcessor(AbstractEntity):
             to_insert.append(w)
 
         self._logger.debug("Removing open orders!")
+        orders_to_delete = OpenOrder.query.filter(OpenOrder.transaction_id.in_([t.id for t in orders])).all()
+        wallet_ids = [order.wallet_id for order in orders_to_delete]
+
+        # Delete the OpenOrders
         OpenOrder.query.filter(OpenOrder.transaction_id.in_([t.id for t in orders])).delete()
 
-        Wallet.query.filter(Wallet.user_id == user_id).delete()
+        # Delete the associated Wallets
+        Wallet.query.filter(Wallet.id.in_(wallet_ids)).delete()
+
+        # TODO: delete only the order_id related
+        # Wallet.query.filter(Wallet.user_id == user_id).delete()
         Wallet.bulk_object(to_insert)
         self._logger.info("Wallet calculation done")
 
@@ -335,7 +398,7 @@ class BrokerProcessor(AbstractEntity):
                 # convert split to buy
                 order.type = StockTransaction.Type.SPLIT_BUY
 
-            if order.type in [StockTransaction.Type.BUY, StockTransaction.Type.SPLIT_BUY, StockTransaction.Type.OTC_BUY]:
+            if order.type in [StockTransaction.Type.BUY, StockTransaction.Type.SPLIT_BUY, StockTransaction.Type.OTC_BUY, StockTransaction.Type.SPIN_OFF_BUY]:
                 balance[order.ticker.isin] += order.shares
             else:
                 balance[order.ticker.isin] -= order.shares
@@ -370,14 +433,12 @@ class BrokerProcessor(AbstractEntity):
             full_relation_dict[key] = list(set(full_relation_dict[key]))
 
         benefits = {}
+        # TODO: we are not able to detect an ISIN change, so after a split we count separate benefits for same ticker but different isin
         for order in orders:
-            #if order.ticker.isin != 'US75955K1025':
-                #continue
             if order.ticker.isin in queue.queues and len(queue.queues[order.ticker.isin]) > 0:
                 continue
 
             cost = round(order.shares * order.price * order.currency_rate, 2)
-            print(f"Cost: {cost} - {order.fee} - {order.exchange_fee}: {- order.fee - order.exchange_fee} - {cost - order.fee - order.exchange_fee}")
             if order.ticker.isin not in benefits:
                 benefits[order.ticker.isin] = 0
             if order.type in [StockTransaction.Type.SPLIT_BUY, StockTransaction.Type.SPLIT_SELL]:
@@ -386,7 +447,6 @@ class BrokerProcessor(AbstractEntity):
                 benefits[order.ticker.isin] -= round(cost - order.fee - order.exchange_fee, 2)
             else:
                 benefits[order.ticker.isin] += round(cost + order.fee + order.exchange_fee, 2)
-            print(benefits[order.ticker.isin])
 
         benefits_orders = {}
         for order in closed_orders:
@@ -403,3 +463,9 @@ class BrokerProcessor(AbstractEntity):
             if abs(benefits_in_eur - benefits[ticker]) > 0.019 and (benefits[ticker] != 0 and benefits_in_eur > 0):
                 self._logger.warning(f"Different benefits {ticker}. Orders: {benefits_in_eur} vs {benefits[ticker]}")
         return benefits
+
+    def process_pending_transactions(self, queue, orders, tracked_orders):
+        pass
+
+    def get_balances(self, accounts):
+        pass

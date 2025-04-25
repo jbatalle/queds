@@ -1,15 +1,15 @@
 <template>
   <div>
-    <Pie :data="chartData" :options="extraOptions" />
+    <Bar :data="chartData" :options="extraOptions" />
   </div>
 </template>
 
 <script>
-import { Pie } from 'vue-chartjs';
-import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Bar } from 'vue-chartjs';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
 import { reactive } from 'vue';
 
-ChartJS.register(Title, Tooltip, Legend, ArcElement);
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 export default {
   props: {
@@ -21,7 +21,7 @@ export default {
     },
   },
   components: {
-    Pie,
+    Bar,
   },
   setup(props) {
     const chartData = reactive({

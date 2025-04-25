@@ -11,7 +11,7 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column v-else label="Symbol" property="pair" sortable></el-table-column>
+      <el-table-column v-else label="Symbol" property="symbol" sortable></el-table-column>
       <el-table-column prop="account" label="Account">
       </el-table-column>
       <el-table-column v-if="type==='broker'" label="ISIN" property="ticker.isin"></el-table-column>

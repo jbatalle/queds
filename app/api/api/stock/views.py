@@ -57,8 +57,7 @@ class WalletCollection(Resource):
 
         wallet_items = (Wallet.query
                         .options(joinedload(Wallet.ticker))
-                        .options(joinedload(Wallet.open_orders))
-                        # .options(joinedload(Wallet.open_orders.transaction))
+                        .options(joinedload(Wallet.open_orders).joinedload(OpenOrder.transaction).joinedload(StockTransaction.account))
                         .filter(Wallet.user_id == user_id).all())
 
         if len(wallet_items) == 0:
@@ -79,14 +78,14 @@ class WalletCollection(Resource):
 
         tickers_by_ticker = {}
         for d in yahoo_prices:
-            # if tickers_yahoo[d.get('symbol')] not in tickers_by_ticker:
-            #   log.warning(f"Symbol {d.get('symbol')} not in tickers")
-            #   continue
+            #if tickers_yahoo[d.get('ticker_yahoo')] not in tickers_by_ticker:
+#                log.warning(f"Symbol {d.get('symbol')} not in tickers")
+#                continue
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
         fx_rate = y.get_currency() or 1
         items = []
-        for r in wallet_items:
+        for idx, r in enumerate(wallet_items):
             item = r.json
             item['ticker'] = r.ticker.to_dict()
             item['close_fees'] = r.fees/len(r.open_orders) if len(r.open_orders) > 0 else 0
@@ -100,9 +99,11 @@ class WalletCollection(Resource):
             for oo in r.open_orders:
                 oo_item = oo.json
                 oo_item['transaction'] = oo.transaction.json
-                oo_item['cost'] = oo.shares * oo.transaction.price
+                # oo_item['cost'] = oo.shares * oo.transaction.price
+                oo_item['cost'] = oo.shares * oo.price
                 # TODO: transaction fee should be partial in case of partial sell
-                oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                # oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                oo_item['base_cost'] = round(oo_item['cost'] * oo.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
                 item['base_cost'] += oo_item['base_cost']
                 item['open_orders'].append(oo_item)
 
@@ -114,7 +115,8 @@ class WalletCollection(Resource):
             item['previous_day_value'] = r.shares * (item['market'].get('previous_close', 0) or 0)
 
             item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
-            item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+            # item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+            item['current_benefit'] = item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
             item['base_current_value'] += item['current_value'] * item_fx_rate
             item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
 
@@ -148,7 +150,7 @@ class OrdersCollection(Resource):
             .order_by(StockTransaction.value_date.desc())
 
         if search:
-            query = query.filter(or_(Ticker.ticker.ilike(f"%{search}%"), Ticker.name.ilike(f"%{search}%")))
+            query = query.filter(or_(Ticker.ticker.ilike(f"%{search}%"), Ticker.name.ilike(f"%{search}%"), Ticker.isin.ilike(f"%{search}%")))
 
         limit = int(pagination.get('limit', 10))
         page = int(pagination.get('page', 1)) - 1
@@ -202,8 +204,8 @@ class Tax(Resource):
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.BROKER)).all()
 
-        closed_orders = ClosedOrder.query.options(joinedload(ClosedOrder.sell_transaction))\
-            .options(joinedload(ClosedOrder.buy_transaction)) \
+        closed_orders = ClosedOrder.query.options(joinedload(ClosedOrder.sell_transaction).joinedload(StockTransaction.ticker))\
+            .options(joinedload(ClosedOrder.buy_transaction).joinedload(ProxyOrder.transaction)) \
             .join(ClosedOrder.sell_transaction) \
             .filter(StockTransaction.value_date >= f"{year}-01-01") \
             .filter(StockTransaction.value_date < f"{year + 1}-01-01") \
@@ -212,7 +214,7 @@ class Tax(Resource):
         items = []
         for r in closed_orders:
             item = r.sell_transaction.json
-            item['ticker'] = r.sell_transaction.ticker.to_dict()
+            # item['ticker'] = r.sell_transaction.ticker.to_dict()
             children = []
             for q in r.buy_transaction:
                 buy = q.transaction.json
@@ -245,43 +247,71 @@ class CalcStats(Resource):
 
     @jwt_required()
     def get(self):
+        """
+        Returns portfolio value, total buy amount, total sell amount and the gain of the closed orders.
+        """
         user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
                                                                   Account.entity.has(type=Entity.Type.BROKER)).all()
+
         query = StockTransaction.query.filter(StockTransaction.account_id.in_([a_id[0] for a_id in accounts])).order_by(
             StockTransaction.value_date.desc())
 
         orders = query.with_entities(StockTransaction.type, StockTransaction.shares, StockTransaction.price,
                                      StockTransaction.currency_rate, StockTransaction.fee,
                                      StockTransaction.exchange_fee).all()
+
         buy = 0
         sell = 0
         for o in orders:
             if o[0] == StockTransaction.Type.BUY:
                 buy += o.shares * o.price * o.currency_rate - o.fee - o.exchange_fee
-            else:
+            elif o[0] == StockTransaction.Type.SELL:
                 sell -= o.shares * o.price * o.currency_rate + o.fee + o.exchange_fee
+            else:
+                continue
 
         # TODO: get all values from closed orders
         # TODO2: save global info into new table
+
         # Closed orders
-        closed_orders = ClosedOrder.query.options(joinedload(ClosedOrder.sell_transaction))\
-            .options(joinedload(ClosedOrder.buy_transaction)) \
+        closed_orders = ClosedOrder.query.options(joinedload(ClosedOrder.sell_transaction)) \
+            .options(joinedload(ClosedOrder.buy_transaction).joinedload(ProxyOrder.transaction)) \
             .join(ClosedOrder.sell_transaction) \
             .filter(StockTransaction.account_id.in_([a_id[0] for a_id in accounts])).all()
 
+        # Get the current year
+        current_year = datetime.now().year
         gain = 0
+        current_year_gain = 0
+
         for o in closed_orders:
-            gain += (o.sell_transaction.shares * o.sell_transaction.price * o.sell_transaction.currency_rate) + o.sell_transaction.fee + o.sell_transaction.exchange_fee
-            for t in o.buy_transaction:
-                buy_order = t.transaction
-                gain -= t.shares * buy_order.price * buy_order.currency_rate - t.partial_fee
+            # Calculate the total gain
+
+            buy_amount = sum(t.shares * t.transaction.price * t.transaction.currency_rate for t in o.buy_transaction)
+            buy_shares = sum(t.shares for t in o.buy_transaction)
+            buy_fees = sum(t.partial_fee for t in o.buy_transaction)
+            total_buy_value = buy_amount - buy_fees
+
+            # sell_amount = o.sell_transaction.shares * o.sell_transaction.price * o.sell_transaction.currency_rate
+            # We need to use the buy shares, as the sell_transaction can have partial sells
+            sell_amount = buy_shares * o.sell_transaction.price * o.sell_transaction.currency_rate
+            sell_fees = o.sell_transaction.fee + o.sell_transaction.exchange_fee
+            total_sell_value = sell_amount + sell_fees
+
+            gain += total_sell_value - total_buy_value
+
+            # Check if the closed order happened in the current year
+            sell_transaction_date = o.sell_transaction.value_date
+            if sell_transaction_date.year == current_year:
+                current_year_gain += total_sell_value - total_buy_value
 
         stats = {
             "portfolio_value": 0,
             "buy": buy,
             "sell": sell,
-            "gain": gain
+            "gain": gain,
+            "current_year_gain": current_year_gain
         }
         return stats
 
@@ -295,3 +325,22 @@ class FxRate(Resource):
         y = YahooClient()
         r = y.get_currency()
         return r, 200
+
+@namespace.route('/ticker')
+class TickerClass(Resource):
+
+    @demo_check
+    @jwt_required()
+    def post(self):
+        """Create an account."""
+        user_id = get_jwt_identity()
+
+        content = request.get_json(silent=True)
+
+        print(content['id'])
+        ticker = Ticker.query.filter(Ticker.id==content['id']).one()
+        ticker.ticker_yahoo = content['ticker_yahoo']
+        ticker.save()
+
+        return {'message': 'Ticker updated!'}
+

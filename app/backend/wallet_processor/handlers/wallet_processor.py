@@ -5,7 +5,7 @@ from wallet_processor.entities.broker import BrokerProcessor
 from wallet_processor.entities.crypto import CryptoProcessor
 from wallet_processor.utils import BalanceQueue, Transaction
 
-logger = logging.getLogger("wallet_processor")
+logger = logging.getLogger("WalletProcessor")
 
 
 class WalletProcessor:
@@ -47,10 +47,14 @@ class WalletProcessor:
         logger.info("Preprocessing orders...")
         orders = self.processor.preprocess(orders)
 
-        logger.info(f"Found: {len(orders)} orders and {len(transactions)} transactions. Starting wallet calculation...")
+        logger.info(f"Found: {len(orders)} orders, {len(transactions)} are transactions. Starting wallet calculation...")
         tracked_orders = []
         queue = BalanceQueue()
 
+        # orders = [o for o in orders if o.ticker.ticker in ['DENB', 'DEN', 'DNRCQ', 'DNRRW']]
+        # orders = [o for o in orders if o.ticker.ticker in ['HSTO']]
+        # orders = [o for o in orders if o.ticker.ticker in ['NBRVF', 'NBRV']]
+        # orders = [o for o in orders if (o.__name__ == 'ExchangeTransactionDTO' and o.currency in ['LTC']) or (o.__name__ == 'ExchangeOrderDTO' and 'LTC' in o.pair)]
         orders_queue = deque(orders)
         requeue_counter = {}
         while orders_queue:
@@ -60,19 +64,20 @@ class WalletProcessor:
             if sell_order:
                 tracked_orders.append(sell_order)
             if enqueue and requeue_counter.get(enqueue.external_id, 0) < 5:
+                logger.debug(f"{order.value_date}-{order.ticker.ticker}-Queueing order. Retry {requeue_counter.get(enqueue.external_id, 0)}")
                 orders_queue.insert(requeue_counter.get(enqueue.external_id, 1), enqueue)
                 requeue_counter[enqueue.external_id] = requeue_counter.get(enqueue.external_id, 0) + 1
 
-        logger.info("Processing pending transactions?")
+        logger.info("Processing pending transactions...")
         self.processor.process_pending_transactions(queue, orders, tracked_orders)
 
         logger.info("Validating benefits from closed orders...")
-        self.processor.check_benefits(queue, orders, tracked_orders)
+        # self.processor.check_benefits(queue, orders, tracked_orders)
 
         logger.info("Validating wallet results...")
         queue.queues = {k: v for k, v in queue.queues.items() if v}
         try:
-            self.validate_wallet(queue, orders)
+            self.validate_wallet(accounts, queue, orders)
         except Exception as e:
             logger.error(f"Error validating wallet calculations: {e}")
             logger.exception(e)
@@ -85,7 +90,7 @@ class WalletProcessor:
 
         logger.info("Done")
 
-    def validate_wallet(self, queue, orders):
+    def validate_wallet(self, accounts, queue, orders):
         """
         We can try to check that the Wallet (Current balance) calculated is equal to the sum of all operations
         """
@@ -96,9 +101,19 @@ class WalletProcessor:
         order_balance = self.processor.calc_balance_with_orders(orders)
         order_balance = self.round_filter_and_order_balance(order_balance)
 
+        # TODO: get exchange balances for comparison
+        entity_balance = self.processor.get_balances(accounts)
+        entity_balance = self.round_filter_and_order_balance(entity_balance)
+
         # compare balances
         diffs = set(wallet_balance.items()) ^ set(order_balance.items())
         diffs_dict = {}
+        self.compare_balances(wallet_balance, order_balance, 'wallet', 'orders')
+
+        # check wallet vs balances
+        if entity_balance:
+            self.compare_balances(wallet_balance, order_balance, 'wallet', 'balance')
+
         for d in diffs:
             if d[0] not in diffs_dict:
                 diffs_dict[d[0]] = []
@@ -126,3 +141,20 @@ class WalletProcessor:
                 balance[k] += q.amount
 
         return balance
+
+    @staticmethod
+    def compare_balances(balance1, balance2, balance1_name, balance2_name):
+        diffs_dict = {}
+        for k, v in balance1.items():
+            if k not in balance2:
+                diffs_dict[k] = [v, 0]
+            else:
+                diffs_dict[k] = [v, balance2[k]]
+            if diffs_dict[k][0] == diffs_dict[k][1]:
+                continue
+            logger.debug(f"{k} - {balance1_name}: {diffs_dict[k][0]} - {balance2_name}: {diffs_dict[k][1]}. Diff: {diffs_dict[k][0] - diffs_dict[k][1]}")
+
+        for k, v in balance2.items():
+            if k not in balance1:
+                diffs_dict[k] = [0, v]
+                logger.debug(f"{k} - {balance1_name}: {diffs_dict[k][0]} - {balance2_name}: {diffs_dict[k][1]}. Diff: {diffs_dict[k][0] - diffs_dict[k][1]}")

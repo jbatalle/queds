@@ -39,8 +39,12 @@ class CSVReader:
         logger.info(f"Found {len(orders)} orders in {broker_name}")
 
         # TODO: define here the handler reader
-        broker_reader = BrokerReader()
-        broker_reader.parse_read(account_id, account, orders)
+        if entity_type == 'exchange':
+            reader = ExchangeReader()
+            reader.parse_read(account_id, [], orders, transactions)
+        else:
+            broker_reader = BrokerReader()
+            broker_reader.parse_read(account_id, account, orders)
         return
 
         ExchangeReader()._parse_read(account_id, 0, orders, transactions)

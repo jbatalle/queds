@@ -21,6 +21,7 @@ from finance_reader.entities.exchanges.kraken import Kraken
 from finance_reader.entities.exchanges.bittrex import Bittrex
 from finance_reader.entities.exchanges.binance import Binance
 from finance_reader.entities.exchanges.kucoin import Kucoin
+# from finance_reader.entities.exchanges.bitfinex import Bitfinex
 
 
 SUPPORTED_EXCHANGES = {
@@ -28,5 +29,6 @@ SUPPORTED_EXCHANGES = {
     "kraken": Kraken(),
     "bittrex": Bittrex(),
     "binance": Binance(),
-    "kucoin": Kucoin()
+    "kucoin": Kucoin(),
+#     "bitfinex": Bitfinex()
 }

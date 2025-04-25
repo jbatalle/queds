@@ -2,25 +2,23 @@
 Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers abd crypto exchanges, making it easier for you to manage your investments.
 
 ## Demo
-Check out the demo at https://queds.fly.dev/overview
+Check out the demo at https://queds.alwaysdata.net/overview (user: demo@queds.com, password: superpassword)
 
 ## Features
-* Stock-Portfolio and Crypto-Portfolio tracking
+* Stock and crypto portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
-* Tax calculation with FIFO
-* Coin tracking with FIFO
-* Watchlist for monitoring assets
+* Tax calculation with FIFO method
+* Coin tracking using FIFO
+* Asset watchlist for monitoring stock and coins
 * Automatic data import from Degiro, Clicktrade and InteractiveBrokers
-* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex, Binance and Kukoin
+* Automatic data import from exchanges: Bitstamp, Kraken, Bittrex, Binance and KuCoin
 * TradingView graphs for visualizing asset performance
-* Import broker/crypto data from CSV
+* CSV import for broker and crypto data
 
 ## In progress
-* Set price alerts via Telegram
 * Dividends tracking
-* Set default portfolio currency
-* Investment fund tracking
-* Improving performance
+* Price alerts via Telegram
+* Default portfolio currency setting
 
 ## Table of Contents
 1. [Getting Started](#getting-started)
@@ -29,6 +27,15 @@ Check out the demo at https://queds.fly.dev/overview
 
 ## Getting Started
 To get started with Queds Finance, you can deploy the tool using docker-compose or install each component individually.
+You also have the flexibility to choose between different deployment configurations.
+
+### Deployment Options
+You can choose how to deploy the application based on your needs:
+
+1. `docker-compose.yml` for a complete environment
+   - Includes extra services: PostgreSQL (TimescaleDB) and Redis.
+2. `docker-compose.devel.yml` for simplified environment
+   - Uses SQLite instead of PostgreSQL and an internal dictionary instead of Redis.
 
 ### Docker compose
 Deploy everything with docker-compose (including external services: redis + nginx + timescaledb):
@@ -41,6 +48,12 @@ Check the VUE_APP_BACKEND_URL environment variable in docker-compose.yml.
 The database is created automatically via alembic migrations. To be sure, once everything is ready, apply migrations again.
 ```
 docker-compose run migrate
+```
+
+#### Simplified environment
+```
+docker-compose -f docker-compose.devel.yml build (also you can use --parallel)
+docker-compose -f docker-compose.devel.yml up
 ```
 
 ## Initial steps
@@ -57,15 +70,16 @@ Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an over
 
     .
     ├── app
-    ├   ├── api/ (flask app)
-    ├   ├── backend/ (worker) 
-    ├   ├── config/ (app configs)
-    ├   ├── models/ (DB models)
-    ├── frontend/ (vue web page) 
+    │   ├── api/ (flask app)
+    │   ├── backend/ (worker) 
+    │   ├── config/ (app configs)
+    │   └── models/ (database models)
+    ├── frontend/ (vue web page)
+    ├── docker-compose.devel.yml
     └── docker-compose.yml
     
 ### Configuration
-Edit the configuration file `config/local.py` and set the parameters according to your local environment.
+Edit the configuration file `app/config/local.py` and set the parameters according to your local environment.
 ```
 DEBUG = True
 
@@ -84,7 +98,7 @@ REDIS = {
 ```
     
 ### Database
-Create a database in Timescale and apply migrations:
+Create a database in Postgres(TimescaleDB) and apply migrations:
 ```
 BACKEND_SETTINGS=config.local alembic upgrade head
 ```
@@ -98,19 +112,19 @@ BACKEND_SETTINGS=conf.local alembic revision --autogenerate
 You can modify the database using the docker-compose. After the model modification, you can generate the new migrations with:
 ```
 docker-compose run migrate /bin/bash
-cd models && alembic revision --autogenerate
+cd app/models && alembic revision --autogenerate
 ```
 
 To downgrade a migration, use:
 ```
 docker-compose run migrate /bin/bash
-cd models && alembic downgrade -1
+cd app/models && alembic downgrade -1
 ```
 
 ### API
 To initialize the API, create a virtual environment and run:
 ```
-cd api
+cd app/api
 pip install -r requirements.txt
 BACKEND_SETTINGS=config.local python app.py run -h 0.0.0.0
 ```
@@ -122,23 +136,23 @@ BACKEND_SETTINGS=config.local python -m unittest
 
 Finally, check API endpoints in Swagger: http://0.0.0.0:5000/api
 
-Also you can visit the demo api at https://queds.fly.dev/api/
+Check out the demo API at https://queds.alwaysdata.net/overview
 
 ### Backend
 Create a virtual environment and initialize a worker:
 ```
-cd backends
+cd app/backends
 pip install -r requirements.txt
 BACKEND_SETTINGS=config.local python finance_reader/worker.py
 ```
 
-Init test client:
+Test the backend client with:
 ```
 BACKEND_SETTINGS=config.local python finance_reader/client.py
 ```
 
 ### Frontend
-Init frontend:
+To start the frontend:
 ```
 cd frontend
 npm install
@@ -146,7 +160,7 @@ npm install @vue/cli -g
 npm run serve
 ```
 
-Build:
+To build the frontend:
 ```
 npm run-script build
 ```

@@ -66,22 +66,6 @@
 import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import ChartCard from '@/components/UIComponents/Cards/ChartCard.vue';
 
-const tooltipOptions = {
-  tooltipFillColor: "rgba(0,0,0,0.5)",
-  tooltipFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-  tooltipFontSize: 14,
-  tooltipFontStyle: "normal",
-  tooltipFontColor: "#fff",
-  tooltipTitleFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-  tooltipTitleFontSize: 14,
-  tooltipTitleFontStyle: "bold",
-  tooltipTitleFontColor: "#fff",
-  tooltipYPadding: 6,
-  tooltipXPadding: 6,
-  tooltipCaretSize: 8,
-  tooltipCornerRadius: 6,
-  tooltipXOffset: 10,
-};
 export default {
   props: {
     base_currency: String,
@@ -89,6 +73,7 @@ export default {
     loading: Boolean,
     type: String,
     total_value: Number,
+    wallet_value: Number,
   },
   components: {StatsCard, ChartCard},
   emits: ['recalculate', 'reload'],
@@ -111,11 +96,10 @@ export default {
       },
     },
   }),
-
   watch: {
     wallet: {
       handler(val) {
-        this.createInvestChart(this.total_value);
+        this.createInvestChart(this.wallet_value);
       },
       deep: true
     },
@@ -138,7 +122,7 @@ export default {
       if (this.type === 'broker') {
         this.investChart.datasets[0].data = this.wallet.map(el => Number(el.base_current_value / wallet_value * 100).toFixed(2));
       } else {
-        this.investChart.datasets[0].data = this.wallet.map(el => Number(el.cost / wallet_value * 100).toFixed(2));
+        this.investChart.datasets[0].data = this.wallet.map(el => Number(el.current_value / wallet_value * 100).toFixed(2));
       }
       this.investKey += 1;
     },

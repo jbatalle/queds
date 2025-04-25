@@ -14,7 +14,7 @@ export function toCurrency(value, currency, digits = 2) {
     return formatter.format(value);
   }
   catch(err) {
-    console.log("Error formatting currency: " + currency + ": " + err);
+    //console.log("Error formatting currency: " + currency + ": " + err);
     let formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: "BTC",

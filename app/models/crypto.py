@@ -11,25 +11,11 @@ EMAIL_REGEX = re.compile(r'^\S+@\S+\.\S+$')
 USERNAME_REGEX = re.compile(r'^\S+$')
 
 
-class Pair():
-    __tablename__ = 'pair'
-    __table_args__ = (UniqueConstraint('pair', 'status', name='_pair_status_unique'),)
-
-    class Status:
-        ACTIVE = 0
-        INACTIVE = 1
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    pair = Column(String(8), nullable=False)
-    name = Column(String(150))
-    currency = Column(String(5))
-    isin = Column(String(50))
-    ticker_yahoo = Column(String(10))
-    status = Column(Integer, default=Status.ACTIVE)
-
-
 class ExchangeBalance(Base, CRUD):
-    # The balances extracted directly from the exchange
+    """
+        The balances extracted directly from the exchange
+    """
+
     __tablename__ = 'exchange_balance'
     __table_args__ = (UniqueConstraint('account_id', 'currency', name='_account_currency_unique'),)
 
@@ -58,35 +44,48 @@ class ExchangeBalance(Base, CRUD):
             set_=update_dict,
         ))
 
+class CryptoEvent(Base, CRUD):
+    """
+    This model is used to store all crypto events as is defined in each exchange
+        Every field is replicated from each Exchange
+    """
 
-class ExchangeOrder(Base, CRUD):
-
-    __tablename__ = 'exchange_orders'
+    __tablename__ = 'crypto_events'
+    __table_args__ = (UniqueConstraint('account_id', 'external_id', name='_crypto_event_account_id_external_id'),)
 
     class Type:
         BUY = 0
         SELL = 1
+        DEPOSIT = 2
+        WITHDRAWAL = 3
+        CASH_IN = 4
+        CASH_OUT = 5
+        STAKING = 6
+        AIRDROP = 7
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
-    external_id = Column(String(70), unique=True)
-    value_date = Column(DateTime, nullable=False, default=datetime.now)
-    pair = Column(String(150))
+    external_id = Column(String(70))
+    value_date = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    symbol = Column(String(150))
     amount = Column(Float)
+    price = Column(Float)
+    fee = Column(Float)
+    event_type = Column(String(50))  # discriminator column
     type = Column(Integer)
-    price = Column(Float)  # according to currency
-    fee = Column(Float)  # according to currency
+    status = Column(String(150))
+    tx_address = Column(String(200))
+    rx_address = Column(String(200))
 
     @classmethod
     def bulk_insert(cls, orders: list):
         if len(orders) == 0:
             return
 
-        q = db_session.execute(insert(cls).values(orders).on_conflict_do_nothing())
+        db_session.execute(insert(cls).values(orders).on_conflict_do_nothing())
 
     def to_dict(self):
-        # TODO
         d = {
             "id": self.id,
             "external_id": self.external_id,
@@ -94,52 +93,19 @@ class ExchangeOrder(Base, CRUD):
             "account_id": self.account_id,
             "account": self.account.name,
             "value_date": self.value_date.strftime("%Y-%m-%d %H:%M:%S"),
-            "pair": self.pair,
+            "symbol": self.symbol,
             "price": self.price,
             "amount": self.amount,
-            "fee": self.fee,
-            # "exchange_fee": self.exchange_fee,
-            # "currency_rate": self.currency_rate
+            "fee": self.fee
             }
         return d
 
 
-class ExchangeTransaction(Base, CRUD):
-
-    __tablename__ = 'exchange_transactions'
-
-    class Type:
-        DEPOSIT = 2
-        WITHDRAWAL = 3
-        CASH_IN = 4
-        CASH_OUT = 5
-
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
-    account = relationship("Account")
-    external_id = Column(String(70), unique=True)
-    value_date = Column(DateTime, nullable=False, default=datetime.now)
-    currency = Column(String(10))
-    amount = Column(Float)
-    fee = Column(Float)  # according to currency
-    status = Column(Integer)
-    type = Column(Integer)
-    tx_address = Column(String(200))
-    rx_address = Column(String(200))
-
-    @classmethod
-    def bulk_insert(cls, transactions: list):
-        if len(transactions) == 0:
-            return
-
-        q = db_session.execute(insert(cls).values(transactions).on_conflict_do_nothing())
-
-    @classmethod
-    def get_type(cls, type):
-        return {v: n for n, v in vars(ExchangeTransaction.Type).items() if n.isupper()}[type]
-
-
 class ExchangeWallet(Base, CRUD):
+    """
+    Represents real-time balance of users by currency. Its calculated using FIFO
+    Ideally these entries should be equal than ExchangeBalance
+    """
     __tablename__ = 'exchange_wallet'
 
     id = Column(Integer, primary_key=True)
@@ -158,7 +124,7 @@ class ExchangeWallet(Base, CRUD):
         if len(items) == 0:
             return
 
-        q = db_session.execute(insert(cls).values(items).on_conflict_do_nothing())
+        db_session.execute(insert(cls).values(items).on_conflict_do_nothing())
 
     @classmethod
     def bulk_object(cls, objects: list):
@@ -167,16 +133,20 @@ class ExchangeWallet(Base, CRUD):
 
 
 class ExchangeProxyOrder(Base, CRUD):
+    """
+    Links a sell order to multiple buy orders (proportional matching).
+    """
     __tablename__ = 'exchange_proxy_orders'
 
     id = Column(Integer, primary_key=True)
     closed_order_id = Column(Integer, ForeignKey('exchange_closed_orders.id'))
     closed_order = relationship("ExchangeClosedOrder", back_populates="buy_order")
 
-    order = relationship("ExchangeOrder")
-    order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
+    order = relationship("CryptoEvent")
+    order_id = Column(Integer, ForeignKey('crypto_events.id', ondelete="CASCADE"))
     amount = Column(Float)  # amount for each order
     partial_fee = Column(Float)
+    user_price = Column(Float) # sell price at user currency
 
     @classmethod
     def bulk_save_objects(cls, orders):
@@ -188,12 +158,15 @@ class ExchangeProxyOrder(Base, CRUD):
 
 
 class ExchangeClosedOrder(Base, CRUD):
+    """
+    Represents completed sell orders, including matched buys.
+    """
     __tablename__ = 'exchange_closed_orders'
 
     id = Column(Integer, primary_key=True)
-    sell_order = relationship("ExchangeOrder")
-    sell_order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
-    # buy_order = relationship("ExchangeProxyOrder")
+    sell_order = relationship("CryptoEvent")
+    sell_order_id = Column(Integer, ForeignKey('crypto_events.id', ondelete="CASCADE"))
+    user_price = Column(Float)  # price of the sell at user currency - €/$
     buy_order = relationship("ExchangeProxyOrder", back_populates="closed_order")
 
     @classmethod
@@ -206,11 +179,15 @@ class ExchangeClosedOrder(Base, CRUD):
 
 
 class ExchangeOpenOrder(Base, CRUD):
+    """
+    Represents the buy orders that are still open.
+    """
     __tablename__ = 'exchange_open_orders'
 
     id = Column(Integer, primary_key=True)
     wallet_id = Column(Integer, ForeignKey('exchange_wallet.id'))
 
-    order = relationship("ExchangeOrder")
-    order_id = Column(Integer, ForeignKey('exchange_orders.id', ondelete="CASCADE"))
-    amount = Column(Integer)  # pending amount
+    order = relationship("CryptoEvent")
+    order_id = Column(Integer, ForeignKey('crypto_events.id', ondelete="CASCADE"))
+    amount = Column(Float)  # pending amount
+    user_price = Column(Float)  # price at user currency - €/$

@@ -31,9 +31,8 @@ class ExchangeCSVProcessor(CSVProcessor):
         super(ExchangeCSVProcessor, self).__init__()
 
     def insert_db(self, orders, transactions):
-        from models.crypto import ExchangeOrder, ExchangeTransaction
-        ExchangeOrder.bulk_insert([o.to_dict() for o in orders])
-        ExchangeTransaction.bulk_insert([o.to_dict() for o in transactions])
+        from models.crypto import CryptoEvent
+        CryptoEvent.bulk_insert([o.to_dict() for o in orders + transactions])
 
 
 from finance_reader.entities.csv_reader.bitstamp import Bitstamp
@@ -41,6 +40,7 @@ from finance_reader.entities.csv_reader.bittrex import Bittrex
 from finance_reader.entities.csv_reader.degiro import Degiro
 from finance_reader.entities.csv_reader.kucoin import Kucoin
 from finance_reader.entities.csv_reader.coinbase import Coinbase
+from finance_reader.entities.csv_reader.binance import Binance
 
 
 SUPPORTED_CSV_READER = {
@@ -48,5 +48,6 @@ SUPPORTED_CSV_READER = {
     "bittrex": Bittrex(),
     "degiro": Degiro(),
     "kucoin": Kucoin(),
-    "coinbase": Coinbase()
+    "coinbase": Coinbase(),
+    "binance": Binance()
 }

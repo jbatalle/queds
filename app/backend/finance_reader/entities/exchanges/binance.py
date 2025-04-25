@@ -20,6 +20,7 @@ class Binance(AbstractExchange):
         self.api_key = None
         self.api_secret = None
         self.base_url = "https://api.binance.com/"
+        self.balances = []
 
     def login(self, data):
         self.account_id = data.get('account_id')
@@ -72,6 +73,7 @@ class Binance(AbstractExchange):
             self._logger.error(r)
             raise
 
+        self.balances = r['balances']
         balances = []
         for bal in r['balances']:
             if float(bal['free']) + float(bal['locked']) == 0:
@@ -113,8 +115,8 @@ class Binance(AbstractExchange):
             self._logger.exception(e)
             return []
 
-        r = self._private_query('GET', 'api/v3/account', authenticate=True, params={}).json()
-        old_symbols = r['symbols']
+        # r = self._private_query('GET', 'api/v3/account', authenticate=True, params={}).json()
+        # old_symbols = r['symbols']
         symbols = [bal['asset'] for bal in r['balances']]
 
         self._logger.info("Iterate over {} symbols".format(len(symbols)))
@@ -170,7 +172,6 @@ class Binance(AbstractExchange):
         end = start + timedelta(days=89)
 
         url = "https://www.binance.com/bapi/capital/v1/private/capital/deposit/list"
-
 
         try:
             r = self._private_query('GET', 'sapi/v1/capital/deposit/hisrec', authenticate=True,

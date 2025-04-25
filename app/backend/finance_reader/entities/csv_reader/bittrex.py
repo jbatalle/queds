@@ -74,11 +74,14 @@ class Bittrex(ExchangeCSVProcessor):
         for line in lines[1:]:
             data = dict(zip(headers, line.split(",")))
 
-            type = None
+            op_type = None
             if data.get('Type') == 'DEPOSIT':
-                type = OrderType.DEPOSIT
+                op_type = OrderType.DEPOSIT
             elif data.get('Type') == 'WITHDRAWAL':
-                type = OrderType.WITHDRAWAL
+                op_type = OrderType.WITHDRAWAL
+
+            if op_type == OrderType.DEPOSIT and data.get('Address') == "":
+                op_type = OrderType.AIRDROP
 
             trans = Transaction()
             trans.account_id = account.id
@@ -89,7 +92,7 @@ class Bittrex(ExchangeCSVProcessor):
                 #continue
             trans.amount = abs(float(data.get("Amount")))
             trans.currency = data.get("Currency")
-            trans.type = type
+            trans.type = op_type
             trans.rx_address = data.get('Address').replace('"', '')
             trans.fee = float(data.get("Fee") or 0)
             transactions.append(trans)

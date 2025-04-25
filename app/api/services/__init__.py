@@ -19,7 +19,7 @@ class Cache(metaclass=abc.ABCMeta):
 
 
 class ExpiringDict(Cache, OrderedDict):
-    def __init__(self, default_expiration=60):
+    def __init__(self, default_expiration=600):
         OrderedDict.__init__(self)
         Cache.__init__(self)
         self.lock = asyncio.Lock()
@@ -112,5 +112,10 @@ class ExpiringDict(Cache, OrderedDict):
     def store(self, key, value, expiration=None):
         self.set(key, value, expiration)
 
-# redis_svc = RedisClient()
-redis_svc = ExpiringDict()
+
+from config import settings
+if settings.REDIS:
+    from services.redis import RedisClient
+    redis_svc = RedisClient()
+else:
+    redis_svc = ExpiringDict()

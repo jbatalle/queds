@@ -51,7 +51,7 @@ class BrokerReader:
         if not entity_account:
             return
 
-        start_date = self._get_start_date(account_id) or "01/01/2017"
+        start_date =  self._get_start_date(account_id) or "01/01/2017"
         logger.info(f"Reading transactions from {start_date}...")
         transactions = broker.read_transactions(start_date)
         logger.info(f"Found {len(transactions)} transactions in {broker_name}")

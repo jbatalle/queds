@@ -35,7 +35,9 @@ class Transaction:
         SPLIT_SELL = 3
         OTC_BUY = 4
         OTC_SELL = 5
-        SCRIPT_DIVIDEND = 6
+        SPIN_OFF_BUY = 6
+        SPIN_OFF_SELL = 7
+        SCRIPT_DIVIDEND = 8
 
     def __init__(self):
         self.name = ''
@@ -51,7 +53,7 @@ class Transaction:
         self.currency_rate = 1
 
     def __str__(self):
-        return f"{self.name}-{self.ticker.ticker}-{self.shares}@{self.price}"
+        return f"{self.value_date}-{self.ticker.ticker}-{self.shares}@{self.price}-{self.name}"
 
     def to_dict(self):
         d = {

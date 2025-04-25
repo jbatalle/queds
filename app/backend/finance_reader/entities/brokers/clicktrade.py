@@ -134,6 +134,9 @@ class Clicktrade(AbstractBroker):
             self._logger.error(f"Error reading transactions:  {response4.text}")
         data = response4.json()
 
+        return self.process_transactions(data)
+
+    def process_transactions(self, data):
         self._logger.info(f"Start processing orders. Total to process: {len(data.get('Data'))}")
         to_insert = []
 
@@ -144,7 +147,8 @@ class Clicktrade(AbstractBroker):
             events[d['Event']].append(d)
 
         # types: [{'Intermediate Securities Distribution', 'Sell', 'Transfer Out', 'Worthless', 'Reverse Stock Split', 'Exchange', 'Cash Dividend', 'Odd Lot Sale Purchase\t', 'Dividend Option', 'Deposit', 'Buy', 'Transfer In'}]
-        for d in data.get("Data"):
+        for d in reversed(data.get("Data")):
+
             if d['TransactionType'] in ["CashTransfer"]:
                 continue
 
@@ -162,17 +166,6 @@ class Clicktrade(AbstractBroker):
             currency_rate = 1
             trans_type = None
 
-            if isin != "US9344231041":
-                pass
-                # continue
-
-            if isin == 'US92343V1044':
-                print("Verizon")
-            if isin == 'VGG1890L1076':
-                print("Check exchange fee; -9.20, -3.97, total_cost: -13.12€")
-            if isin == 'US8116994042':
-                print("Check exchange fee; -")
-
             symbol, exchange_mic = d['Instrument']['Symbol'].upper().split(":")
             if ':' in symbol:
                 self._logger.warning("Unknown market: {}".format(d['InstrumentSymbol']))
@@ -187,8 +180,7 @@ class Clicktrade(AbstractBroker):
             ticker.currency = currency
             ticker.exchange = exchange_mic
 
-            self._logger.info(f"Processing {isin} - {symbol} - {d['Event']}")
-
+            self._logger.info(f"Processing {d.get('Date')} - {isin} - {symbol} - {d['Event']}")
             for q in d.get('Bookings', []):
                 currency_rate = q['ConversionRate']
                 if q['AmountType'] in ["Exchange Fee"]:
@@ -207,7 +199,7 @@ class Clicktrade(AbstractBroker):
                 fee += -abs(q['BookedAmount'])
                 fee += -abs(q['ConversionCost'])
 
-            self._logger.debug(f"{symbol}. Fee: {fee} - Rate: {currency_rate}")
+            self._logger.debug(f"{d.get('Date')} - {symbol}. Fee: {fee} - Rate: {currency_rate}")
             if d['Event'] == 'Exchange':
                 # stock dividend, like IBE
                 if d['Bookings'] and d['Bookings'][0]['AmountType'] in ['Corporate Actions', 'Corporate Actions - Fractions']:
@@ -232,12 +224,13 @@ class Clicktrade(AbstractBroker):
                         ticker.exchange = exchange_mic
 
                         shares = abs(int(t['TradedQuantity']))
-                        price = 1
+                        price = 0
                         trans_type = Transaction.Type.BUY
                         trade_id = t['TradeId']
                         date = t['TradeExecutionTime']
 
             elif d['Event'] in ['Cash Dividend', 'Dividend Option']:
+                self._logger.debug(f"Detected cash dividend for {ticker.ticker}")
                 continue
                 for b in d['Bookings']:
                     # TODO: calculate taxes and set sell order
@@ -246,16 +239,12 @@ class Clicktrade(AbstractBroker):
                 continue
             elif d['Event'] == 'Buy':
                 trans_type = Transaction.Type.BUY
-                if len(d['Trades']) > 1:
-                    print("asdsa")
                 for t in d['Trades']:
                     trade_id = t['TradeId']
                     date = t['TradeExecutionTime']
                     shares += abs(int(t['TradedQuantity']))
                     price = t['Price']
             elif d['Event'] == 'Sell' and d.get('OriginalTradeId', 0) == 0:
-                if len(d['Trades']) > 1:
-                    print("asdsa")
                 trans_type = Transaction.Type.SELL
                 for t in d['Trades']:
                     trade_id = t['TradeId']
@@ -263,7 +252,13 @@ class Clicktrade(AbstractBroker):
                     shares += abs(int(t['TradedQuantity']))
                     price = t['Price']
             elif d['Event'] == 'Reverse Stock Split':
-                to_insert.extend(self.generate_split_orders(ticker, d['Trades']))
+                rs_orders = self.generate_split_orders(ticker, d['Trades'])
+                if len(d['Trades']) == 1:
+                    # only one sell and no buy, so we can define that as a full sell
+                    rs_orders[0].type = Transaction.Type.SELL
+                    to_insert.append(rs_orders[0])
+                else:
+                    to_insert.extend(rs_orders)
                 continue
             elif d['Event'].strip() == 'Odd Lot Sale Purchase':
                 trans_type = Transaction.Type.SELL
@@ -278,36 +273,6 @@ class Clicktrade(AbstractBroker):
             else:
                 self._logger.warning(f"Type not recognized: {d.get('Event')}")
                 continue
-
-            # TODO: is tradeable?
-            # products = self.check_if_tradeable(isin)
-            status = Ticker.Status.ACTIVE
-            # if not len(products):
-            #     status = Ticker.Status.INACTIVE
-            #
-            # if len(products) > 1:
-            #     self._logger.warning(f"Check multiple tradeable products for {isin}")
-            #     products = [p for p in products if p['Identifier'] == d.get('Uic')]
-            #     if not len(products):
-            #         self._logger.warning(f"No products found for {isin}")
-            #         continue
-            # if not products:
-            #     self._logger.warning(f"Product {d['InstrumentSymbol']} not found. Probably delisted")
-            #     product = {
-            #         "Symbol": d['InstrumentSymbol'],
-            #         "Description": d['InstrumentDescription'],
-            #         "CurrencyCode": currency
-            #     }
-            # else:
-            #     product = products[0]
-            #
-            # new_symbol, new_exchange_mic = product['Symbol'].upper().split(":")
-            # if new_symbol != symbol:
-            #     self._logger.warning(f"Different symbol: {new_symbol} vs {symbol}. Saving {new_symbol}")
-            #
-            # if d['InstrumentDescription'] != product['Description']:
-            #     self._logger.warning(
-            #         f"Different description: {d['InstrumentDescription']} vs {product['Description']}")
 
             if trans_type is None:
                 self._logger.warning(f"Type not recognized: {d.get('Event')}")
@@ -372,124 +337,3 @@ class Clicktrade(AbstractBroker):
             currency = q['Currency']
             break
         return fee, currency_rate, exchange_fee
-
-    def read_transactions2(self, start_date):
-        url = "https://fssoclicktrader.clicktrade.es/openapi/cs/v1/reports/trades/{}?fromDate={}&toDate={}"
-        start_date = datetime.strptime(start_date, "%d/%m/%Y").strftime("%Y-%m-%d")
-        to_date = datetime.now().strftime("%Y-%m-%d")  # 2021-01-27
-        response4 = self._client.get(url.format(self.client_key, start_date, to_date))
-        if response4.status_code != 200:
-            self._logger.error(f"Error reading transactions:  {response4.text}")
-        data = response4.json()
-
-        self._logger.info(f"Start processing orders. Total to process: {len(data.get('Data'))}")
-        to_insert = []
-        for d in data.get("Data"):
-            isin = d['ISINCode']
-            if isin == 'CA0079755017':
-                print("Check")
-            if isin == 'US92343V1044':
-                print("Verizon")
-            symbol, exchange_mic = d['InstrumentSymbol'].upper().split(":")
-            if ':' in symbol:
-                self._logger.warning("Unknown market: {}".format(d['InstrumentSymbol']))
-
-            detail = self.get_bookings(d['TradeId'])
-
-            if d.get('AssetType') == 'Rights':
-                continue
-
-            if not detail:
-                self._logger.warning(f"NO detail for isin: {isin}")
-                continue
-
-            if not detail.get('Data'):
-                self._logger.error(f"NO DATA detail for isin: {isin} - {d.get('AssetType')} - Trade: {d['TradeId']}")
-                # continue
-
-            fee = 0
-            currency_rate = 1
-            currency = None
-            exchange_fee = 0
-            for q in detail.get('Data', []):
-                if q['BkAmountType'] == "Exchange Fee":
-                    exchange_fee = q['Amount']
-                    continue
-                if q['BkAmountType'] != 'Commission':
-                    self._logger.warning(f"amount type: {q['BkAmountType']} - {q['Amount']}")
-                    continue
-                fee = q['Amount'] * q['ConversionRate']
-                currency_rate = q['ConversionRate']
-                currency = q['Currency']
-                break
-
-            products = self.check_if_tradeable(isin)
-            status = Ticker.Status.ACTIVE
-            if not len(products):
-                status = Ticker.Status.INACTIVE
-
-            if len(products) > 1:
-                self._logger.warning(f"Check multiple tradeable products for {isin}")
-                products = [p for p in products if p['Identifier'] == d.get('Uic')]
-                if not len(products):
-                    self._logger.warning(f"No products found for {isin}")
-                    continue
-            if not products:
-                self._logger.warning(f"Product {d['InstrumentSymbol']} not found. Probably delisted")
-                product = {
-                    "Symbol": d['InstrumentSymbol'],
-                    "Description": d['InstrumentDescription'],
-                    "CurrencyCode": currency
-                }
-            else:
-                product = products[0]
-
-            new_symbol, new_exchange_mic = product['Symbol'].upper().split(":")
-            if new_symbol != symbol:
-                self._logger.warning(f"Different symbol: {new_symbol} vs {symbol}. Saving {new_symbol}")
-
-            if d['InstrumentDescription'] != product['Description']:
-                self._logger.warning(f"Different description: {d['InstrumentDescription']} vs {product['Description']}")
-
-            ticker = Ticker()
-            ticker.isin = isin
-            ticker.ticker = new_symbol
-            ticker.name = product['Description']
-            ticker.active = status
-            ticker.currency = product['CurrencyCode']
-            ticker.exchange = exchange_mic
-
-            if d.get('CaEventTypeName', '') == 'Reverse Stock Split':
-                if d['TradeEventType'] == 'Sold':
-                    trans_type = Transaction.Type.SPLIT_SELL
-                else:
-                    trans_type = Transaction.Type.SPLIT_BUY
-#            elif d.get('CaEventTypeName', '').strip() == 'Odd Lot Sale Purchase':
-            elif d.get('TradeEventType') == 'Bought':
-                trans_type = Transaction.Type.BUY
-            elif d.get('TradeEventType') == 'Sold':
-                trans_type = Transaction.Type.SELL
-            elif d.get('TradeEventType') == 'Worthless':
-                continue
-            elif d.get('TradeEventType') == 'Spin-Off':
-                continue
-            else:
-                self._logger.warning(f"Type not recognized: {d.get('TradeEventType')}")
-                continue
-
-            t = Transaction()
-            t.name = d['InstrumentDescription'],  # 14578496
-            t.ticker = ticker
-            t.value_date = d['TradeDate']
-            t.external_id = d['OrderId']
-            t.shares = abs(int(d['Amount']))
-            t.type = trans_type
-            t.price = d['Price']
-            t.fee = fee
-            t.exchange_fee = exchange_fee
-            t.currency_rate = currency_rate
-            t.currency = currency if currency else ticker.currency
-
-            to_insert.append(t)
-
-        return to_insert

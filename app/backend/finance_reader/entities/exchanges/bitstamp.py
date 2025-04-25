@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 from finance_reader.entities import TimeoutRequestsSession
@@ -72,6 +72,10 @@ class Bitstamp(AbstractExchange):
 
     def get_orders(self):
         self._logger.info("Get Bitstamp Closed orders")
+        # Transaction type: 0 - deposit; 1 - withdrawal; 2 - market trade; 14 - sub account transfer; 25 -
+        # credited with staked assets; 26 - sent assets to staking; 27 - staking reward; 32 -
+        # referral reward; 35 - inter account transfer; 33 - settlement transfer; 58 -
+        # derivatives periodic settlement; 59 - insurance fund claim; 60 - insurance fund premium; 61 - collateral liquidation.
 
         data = self.sign(params={'limit': 1000})
         orders = self._client.post(self.base_url + "/v2/user_transactions/", data=data).json()
@@ -92,7 +96,7 @@ class Bitstamp(AbstractExchange):
         orders = t.values()
 
         self._logger.info("Read {0} orders".format(len(orders)))
-        return orders
+        return list(orders)
 
     def _convert_orders(self, orders):
         arr_orders = []
@@ -103,6 +107,22 @@ class Bitstamp(AbstractExchange):
                 print("Deposit/Withdrawal", order)
                 transactions.append(order)
                 continue
+            if order['type'] not in ['2', '27']:
+                self._logger.error(f"Unknown order type: {order}")
+                transactions.append(order)
+                continue
+            if order['type'] == '27':
+                asset = None
+                for key, value in order.items():
+                    if key not in ['type', 'datetime', 'fee', 'id', 'order_id'] and float(value) != 0.0:
+                        asset = key.upper()
+                        break
+                if not asset:
+                    self._logger.error(f"Could not find asset in order: {order}")
+                    continue
+                self._logger.debug("Set staking order...")
+                transactions.append(order)
+                continue
 
             pair = next(p for p in order.keys() if p!='order_id' and '_' in p)
             new_order = Order()
@@ -110,11 +130,22 @@ class Bitstamp(AbstractExchange):
             new_order.external_id = order['id']
             split_pair = pair.split("_")
             new_order.pair = (split_pair[0] + '/' + split_pair[1]).upper()
+            import pytz
             try:
-                new_order.value_date = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S.%f")
+                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S.%f")
             except:
-                new_order.value_date = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S")
+                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S")
+
+            print(f"{pair} - {dt}")
+            # new_order.value_date = self.convert_text_to_datetime(new_order.value_date)
+            dt = dt.replace(tzinfo=pytz.UTC)  # Assume UTC if no timezone is provided
+            new_order.value_date = dt.astimezone(pytz.timezone("Europe/Madrid"))
+            print(f"{pair} final - {new_order.value_date}")
             amount = float(order[pair.split("_")[0]])
+            if amount == 0:
+                self._logger.debug("Analyze this")
+            if 'xrp' in pair and abs(amount) > 18 and abs(amount)<19:
+                print("asdad")
             new_order.amount = abs(amount)
             new_order.price = order[pair]
             new_order.fee = order['fee']
@@ -129,17 +160,48 @@ class Bitstamp(AbstractExchange):
         self._logger.info("Converting {0} orders".format(len(orders)))
         transactions = self._convert_deposit_orders(orders['deposits'])
         transactions.extend(self._convert_withdrawal_orders(orders['withdrawals']))
+        transactions.extend(self._process_staking())
 
         self._logger.info("Found {0} transactions".format(len(transactions)))
         return transactions
+
+    def _process_staking(self):
+        staking_orders = []
+        for t in self.transactions:
+            if t['type'] != '27':
+                continue
+            trans = Transaction()
+            trans.account_id = self.account_id
+            trans.type = OrderType.STAKING
+            trans.external_id = t['id']
+            asset = None
+            for key, value in t.items():
+                if key not in ['type', 'datetime', 'fee', 'id', 'order_id'] and float(value) != 0.0:
+                    asset = key.lower()
+                    break
+
+            try:
+                dt = datetime.strptime(t['datetime'], "%Y-%m-%d %H:%M:%S.%f")
+            except:
+                dt = datetime.strptime(t['datetime'], "%Y-%m-%d %H:%M:%S")
+            #date = datetime.fromtimestamp(t['datetime'])
+            trans.value_date = dt  # - timedelta(hours=1)
+            trans.currency = asset.upper()
+            trans.amount = t[asset]
+            trans.fee = t['fee']
+            staking_orders.append(trans)
+        return staking_orders
 
     def _convert_deposit_orders(self, orders):
         transactions = []
         for o in orders:
             trans = Transaction()
             trans.account_id = self.account_id
-            trans.type = OrderType.DEPOSIT
             trans.external_id = o['txid']
+            if 'AIRDROP' in o['txid']:
+                trans.type = OrderType.AIRDROP
+            else:
+                trans.type = OrderType.DEPOSIT
             trans.amount = o['amount']
             date = datetime.fromtimestamp(o['datetime'])
             trans.value_date = date # - timedelta(hours=1)
@@ -164,3 +226,14 @@ class Bitstamp(AbstractExchange):
             trans.fee = 0
             transactions.append(trans)
         return transactions
+
+    def convert_text_to_datetime(self, text_timestamp, timezone="UTC"):
+        from datetime import datetime
+        import pytz
+        from dateutil import parser
+
+        # Parse the text-based timestamp into a datetime object
+        dt = parser.parse(text_timestamp)
+        if dt.tzinfo is None:
+            dt = pytz.UTC.localize(dt)  # If the timestamp is naive (no timezone), assume UTC
+        return dt.astimezone(pytz.timezone(timezone))  # Convert to the desired timezone

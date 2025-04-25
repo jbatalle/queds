@@ -21,6 +21,8 @@ class OrderType:
     WITHDRAWAL = 3
     CASH_IN = 4
     CASH_OUT = 5
+    STAKING = 6
+    AIRDROP = 7
 
 
 class Order:
@@ -38,12 +40,13 @@ class Order:
         d = {
             "account_id": self.account_id,
             "external_id": self.external_id,
-            "pair": self.pair,
+            "symbol": self.pair,
             "value_date": self.value_date,
             "type": self.type,
             "price": self.price,
             "fee": self.fee,
-            "amount": self.amount
+            "amount": self.amount,
+            "event_type": "exchange_order"
         }
         return d
 
@@ -63,12 +66,14 @@ class Transaction:
         d = {
             "account_id": self.account_id,
             "external_id": self.external_id,
-            "currency": self.currency,
+            "symbol": self.currency,
             "value_date": self.value_date,
             "type": self.type,
             "rx_address": self.rx_address,
             "fee": self.fee,
-            "amount": self.amount
+            "amount": self.amount,
+            "event_type": "exchange_transaction",
+            "price": 0
         }
         return d
 

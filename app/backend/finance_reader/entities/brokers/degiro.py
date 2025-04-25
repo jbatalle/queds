@@ -26,19 +26,28 @@ class Degiro(AbstractBroker):
 
     def login(self, data):
         url = "https://trader.degiro.nl/login/secure/login"
-        data = {
-            "username": data.get('username'),
-            "password": data.get('password'),
+        username = data.get('username')
+        password = data.get('password')
+        token = data.get('token')
+        device_token = data.get('device_token')
+        params = {
+            "username": username,
+            "password": password,
             "queryParams": {}
         }
-        r = self._client.post(url, json=data)
-        data = r.json()
+        if token and device_token:
+            # data.update({"userTokens": [{"token": token, "ttl": "2025-04-11T15:14:52+02:00" } ]})
+            self._client.cookies.set("deviceToken", device_token)
+            params.update({"userTokens": [{"token": "", "ttl": "2025-04-11T15:14:52+02:00"}]})
+            self._client.cookies.set("deviceToken", "")
+        r = self._client.post(url, json=params)
+        data2 = r.json()
         if data['status'] == 6 or data['statusText'] == "totpNeeded":
             self._logger.info("OTP required")
             url = "https://trader.degiro.nl/login/secure/login/totp"
             data = {
-                "username": data.get('username'),
-                "password": data.get('password'),
+                "username": username,
+                "password": password,
                 "queryParams": {},
                 "oneTimePassword": data.get('otp'),
                 "saveDevice": True
@@ -47,8 +56,11 @@ class Degiro(AbstractBroker):
             data = r.json()
 
             if 'deviceToken' in r.cookies.get_dict():
-                # TODO: save device_token
-                device_token = r.cookies.get_dict()['deviceToken']
+                # TODO: save device_token and token
+                token = r.cookies.get_dict()['deviceToken']
+                device_token = self._client.cookies._cookies['']["/"]['deviceToken']
+                print("Token: ", token)
+                print("Device Token: ", device_token)
 
         if data['status'] != 0 or data['statusText'] != "success":
             self._logger.error("Login error: ", data)
@@ -132,10 +144,11 @@ class Degiro(AbstractBroker):
         end_date = datetime.now().strftime("%d/%m/%Y")  # "12/01/2019"
         r = self._client.get(url.format(start_date, end_date, self.account_id, self.session_id))
         data = r.json()
-
         products = self._get_product([str(p['productId']) for p in data.get('data')])
         exchanges = self._get_exchanges()
+        return self.process_transactions(data, products, exchanges)
 
+    def process_transactions(self, data, products, exchanges):
         to_insert = []
         for d in data.get('data'):
             product = products[str(d.get('productId'))]
@@ -175,17 +188,42 @@ class Degiro(AbstractBroker):
             t.value_date = value_date
             t.external_id = d['id']
             t.shares = abs(d['quantity'])
-            if d.get('transactionTypeId') == 103 and d.get('quantity') == 0:
-                # buy/sell action of not bought shares, not required to register
-                # like spin-off
+            if d.get('transactionTypeId') == 102:
+                # transactionTypeId 102: Share Capital Increase
                 continue
 
-            if d.get('transactionTypeId') == 101:
-                t.type = Transaction.Type.SPLIT_BUY if d.get('buysell') == 'B' else Transaction.Type.SPLIT_SELL,  # B/S
+            if d.get('transactionTypeId') == 112 or d.get('transactionTypeId') == 118:
+                pass
+
+            if d.get('transactionTypeId') == 103 and d.get('quantity') == 0 and d.get('buysell') == 'S':
+                # buy/sell action of not bought shares, not required to register
+                # like spin-off
+                # i.e. HOTH - US44148G1058
+                continue
+
+            if d.get('transactionTypeId') == 103 and d.get('price') == 0:
+                # buy/sell action of not bought shares, escisions or delistings
+                # non tradeable orders
+                # USY923351016 - SHIP
+                # US40145Q5009 - GHSI sell - should be considered as split (change isin)
+                # MARK AS SPLIT ???
+                pass
+
+            if d.get('transactionTypeId') == 101 or d.get('transactionTypeId') == 108:
+                t.type = Transaction.Type.SPLIT_BUY if d.get('buysell') == 'B' else Transaction.Type.SPLIT_SELL
+            elif ((d.get('transactionTypeId') == 103 and d.get('price') == 0)
+                    or (d.get('transactionTypeId') == 112 and d.get('price') == 0)):
+                # 103: escisions or delistings; change ISIN
+                # 112: sells with 0 price
+                t.type = Transaction.Type.SPIN_OFF_BUY if d.get('buysell') == 'B' else Transaction.Type.SPIN_OFF_SELL
             elif d.get('transactionTypeId') in (106, 204):
                 # move to OTC or other market
                 # 106: changing ISIN, 204: same ISIN
-                t.type = Transaction.Type.OTC_BUY if d.get('buysell') == 'B' else Transaction.Type.OTC_SELL,  # B/S
+                t.type = Transaction.Type.OTC_BUY if d.get('buysell') == 'B' else Transaction.Type.OTC_SELL  # B/S
+            elif d.get('transactionTypeId') == 118:
+                # this is a fucking sell with price 0
+                # i.e. GSAT - US3789734080; we cannot use it for wallet calc but should be used for order calc
+                t.type = Transaction.Type.SPIN_OFF_BUY if d.get('buysell') == 'B' else Transaction.Type.SPIN_OFF_SELL
             else:
                 # transactionTypeId 0: for normal buy/sell
                 # transactionTypeId 102: Share Capital Increase

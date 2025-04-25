@@ -1,6 +1,6 @@
 import logging
 from models.system import Account
-from models.crypto import ExchangeOrder, ExchangeTransaction, ExchangeBalance
+from models.crypto import ExchangeBalance, CryptoEvent
 from finance_reader.entities.exchanges import SUPPORTED_EXCHANGES
 
 logger = logging.getLogger("exchange_read")
@@ -19,27 +19,28 @@ class ExchangeReader:
             return False
         return True
 
-    def process(self, data):
+    def process(self, data:dict):
         if not self._validate_data(data):
             return
 
         account_id = data.get('account_id')
-        exchange_name = data.get('entity_name').lower()
+        exchange_key = data.get('entity_name').lower()
 
-        exchange = SUPPORTED_EXCHANGES.get(exchange_name)
+        exchange = SUPPORTED_EXCHANGES.get(exchange_key)
         if not exchange:
+            logger.warning(f"Exchange '{exchange_key}' is not supported.")
             return
 
-        logger.info("Login...")
+        logger.info(f"Logging into exchange: {exchange_key}")
         exchange.login(data)
 
-        logger.info("Reading transactions...")
+        logger.info("Fetching exchange data...")
         balances = exchange.get_balances()
         orders = exchange.get_orders()
-        transactions = exchange.get_transactions()
-        logger.info(f"Found {len(orders)} orders and {len(transactions)} transactions in {exchange_name}")
+        # transactions = exchange.get_transactions()
+        logger.info(f"Found {len(orders)} orders in {exchange_key}")
 
-        self._parse_read(account_id, balances, orders, transactions)
+        self.parse_read(account_id, balances, orders)
         logger.info("Read done!")
 
     @staticmethod
@@ -60,23 +61,16 @@ class ExchangeReader:
         account.save()
         return account
 
-    def _parse_read(self, account_id, balances, orders, transactions):
+    def parse_read(self, account_id, balances, orders):
         logger.info(f"Updating account: {account_id}")
 
         # get balance and base currency
         base_balance = self._get_balance(balances)
-        if not base_balance:
-            logger.error("Check here, base balance is not EUR/USD")
-            return
+        if base_balance:
+            self._update_account(account_id, base_balance)
 
-        logger.info(f"Updating account: {account_id}")
-        self._update_account(account_id, base_balance)
+        logger.info(f"Inserting {len(balances)} balances into the database")
+        ExchangeBalance.bulk_insert([balance.to_dict() for balance in balances])
 
-        logger.info(f"Processing {len(balances)} balances")
-        ExchangeBalance.bulk_insert([o.to_dict() for o in balances])
-
-        logger.info(f"Processing {len(orders)} orders")
-        ExchangeOrder.bulk_insert([o.to_dict() for o in orders])
-
-        logger.info(f"Processing {len(transactions)} transactions")
-        ExchangeTransaction.bulk_insert([o.to_dict() for o in transactions])
+        logger.info(f"Inserting {len(orders)} orders into the database")
+        CryptoEvent.bulk_insert([order.to_dict() for order in orders])

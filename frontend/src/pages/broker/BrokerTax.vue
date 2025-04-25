@@ -53,7 +53,7 @@
 </template>
 <script>
 
-import {ElTable, ElTableColumn, ElSelect, ElOption, ElTooltip, ElTag, ElIcon, ElInput} from 'element-plus';
+import {ElTable} from 'element-plus';
 import StatsCard from "@/components/UIComponents/Cards/StatsCard.vue";
 import axios from "axios";
 import TaxesTable from "@/components/Dashboard/Views/TaxesTable.vue";
@@ -62,11 +62,7 @@ import TaxesTable from "@/components/Dashboard/Views/TaxesTable.vue";
 export default {
   name: "Taxes",
   components: {
-    ElTable, ElTableColumn, StatsCard,
-    ElSelect,
-    ElOption,
-    ElTooltip,
-    ElIcon,
+    ElTable, StatsCard,
     TaxesTable
   },
   data() {
@@ -108,7 +104,7 @@ export default {
         s.benefits = 0;
         //TODO: sum fees of children items
         //s.benefits = Number(s.shares * s.price *s.currency_rate + s.fees).toFixed(2);
-        s.benefits = s.cost;
+        //s.benefits = s.cost;
         s.value_date = s.value_date.split(' ')[0];
         let sell_shares = 0;
         s.children.forEach(function (c) {
@@ -135,7 +131,6 @@ export default {
       this.loading = true;
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/tax?year=" + this.tax_year).then(this.fillTaxes);
     },
-
   },
 };
 </script>

@@ -20,9 +20,9 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column v-else label="pair" sortable>
+      <el-table-column v-else label="symbol" sortable>
         <template v-slot:default="scope">
-          <span type="info"> {{ scope.row.pair }}</span>
+          <span type="info"> {{ scope.row.symbol }}</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -36,7 +36,18 @@
       <el-table-column label="Value date" prop="value_date" sortable/>
       <!--el-table-column label="type" property="type" sortable></el-table-column-->
       <el-table-column v-if="type==='broker'" label="Shares" property="shares" width="100px"></el-table-column>
-      <el-table-column v-else label="Amount" property="amount"></el-table-column>
+      <el-table-column v-else label="Amount" property="amount">
+
+        <template v-slot:default="scope">
+          <span v-if="type==='broker'">
+           {{ scope.row.amount }}
+            </span>
+          <span v-else>
+            {{ $filters.toCurrency(scope.row.amount, scope.row.currency_source, 8) }}
+          </span>
+        </template>
+
+      </el-table-column>
       <el-table-column label="price" width="">
         <template v-slot:default="scope">
           <span v-if="scope.row.ticker">
@@ -62,11 +73,20 @@
           <span v-if="scope.row.ticker">
           {{ $filters.toCurrency(scope.row.total, scope.row.ticker.currency, 8) }}
             </span>
+          <span v-else>
+            {{ $filters.toCurrency(scope.row.total, scope.row.currency_target, 8) }}
+            </span>
         </template>
       </el-table-column>
       <el-table-column label="Cost" property="cost" sortable>
         <template v-slot:default="scope">
-          {{ $filters.toCurrency(scope.row.cost, base_currency) }}
+          <span v-if="type==='broker'">
+           {{ $filters.toCurrency(scope.row.cost, base_currency) }}
+            </span>
+          <span v-else>
+            <!--contains the fees-->
+            {{ $filters.toCurrency(scope.row.cost, scope.row.currency_target, 8) }}
+          </span>
         </template>
       </el-table-column>
     </el-table>
@@ -76,7 +96,7 @@
   </div>
   <div class="col-sm-6">
     <div class="pull-right">
-      <el-pagination small layout="sizes, prev, pager, next"
+      <el-pagination size layout="sizes, prev, pager, next"
                      :total="pagination.total"
                      :page-sizes="pagination.perPageOptions"
                      :page-size="pagination.perPage"
@@ -143,6 +163,10 @@ export default {
         return "nc-minimal-left blue";
       else if (item.type === 'Reverse_buy' || item.type === 'Reverse_sell' || item.type === 'OTC_buy' | item.type === 'OTC_sell')
         return "nc-refresh-69 orange";
+      else if (item.type === 'Deposit' || item.type === 'Staking')
+        return "nc-minimal-down orange";
+      else if (item.type === 'Withdrawal')
+        return "nc-minimal-up orange";
       else
         return 'nc-minimal-right red';
     }

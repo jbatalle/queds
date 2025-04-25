@@ -27,7 +27,7 @@
                       @handleSizeChange="handleSizeChange"
                       @handlePageChange="handlePageChange"
                       @filterChange="filterChange"
-                      />
+        />
       </div>
     </div>
   </div>
@@ -55,33 +55,37 @@ export default {
     total: 0,
     total_orders: 0,
     loading: true,
-    initialData: false
+    initialData: false,
+    search_timeout: null,
+    search_loading: false
   }),
   watch: {
-    // pagination: {
-    //   handler(val) {
-    //     if (this.dataLoaded) {
-    //       this.getData();
-    //     }
-    //   },
-    //   deep: true
-    // },
     search: {
       handler(val) {
         if (this.search_loading) {
           return;
         }
-        // wait 2 seconds before make the request
-        this.search_loading = true;
-        setTimeout(() => {
-          this.getData();
-          this.search_loading = false;
-        }, 2000);
+
+        // Clear previous timeout if it exists
+        if (this.search_timeout) {
+          clearTimeout(this.search_timeout);
+        }
+
+        // Set a new timeout to delay the request by 2 seconds
+        this.search_timeout = setTimeout(() => {
+          this.search_loading = true;
+          this.getData()
+            .then(() => {
+              this.search_loading = false;
+            })
+            .catch(() => {
+              this.search_loading = false;
+            });
+        }, 2000);  // 2-second delay
       }
     }
   },
-  computed: {
-  },
+  computed: {},
   created() {
     this.getData();
   },
@@ -146,7 +150,4 @@ export default {
 }
 </script>
 <style>
-.example-showcase .el-loading-mask {
-  z-index: 9;
-}
 </style>

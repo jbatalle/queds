@@ -88,30 +88,32 @@ export default {
       this.fees = 0;
       let vm = this;
       this.closedOrders.forEach(function (s) {
-        console.log(s);
-        vm.fees += s.fee;
         s.fees = s.fee;
         s.cost = s.amount * s.price - s.fee;
-        vm.fees = Number((vm.fees).toFixed(2));
         //TODO: sum fees of children items
         s.benefits_net = s.amount * s.price;
         s.benefits = Number((s.amount * s.price - s.fees).toFixed(2));
+        // console.log("Benefits:", s.benefits);
         s.value_date = s.value_date.split(' ')[0];
         //s.source_currency = s.pair.split("/")[0];
-        s.target_currency = s.pair.split("/")[1];
+        s.target_currency = s.symbol.split("/")[1];
 
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
           c.name = "";
-          c.target_currency = s.pair.split("/")[1];
+          c.target_currency = c.symbol.split("/")[1];
           c.value_date = c.value_date.split(' ')[0];
-          c.fees = c.fee + c.exchange_fee;
+          c.fees = c.fee;// + c.exchange_fee;
           s.benefits_net -= c.price * c.amount;
           s.benefits -= (c.price * c.amount + c.partial_fee); //- (c.fees/(s.shares/c.shares));
+          c.cost = c.price * c.amount + c.partial_fee;
+          //console.log("Cost", c.price * c.amount + c.partial_fee);
+          //console.log("Benefits:", c.amount, c.price, c.partial_fee);
           s.benefits = Number((s.benefits).toFixed(2));
           c.fees = Number(c.fees).toFixed(2);
         });
-        //s.cost = Number(s.cost).toFixed(2);
+        vm.fees += s.fee;
+        vm.fees = Number((vm.fees).toFixed(2));
         vm.benefits += s.benefits;
         vm.benefits = Number((vm.benefits).toFixed(2));
       });
@@ -120,15 +122,6 @@ export default {
     async getData() {
       this.loading = true;
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/tax?year=" + this.tax_year).then(this.fillTaxes);
-    },
-    testClass(item) {
-      if (item.column.property == 'benefits') {
-        if (parseInt(item.row[item.column.property]) > 0)
-          return "green";
-        else
-          return "red"
-      } else
-        return "black"
     },
   },
 };

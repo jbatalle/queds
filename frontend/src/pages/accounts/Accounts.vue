@@ -1,4 +1,5 @@
 <template>
+  <div>
   <el-dialog title="Adding account" v-model="dialogVisible" width="60%" :close-on-press-escape="true"
              :before-close="handleClose">
     <div class="card-body">
@@ -93,7 +94,7 @@
     <span slot="footer" class="dialog-footer"></span>
   </el-dialog>
   <el-dialog title="Read account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
-             :before-close="handleReadClose" v-loading="loading">
+             :before-close="handleReadClose">
     <div v-loading="loading">
       <div class="card-body">
         <form>
@@ -208,6 +209,7 @@
       </account-table>
     </div>
   </div>
+    </div>
 </template>
 <script>
 import axios from "axios";

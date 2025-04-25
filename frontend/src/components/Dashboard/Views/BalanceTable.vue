@@ -1,4 +1,26 @@
 <template>
+
+  <el-dialog title="Update ticker" v-model="tickerDialogVisible" width="60%" :close-on-press-escape="true"
+             :before-close="handleClose">
+    <el-form :model="tickerForm">
+      <el-form-item label="Ticker Name">
+        <el-input v-model="tickerForm.name"/>
+      </el-form-item>
+      <el-form-item label="Ticker Symbol">
+        <el-input v-model="tickerForm.ticker"/>
+      </el-form-item>
+      <el-form-item label="Yahoo Ticker Symbol">
+        <el-input v-model="tickerForm.ticker_yahoo"/>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="tickerDialogVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="updateTicker">Update</el-button>
+      </span>
+    </template>
+    <span slot="footer" class="dialog-footer"></span>
+  </el-dialog>
   <div class="col-md-12">
     <div class="card">
       <div class="card-header">
@@ -43,10 +65,10 @@
                     <el-table-column v-if="type==='broker'" label="Shares" property="shares"></el-table-column>
                     <el-table-column v-else label="Amount" property="amount">
                       <template v-slot:default="scope">
-                        {{ $filters.toCurrency(scope.row.amount, scope.row.source_currency, 8) }}
+                        {{ scope.row.amount }}
                       </template>
                     </el-table-column>
-                    <el-table-column label="Price" prop="price">
+                    <el-table-column label="Buy Price" prop="price">
                       <template v-slot:default="scope">
                         <span v-if="type==='broker'">
                           {{ $filters.toCurrency(scope.row.price, scope.row.ticker.currency) }}
@@ -54,6 +76,11 @@
                         <span v-else>
                           {{ $filters.toCurrency(scope.row.price, scope.row.current_price_currency, 2) }}
                         </span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="Buy Price €" v-if="type==='exchange'" prop="price">
+                      <template v-slot:default="scope">
+                          {{ $filters.toCurrency(scope.row.price_eur, base_currency, 2) }}
                       </template>
                     </el-table-column>
                     <el-table-column label="Cost" prop="cost">
@@ -76,14 +103,14 @@
                     <el-table-column v-if="type==='broker'" label="Broker" prop="broker">
                       <template v-slot:default="scope">
                         {{
-                          scope.row.transaction.account_id
+                          scope.row.transaction.account.name
                         }}
                       </template>
                     </el-table-column>
                     <el-table-column v-if="type==='exchange'" label="Exchange" prop="exchange">
                       <template v-slot:default="scope">
                         {{
-                          scope.row.order.account_id
+                          scope.row.order.account.name
                         }}
                       </template>
                     </el-table-column>
@@ -98,8 +125,14 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column v-if="type==='broker'" label="Symbol" property="ticker.ticker" sortable
-                           fixed></el-table-column>
+          <el-table-column v-if="type==='broker'" label="Symbol" prop="ticker.ticker" sortable fixed>
+        <template v-slot:default="scope">
+          <span @click="openTickerDialog(scope.row.ticker)" style="cursor: pointer; color: #409eff;">
+            {{ scope.row.ticker.ticker }}
+          </span>
+        </template>
+      </el-table-column>
+          <!--el-table-column v-if="type==='broker'" label="Symbol" property="ticker.ticker" sortable fixed ></el-table-column-->
           <el-table-column v-else label="Coin" property="currency" sortable fixed></el-table-column>
           <el-table-column v-if="type==='broker'" label="Shares" property="shares" width="100px"></el-table-column>
           <el-table-column v-else label="Amount" property="amount">
@@ -137,7 +170,7 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="Current price" property="current_price">
+          <el-table-column label="Market price" property="current_price">
             <template v-slot:default="scope">
               <span v-if="type==='broker'">
                 {{ $filters.toCurrency(scope.row.market.price, scope.row.ticker.currency) }}
@@ -149,12 +182,12 @@
           </el-table-column>
           <el-table-column label="Value" property="current_value" sortable>
             <template v-slot:default="scope">
-                        <span v-if="type==='broker'">
-                          {{ $filters.toCurrency(scope.row.current_value, scope.row.ticker.currency) }}
-                        </span>
+              <span v-if="type==='broker'">
+                {{ $filters.toCurrency(scope.row.current_value, scope.row.ticker.currency) }} ({{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}€)
+              </span>
               <span v-else>
-                          {{ $filters.toCurrency(scope.row.current_value, scope.row.current_price_currency, 2) }}
-                        </span>
+                {{ $filters.toCurrency(scope.row.current_value, scope.row.current_price_currency, 2) }}
+              </span>
             </template>
           </el-table-column>
           <el-table-column label="W/L" property="current_benefit" sortable>
@@ -195,6 +228,7 @@
 </template>
 
 <script>
+import axios from "axios";
 import VueTradingView from 'vue-trading-view/src/';
 
 export default {
@@ -212,6 +246,13 @@ export default {
   data: () => ({
     filter_accounts: new Set(),
       search: '',
+      dialogVisible: false,
+    tickerDialogVisible: false,
+          tickerForm: {
+        ticker: '',
+        name: '',
+            ticker_yahoo: ''
+      }
   }),
 
   watch: {
@@ -228,6 +269,17 @@ export default {
     }
   },
   methods: {
+    handleClose() {
+      this.dialogVisible = false;
+    },
+    openTickerDialog(ticker) {
+      this.tickerForm = JSON.parse(JSON.stringify(ticker));
+      this.tickerDialogVisible = true;
+    },
+    async updateTicker() {
+      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/stock/ticker", this.tickerForm).then(this.reload);
+      this.tickerDialogVisible = false;
+    },
     reload() {
       this.$emit('reload');
     },

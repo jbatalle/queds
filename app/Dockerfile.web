@@ -3,10 +3,11 @@ FROM python:3.9-slim-buster
 RUN apt-get update && apt-get -y install libpq-dev gcc
 # to be used by heroku for demo page
 
-COPY . /usr/src
-COPY models /user/src/models
-COPY config /user/src/config
-COPY dist /user/src/dist
+#COPY ./app /usr/src
+COPY requirements.txt /usr/src
+#COPY app/models /user/src/models
+#COPY ./app/config /user/src/config
+# COPY frontend/dist /user/src/dist
 COPY VERSION /usr/VERSION
 
 WORKDIR /usr/src
@@ -18,7 +19,7 @@ ENV BACKEND_SETTINGS config.heroku
 
 # install python dependencies
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r /usr/src/requirements.txt
 
 # gunicorn
 #CMD ["gunicorn", "--config", "gunicorn-cfg.py", "run:app"]

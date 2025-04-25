@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta, timezone
+import time
 import hashlib
 import hmac
 import urllib
 import urllib.parse
 import base64
+from datetime import datetime, timezone
 from finance_reader.entities import TimeoutRequestsSession
 from finance_reader.entities.exchanges import AbstractExchange
 from models.dtos.exchange_dtos import ExchangeWallet, Order, Transaction, OrderType
@@ -19,6 +20,7 @@ class Kraken(AbstractExchange):
         self.api_key = None
         self.api_secret = None
         self.base_url = "https://api.kraken.com"
+        self.ledgers = {}
 
     def login(self, data):
         self.account_id = data.get('account_id')
@@ -29,12 +31,9 @@ class Kraken(AbstractExchange):
         })
 
     def query(self, endpoint_path, **kwargs):
+        """Performs a query to Kraken API with the correct authentication and signing."""
         url = self.base_url + endpoint_path
-        try:
-            req = kwargs['params']
-        except KeyError:
-            req = {}
-
+        req = kwargs.get('params', {})
         req['nonce'] = self.nonce()
         postdata = urllib.parse.urlencode(req)
 
@@ -51,90 +50,133 @@ class Kraken(AbstractExchange):
 
         return self._client.post(url, req)
 
+    def fetch_with_retry(self, endpoint, retries=5, retry_delay=5, params={}):
+        """Handles API calls with retry logic when 'result' is not present in the response."""
+        for attempt in range(retries):
+            try:
+                response = self.query(endpoint, params=params).json()
+                if 'result' in response:
+                    return response
+                else:
+                    self._logger.error(f"Attempt {attempt+1}/{retries}: 'result' not in response, retrying...")
+            except Exception as e:
+                self._logger.error(f"Attempt {attempt+1}/{retries}: Exception occurred - {e}, retrying...")
+            time.sleep(retry_delay * (attempt + 1)*2)
+            attempt += 1
+        raise Exception(f"Failed to fetch 'result' after {retries} retries.")
+
+    def get_paginated_data(self, endpoint, type, params={}):
+        """Handles fetching paginated data."""
+        data = {}
+        offset = 0
+        count = 0
+        while offset == 0 or offset < count:
+            self._logger.debug(f"Fetching {endpoint} with offset {offset}/{count}")
+            params = params or {}
+            params['ofs'] = offset
+            response = self.fetch_with_retry(endpoint, params=params)
+            # data.extend(response['result'][type].values())
+            data.update(response['result'][type])
+            count = response['result']['count']
+            if len(response['result'][type].items()) < 50:
+                break
+            offset += 50
+        return data
+
     def get_balances(self):
+        """Fetches balances from Kraken API."""
         try:
-            r = self.query("/0/private/Balance").json()
+            response = self.fetch_with_retry("/0/private/Balance", params={})
         except Exception as e:
-            self._logger.error(e)
+            self._logger.error(f"Failed to get balances: {e}")
             return []
 
-        if 'result' not in r:
-            self._logger.error(r)
-            raise
-
         balances = []
-        for currency, amount in r['result'].items():
+        for currency, amount in response['result'].items():
             balance = ExchangeWallet()
             balance.account_id = self.account_id
-            if len(currency) > 3:
-                balance.currency = currency[1:].upper()
-            else:
-                balance.currency = currency.upper()
+            balance.currency = currency[1:].upper() if len(currency) > 3 else currency.upper()
             balance.balance = amount
             balances.append(balance)
-
         return balances
 
     def get_orders(self):
+        """Fetches and parses Kraken orders."""
         self._logger.info("Get Kraken Closed orders")
         ledgers = self.get_ledgers()
+
+        orders = self.get_paginated_data("/0/private/TradesHistory", type='trades', params={"ofs": 0, "trades": True})
+
+        #orders = self.fetch_with_retry("/0/private/TradesHistory", params={"ofs": 0, "trades": True})
+        parsed_orders = self._convert_orders(ledgers, orders)
+
+        # Pagination for additional orders
+        #parsed_orders.extend(self.get_paginated_orders(orders['result']['count'], ledgers))
+        self._logger.info(f"Read {len(parsed_orders)} closed orders")
+        return parsed_orders
+
+    def get_paginated_orders(self, max_count, ledgers):
+        """Handles pagination for Kraken orders."""
+        offset = 50
         parsed_orders = []
-        d = datetime(2014, 11, 22, 14, 42, 21, 34435, tzinfo=timezone.utc)
-        offset = 0
-        try:
-            orders = self.query("/0/private/TradesHistory", params={"ofs": 0, "trades": True}).json()
-        except Exception as e:
-            self._logger.exception(e)
-            return
-
-        parsed_orders.extend(self._convert_orders(ledgers, orders))
-        max_count = orders['result']['count']
-        offset += 50
         while offset < max_count:
-            try:
-                orders = self.query("/0/private/TradesHistory", params={"ofs": offset}).json()
-            except Exception as e:
-                self._logger.exception(e)
-                return
+            time.sleep(5)
+            orders = self.fetch_with_retry("/0/private/TradesHistory", params={"ofs": offset})
             parsed_orders.extend(self._convert_orders(ledgers, orders))
-            if len(orders['result']['trades'].items()) == 50:
-                offset += 50
-            else:
-                offset += len(orders['result']['trades'].items())
-
-        self._logger.info("Read {0} closed orders".format(len(parsed_orders)))
+            offset += len(orders['result']['trades'].items())
         return parsed_orders
 
     def get_ledgers(self):
-        ledgers = []
-        offset = 0
-        try:
-            ledger_orders = self.query("/0/private/Ledgers", params={"ofs": 0, "trades": True}).json()
-        except Exception as e:
-            self._logger.exception(e)
-        ledgers.extend(ledger_orders['result']['ledger'].values())
+        """Fetches and returns ledger entries."""
+        self.ledgers = self.get_paginated_data("/0/private/Ledgers", type='ledger', params={"trades": True})
+        return self.ledgers
 
-        max_count = ledger_orders['result']['count']
-        offset += 50
-        while offset < max_count:
-            try:
-                ledger_orders = self.query("/0/private/Ledgers", params={"ofs": offset}).json()
-            except Exception as e:
-                self._logger.exception(e)
-            ledgers.extend(ledger_orders['result']['ledger'].values())
-            if len(ledger_orders['result']['ledger'].items()) == 50:
-                offset += 50
+    def get_transactions(self):
+        """Fetches transactions (ledgers) from Kraken API."""
+        # TODO: check ETH.F,ETHW, SGB... deposits
+        transactions = self.ledgers.values()  # self.get_paginated_data("/0/private/Ledgers")
+        arr_transactions = []
+        for t in transactions:
+            trans = Transaction()
+            trans.account_id = self.account_id
+            trans.external_id = t['refid']
+            trans.currency = self.clean_symbol(t['asset'])
+            if trans.currency == 'BSV':
+                print("CHeck")
+            trans.value_date = datetime.fromtimestamp(t['time'])
+            if t['type'] == 'withdrawal':
+                trans.type = OrderType.WITHDRAWAL
+            elif t['type'] == 'deposit':
+                trans.type = OrderType.DEPOSIT
+            elif t['type'] == 'transfer':
+                # not always correct, but it will work
+                trans.type = OrderType.AIRDROP
+            elif t['type'] == 'staking':
+                trans.type = OrderType.STAKING
+            elif t['type'] == 'trade':
+                continue
             else:
-                offset += len(ledger_orders['result']['ledger'].items())
-        return ledgers
+                self._logger.error(f"Undetected type: {t['type']}")
+                trans.type = OrderType.DEPOSIT
+
+            if trans.type == OrderType.AIRDROP and float(t['amount']) < 0:
+                # THIS should be a sell - BSV as example
+                pass
+            trans.amount = abs(float(t['amount'])) + float(t['fee'])
+            trans.fee = t['fee']
+            arr_transactions.append(trans)
+
+        self._logger.info(f"Found {len(arr_transactions)} transactions")
+        return arr_transactions
 
     def _convert_orders(self, ledgers, orders):
+        """Converts raw Kraken order data to Order objects."""
         arr_orders = []
-        for orderid, order in orders['result']['trades'].items():
+        for orderid, order in orders.items():
             # search ledger
-            ledger_orders = [o for o in ledgers if o['refid'] == orderid]
+            ledger_orders = [o for o in ledgers.values() if o['refid'] == orderid]
             if not ledger_orders:
-                self._logger.error("NO ledger orders!")
+                self._logger.error(f"NO ledger orders for {orderid}!")
                 continue
 
             # if order['status'] != 'closed':
@@ -148,10 +190,8 @@ class Kraken(AbstractExchange):
                 new_order.pair = order['pair'][:3] + '/' + order['pair'][3:]
             new_order.value_date = datetime.fromtimestamp(order['time'])
             # new_order.time = int((date - timedelta(hours=1)).strftime("%s"))
-            if order['type'] == 'sell':
-                new_order.type = OrderType.SELL
-            elif order['type'] == 'buy':
-                new_order.type = OrderType.BUY
+
+            new_order.type = OrderType.SELL if order['type'] == 'sell' else OrderType.BUY
 
             new_order.amount = float(order['vol'])
             for l in ledger_orders:
@@ -165,19 +205,40 @@ class Kraken(AbstractExchange):
             arr_orders.append(new_order)
         return arr_orders
 
-    def get_transactions(self):
+    @staticmethod
+    def clean_symbol(kraken_symbol):
+        symbol = kraken_symbol
+        if len(kraken_symbol) > 3 and (kraken_symbol[0] == 'X' or kraken_symbol[0] == 'Z'):
+            symbol = kraken_symbol[1:]
+
+        if symbol.endswith(".F"):
+            symbol = symbol.split(".")[0]
+        return symbol
+
+    def get_transactions_old(self):
+        self._logger.info("Get transactions...")
         total_transactions = []
         offset = 0
-        try:
-            transactions = self.query("/0/private/Ledgers", params={"ofs": 0}).json()
-        except Exception as e:
-            self._logger.error(e)
-            return
+        i = 0
+        while i < 5:
+            try:
+                transactions = self.query("/0/private/Ledgers", params={"ofs": 0}).json()
+            except Exception as e:
+                self._logger.error(e)
+                return
+
+            if 'result' in transactions:
+                break
+
+            self._logger.error(transactions)
+            i += 1
+            time.sleep(5)
 
         total_transactions.extend(transactions['result']['ledger'].values())
         max_count = transactions['result']['count']
         offset += 50
         while offset < max_count:
+            time.sleep(5)
             try:
                 transactions = self.query("/0/private/Ledgers", params={"ofs": offset}).json()
             except Exception as e:

@@ -18,12 +18,14 @@ class StockTransaction(Base, CRUD):
         SPLIT_SELL = 3
         OTC_BUY = 4
         OTC_SELL = 5
+        SPIN_OFF_BUY = 6
+        SPIN_OFF_SELL = 7
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('accounts.id', ondelete="CASCADE"))
     account = relationship("Account")
     external_id = Column(String(70))
-    value_date = Column(Date, nullable=False, default=datetime.now)
+    value_date = Column(TIMESTAMP, nullable=False, default=datetime.now)
     name = Column(String(150))
     ticker_id = Column(Integer, ForeignKey('tickers.id'))
     ticker = relationship("Ticker")
@@ -79,6 +81,7 @@ class Wallet(Base, CRUD):
     benefits = Column(Float)  # in €, in front we should sum fees
     fees = Column(Float)
     open_orders = relationship("OpenOrder")
+    # open_orders = relationship("OpenOrder", cascade="all,delete", backref="wallet")
 
     @classmethod
     def bulk_insert(cls, transactions: list):
@@ -110,7 +113,8 @@ class OpenOrder(Base, CRUD):
     transaction = relationship("StockTransaction")
     transaction_id = Column(Integer, ForeignKey('stock_transactions.id', ondelete="CASCADE"))
     shares = Column(Integer)  # pending shares
-    # price = Column(Float)
+    price = Column(Float)  # price at transaction currency
+    currency_rate = Column(Float)
 
 
 class ProxyOrder(Base, CRUD):

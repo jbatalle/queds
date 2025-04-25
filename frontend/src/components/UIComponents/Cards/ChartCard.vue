@@ -53,14 +53,15 @@
   // import BarChart from '../Charts/BarChart'
   // import LineChart from '../Charts/LineChart'
   // import DoughNutChart from '../Charts/DoughnutChart'
-   import PieChart from '../Charts/PieChart.vue'
+  import PieChart from '../Charts/PieChart.vue'
+  import BarChart from '../Charts/BarChart.vue'
   export default {
     name: 'chart-card',
     components: {
       // LineChart,
       // BarChart,
       // DoughNutChart,
-      PieChart
+      PieChart, BarChart
     },
     props: {
       footerText: {

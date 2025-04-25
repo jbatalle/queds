@@ -3,26 +3,20 @@
     <div class="col-md-12 card mt-3">
       <div class="card-header">
         <div class="row">
-          <div class="col-md-6">
+          <div class="col-md-4">
             <h5 class="title">Orders </h5>
           </div>
-          <div class="col-md-6">
-            <div class="flex text-right mb-3 gap-4">
-              <el-space wrap>
-                <el-input class="input-sm" placeholder="Search" v-model="search"
-                          addon-right-icon="nc-icon nc-zoom-split">
-                  <template #suffix>
-                    <el-icon class="el-input__icon"></el-icon>
-                    <i class="nc-icon nc-zoom-split"></i>
-                  </template>
-                </el-input>
-              </el-space>
-            </div>
+          <div class="col-sm-4">
           </div>
 
           <div class="col-sm-4">
             <div class="pull-right">
-
+              <el-input class="input-sm" placeholder="Search" v-model="search" width="100%">
+                <template #suffix>
+                  <el-icon class="el-input__icon"></el-icon>
+                  <i class="nc-icon nc-zoom-split"></i>
+                </template>
+              </el-input>
             </div>
           </div>
         </div>
@@ -62,28 +56,33 @@ export default {
     total: 0,
     total_orders: 0,
     loading: true,
-    initialData: false
+    initialData: false,
+    search_timeout: null,
+    search_loading: false
   }),
   watch: {
-    // pagination: {
-    //   handler(val) {
-    //     if (this.dataLoaded) {
-    //       this.getData();
-    //     }
-    //   },
-    //   deep: true
-    // },
     search: {
       handler(val) {
         if (this.search_loading) {
           return;
         }
-        // wait 2 seconds before make the request
-        this.search_loading = true;
-        setTimeout(() => {
-          this.getData();
-          this.search_loading = false;
-        }, 2000);
+
+        // Clear previous timeout if it exists
+        if (this.search_timeout) {
+          clearTimeout(this.search_timeout);
+        }
+
+        // Set a new timeout to delay the request by 2 seconds
+        this.search_timeout = setTimeout(() => {
+          this.search_loading = true;
+          this.getData()
+            .then(() => {
+              this.search_loading = false;
+            })
+            .catch(() => {
+              this.search_loading = false;
+            });
+        }, 2000);  // 2-second delay
       }
     }
   },
@@ -119,9 +118,19 @@ export default {
         if (s.type === 0) {
           s.type = "Buy";
           s.cost = s.amount * s.price + s.fee;
-        } else {
+        } else if (s.type === 6) {
+          s.type = "Staking";
+        } else if (s.type === 1) {
           s.type = "Sell";
           s.cost = s.amount * s.price - s.fee;
+        } else if (s.type === 2) {
+          s.type = "Deposit";
+          s.cost = 0;
+          s.price = 1;
+        }  else if (s.type === 3) {
+          s.type = "Withdrawal";
+          s.cost = 0;
+          s.price = 1;
         }
         s.total = s.amount * s.price;
         s.value_date = s.value_date.split(' ')[0];
@@ -139,8 +148,7 @@ export default {
         f = "&exchange=" + this.filter_accounts.join();
       if (this.search.length > 0)
         f += "&search=" + this.search.toLowerCase();
-      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f)
-          .then(this.fillOrders);
+      await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/orders?page=" + this.pagination.currentPage + "&limit=" + this.pagination.perPage + f).then(this.fillOrders);
     },
   },
 }

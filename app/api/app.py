@@ -107,7 +107,10 @@ def initialize_app(flask_app):
         @app.route('/*')
         @app.route('/<path:path>')
         def paths(path):
-            return app.send_static_file(path)
+            if os.path.isfile(app.static_folder + "/" + path):
+                return app.send_static_file(path)
+            # Otherwise, serve the index.html file
+            return app.send_static_file("index.html")
 
     rest_api.init_app(blueprint)
 
