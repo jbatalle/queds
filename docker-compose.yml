@@ -20,9 +20,6 @@ services:
     networks:
       - api_bridge
     restart: always
-    depends_on:
-      - db
-      - redis
 
   backend:
     build:
@@ -43,9 +40,6 @@ services:
     restart: always
     deploy:
       replicas: 1
-    depends_on:
-      - redis
-      - db
 
   migrate:
     image: queds_api
@@ -58,16 +52,12 @@ services:
     networks:
       - api_bridge
     depends_on:
-      - db
       - api
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - VITE_APP_BACKEND_URL=/api
-        - VITE_APP_IS_DEMO=false
     command: npm run dev
     volumes:
       - './frontend:/app'
@@ -79,7 +69,6 @@ services:
     networks:
       - api_bridge
     depends_on:
-      - db
       - api
 
   nginx:
