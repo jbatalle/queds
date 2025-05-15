@@ -4,6 +4,9 @@
         :active-color="activeColor"
         :background-color="backgroundColor"
         type="sidebar"
+        v-show="showSidebar || isDesktop"
+        :class="{ 'sidebar-show': showSidebar }"
+        @toggle-sidebar="toggleSidebar"
     >
       <ul class="props nav" slot="links">
         <sidebar-item
@@ -25,7 +28,7 @@
         </sidebar-item>
         <sidebar-item
             opened
-            class="example"
+            class=""
             :link="{ name: 'Stock', icon: 'fab fa-vuejs fa-2x' }"
         >
           <sidebar-item
@@ -71,6 +74,12 @@
               path: '/crypto/taxes',
             }"
           />
+          <!--sidebar-item
+              :link="{
+              name: 'Report',
+              path: '/crypto/taxes',
+            }"
+          /-->
         </sidebar-item>
         <sidebar-item
             :link="{
@@ -80,19 +89,24 @@
           }"
         >
         </sidebar-item>
-        <sidebar-item
+        <!--sidebar-item
             :link="{
             name: 'Trends',
             icon: 'nc-icon nc-planet',
             path: '/pages/comments',
           }"
         >
-        </sidebar-item>
+        </sidebar-item-->
       </ul>
     </side-bar>
-
+    <!-- Backdrop overlay -->
+    <div
+      v-show="showSidebar"
+      class="sidebar-backdrop"
+      @click="toggleSidebar"
+    ></div>
     <div class="main-panel">
-      <top-navbar></top-navbar>
+      <top-navbar @toggle-sidebar="toggleSidebar"></top-navbar>
 
       <dashboard-content></dashboard-content>
 
@@ -117,10 +131,52 @@ export default {
     return {
       backgroundColor: "black",
       activeColor: "success",
+      showSidebar: false
     };
   },
-
-  methods: {
+    computed: {
+      isDesktop() {
+        return window.innerWidth > 991;
+    }
   },
+  methods: {
+    toggleSidebar() {
+      this.showSidebar = !this.showSidebar;
+    }
+  }
 };
 </script>
+
+<style scoped>
+/* Base mobile hidden */
+.sidebar {
+  transition: all 0.3s ease;
+}
+
+/* Mobile */
+@media (max-width: 991px) {
+  .sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    width: 250px;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1030;
+    background: #000; /* Adjust to your theme */
+  }
+
+  .sidebar.sidebar-show {
+    transform: translateX(0);
+  }
+}
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  z-index: 900;
+}
+</style>

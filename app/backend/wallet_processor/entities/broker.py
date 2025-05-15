@@ -18,6 +18,10 @@ class BrokerProcessor(AbstractEntity):
 
         self.isin_ticker = {}
 
+    def generate_transaction_logs(self):
+        # TransactionLog.bulk_save_objects(self.logs)
+        pass
+
     @staticmethod
     def preprocess(orders):
         return orders
@@ -75,7 +79,6 @@ class BrokerProcessor(AbstractEntity):
         fees = order.fee + order.exchange_fee
         if (order.shares == 0 or order.price == 0) and order.type == StockTransaction.Type.SELL:
             self.print_operation(queue, order, f"Sell Shares or price is 0. Shares: {order.shares}. Price: {order.price}. Type: {order.type}!")
-            # self._logger.warning(f"{order.value_date}-{order.ticker.isin} - Sell Shares or price is 0. Shares: {order.shares}. Price: {order.price}. Type: {order.type}!")
             # TODO: analyze if return here when transaction is SELL
             pass
             # return None, None
@@ -103,9 +106,8 @@ class BrokerProcessor(AbstractEntity):
             order = Transaction(Transaction.Type.SELL, order, order.ticker.isin, order.shares, order.price, fees)
             sell_items = queue.sell(order)
         elif order.type == StockTransaction.Type.SPIN_OFF_SELL:
-            # check if order exists in spin_off list
+            # check if order exists in spin_off list and match the buy spin_off and execute an ISIN change
             # if not, do nothing
-            # else, match the buy spin_off and execute an ISIN change
             self.print_operation(queue, order, 'Sell Spinoff')
             spinoff_order = next((o for o in self.spinoff_orders if o.shares == order.shares), None)
 
@@ -176,6 +178,7 @@ class BrokerProcessor(AbstractEntity):
         return sell_items, queue_result
 
     def print_operation(self, queue, order, operation):
+        # TODO: transaction log
         self._logger.debug(f"{order.value_date}-{order.ticker.isin}-{order.ticker.ticker} - "
                            f"{operation}: {order.shares}@{order.price}. "
                            f"Queue amount ({order.ticker.ticker}): {queue.current_amount(order.ticker.isin)}")
@@ -236,9 +239,8 @@ class BrokerProcessor(AbstractEntity):
                                          remaining_shares, split_order.price, 0)  # No fees for this internal operation
             old_sell_info = queue.sell(old_sell_order)
 
-        # Calculate the new buy price based on the original purchase prices, keep buy currency_rate
-
-        if remaining_shares > 0:
+            # Calculate the new buy price based on the original purchase prices, keep buy currency_rate
+        # if remaining_shares > 0:
             total_cost = sum(item.cost for item in old_sell_info.buy_items)
             new_shares = remaining_shares // ratio
             if new_shares == 0:
@@ -463,9 +465,6 @@ class BrokerProcessor(AbstractEntity):
             if abs(benefits_in_eur - benefits[ticker]) > 0.019 and (benefits[ticker] != 0 and benefits_in_eur > 0):
                 self._logger.warning(f"Different benefits {ticker}. Orders: {benefits_in_eur} vs {benefits[ticker]}")
         return benefits
-
-    def process_pending_transactions(self, queue, orders, tracked_orders):
-        pass
 
     def get_balances(self, accounts):
         pass

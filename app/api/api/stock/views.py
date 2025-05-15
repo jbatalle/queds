@@ -39,7 +39,6 @@ class AccountList(Resource):
     @jwt_required()
     def get(self):
         """Returns all user broker accounts."""
-        print("SHit")
         result = filter_by_username(Account).filter(Entity.type == Entity.Type.BROKER)
         items = []
         for r in result:
@@ -123,6 +122,135 @@ class WalletCollection(Resource):
             items.append(item)
 
         return jsonify(items)
+
+
+@namespace.route('/wallet/assets')
+class WalletCollection(Resource):
+
+    @jwt_required()
+    def get(self):
+        """Returns all open_orders."""
+        user_id = get_jwt_identity()
+
+        wallet_items = (Wallet.query
+                        .options(joinedload(Wallet.ticker))
+                        .options(joinedload(Wallet.open_orders).joinedload(OpenOrder.transaction).joinedload(StockTransaction.account))
+                        .filter(Wallet.user_id == user_id).all())
+
+        if len(wallet_items) == 0:
+            return [], 200
+
+        items = []
+        for idx, r in enumerate(wallet_items):
+            item = r.json
+            item['ticker'] = r.ticker.to_dict()
+            item['close_fees'] = r.fees/len(r.open_orders) if len(r.open_orders) > 0 else 0
+            item['open_orders'] = []
+            item['base_cost'] = 0  # cost of open orders in user currency
+            item['current_benefit'] = 0  # benefits with current values and with closed orders in user currency
+            item['base_current_value'] = 0  # portfolio value in user currency
+            item['current_value'] = 0  # in ticker currency
+            item['base_previous_value'] = 0  # portfolio value previous day in user currency
+
+            for oo in r.open_orders:
+                oo_item = oo.json
+                oo_item['transaction'] = oo.transaction.json
+                # oo_item['cost'] = oo.shares * oo.transaction.price
+                oo_item['cost'] = oo.shares * oo.price
+                # TODO: transaction fee should be partial in case of partial sell
+                # oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                oo_item['base_cost'] = round(oo_item['cost'] * oo.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                item['base_cost'] += oo_item['base_cost']
+                item['open_orders'].append(oo_item)
+
+            item['market'] = {}
+            #if r.ticker.ticker in tickers_by_ticker:
+#                item['market'] = tickers_by_ticker[r.ticker.ticker]
+
+            item['current_value'] = r.shares * (item['market'].get('price', 0) or 0)
+            item['previous_day_value'] = r.shares * (item['market'].get('previous_close', 0) or 0)
+
+#            item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
+            # item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+#            item['current_benefit'] = item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+#            item['base_current_value'] += item['current_value'] * item_fx_rate
+#            item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
+
+            items.append(item)
+        return jsonify(items)
+
+        items = []
+        for idx, r in enumerate(wallet_items):
+            item = r.json
+            item['ticker'] = r.ticker.to_dict()
+            item['close_fees'] = r.fees/len(r.open_orders) if len(r.open_orders) > 0 else 0
+            item['open_orders'] = []
+            item['base_cost'] = 0  # cost of open orders in user currency
+            item['current_benefit'] = 0  # benefits with current values and with closed orders in user currency
+            item['base_current_value'] = 0  # portfolio value in user currency
+            item['current_value'] = 0  # in ticker currency
+            item['base_previous_value'] = 0  # portfolio value previous day in user currency
+
+            for oo in r.open_orders:
+                oo_item = oo.json
+                oo_item['transaction'] = oo.transaction.json
+                # oo_item['cost'] = oo.shares * oo.transaction.price
+                oo_item['cost'] = oo.shares * oo.price
+                # TODO: transaction fee should be partial in case of partial sell
+                # oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                oo_item['base_cost'] = round(oo_item['cost'] * oo.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
+                item['base_cost'] += oo_item['base_cost']
+                item['open_orders'].append(oo_item)
+
+            item['market'] = {}
+            if r.ticker.ticker in tickers_by_ticker:
+                item['market'] = tickers_by_ticker[r.ticker.ticker]
+
+            item['current_value'] = r.shares * (item['market'].get('price', 0) or 0)
+            item['previous_day_value'] = r.shares * (item['market'].get('previous_close', 0) or 0)
+
+            item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
+            # item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+            item['current_benefit'] = item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
+            item['base_current_value'] += item['current_value'] * item_fx_rate
+            item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
+
+            items.append(item)
+
+        return jsonify(items)
+
+
+@namespace.route('/wallet/prices')
+class WalletPrices(Resource):
+
+    @jwt_required()
+    def post(self):
+        """Returns price info for given currencies."""
+        data = request.get_json()
+        tickers = data.get('tickers', [])
+
+        tickers_yahoo = {t['ticker_yahoo']: t['ticker'] for t in tickers if t['ticker_yahoo']}
+        symbols = ",".join(list(tickers_yahoo.keys()))
+        if len(symbols) == 0:
+            log.error("Unable to detect tickers in open transactions")
+            # return {'message': "Unable to detect tickers in open transactions"}, 400
+
+        y = YahooClient()
+        try:
+            yahoo_prices = y.get_current_tickers(symbols)
+        except Exception as e:
+            yahoo_prices = []
+            log.error(f"Error when retrieving prices from yahoo: {e}")
+
+        tickers_by_ticker = {}
+        for d in yahoo_prices:
+            # if tickers_yahoo[d.get('ticker_yahoo')] not in tickers_by_ticker:
+            #                log.warning(f"Symbol {d.get('symbol')} not in tickers")
+            #                continue
+            tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
+
+        return jsonify(tickers_by_ticker)
+
 
 
 @namespace.route('/orders')
@@ -337,7 +465,6 @@ class TickerClass(Resource):
 
         content = request.get_json(silent=True)
 
-        print(content['id'])
         ticker = Ticker.query.filter(Ticker.id==content['id']).one()
         ticker.ticker_yahoo = content['ticker_yahoo']
         ticker.save()

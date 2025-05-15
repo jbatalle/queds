@@ -56,8 +56,8 @@
           <el-table-column type="expand" fixed>
             <template #default="props">
               <div style="padding-left: 10px;">
-              <h5>Open orders</h5>
-                </div>
+                <h5>Open orders</h5>
+              </div>
               <div class="row" style="padding-left: 10px;">
                 <div class="col-lg-6 col-md-6 col-sm-12">
                   <el-table :data="props.row.children">
@@ -80,7 +80,7 @@
                     </el-table-column>
                     <el-table-column label="Buy Price €" v-if="type==='exchange'" prop="price">
                       <template v-slot:default="scope">
-                          {{ $filters.toCurrency(scope.row.price_eur, base_currency, 2) }}
+                        {{ $filters.toCurrency(scope.row.price_eur, base_currency, 2) }}
                       </template>
                     </el-table-column>
                     <el-table-column label="Cost" prop="cost">
@@ -110,7 +110,7 @@
                     <el-table-column v-if="type==='exchange'" label="Exchange" prop="exchange">
                       <template v-slot:default="scope">
                         {{
-                          scope.row.order.account.name
+                          scope.row.exchange.name
                         }}
                       </template>
                     </el-table-column>
@@ -126,12 +126,12 @@
             </template>
           </el-table-column>
           <el-table-column v-if="type==='broker'" label="Symbol" prop="ticker.ticker" sortable fixed>
-        <template v-slot:default="scope">
+            <template v-slot:default="scope">
           <span @click="openTickerDialog(scope.row.ticker)" style="cursor: pointer; color: #409eff;">
             {{ scope.row.ticker.ticker }}
           </span>
-        </template>
-      </el-table-column>
+            </template>
+          </el-table-column>
           <!--el-table-column v-if="type==='broker'" label="Symbol" property="ticker.ticker" sortable fixed ></el-table-column-->
           <el-table-column v-else label="Coin" property="currency" sortable fixed></el-table-column>
           <el-table-column v-if="type==='broker'" label="Shares" property="shares" width="100px"></el-table-column>
@@ -173,7 +173,7 @@
           <el-table-column label="Market price" property="current_price">
             <template v-slot:default="scope">
               <span v-if="type==='broker'">
-                {{ $filters.toCurrency(scope.row.market.price, scope.row.ticker.currency) }}
+                {{ $filters.toCurrency(scope.row.current_price, scope.row.ticker.currency) }}
               </span>
               <span v-else>
                 {{ $filters.toCurrency(scope.row.current_price, scope.row.current_price_currency, 2) }}
@@ -183,7 +183,9 @@
           <el-table-column label="Value" property="current_value" sortable>
             <template v-slot:default="scope">
               <span v-if="type==='broker'">
-                {{ $filters.toCurrency(scope.row.current_value, scope.row.ticker.currency) }} ({{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}€)
+                {{
+                  $filters.toCurrency(scope.row.current_value, scope.row.ticker.currency)
+                }} ({{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}€)
               </span>
               <span v-else>
                 {{ $filters.toCurrency(scope.row.current_value, scope.row.current_price_currency, 2) }}
@@ -200,21 +202,21 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column v-if="type==='broker'" label="Day Change" property="market.price_change" sortable>
+          <el-table-column v-if="type==='broker'" label="Day Change" property="price_change" sortable>
             <template v-slot:default="scope"><!-- v-if="scope.row.market.price_change"-->
-              <span v-if="scope.row.market.price_change">
-              {{ $filters.round(scope.row.market.price_change, 2) }}%
+              <span v-if="scope.row.price_change">
+              {{ $filters.round(scope.row.price_change, 2) }}%
               </span>
               <span v-else class="">
                 -
               </span>
             </template>
           </el-table-column>
-          <el-table-column v-if="type==='broker'" label="Pre" property="market.pre_change" sortable>
+          <el-table-column v-if="type==='broker'" label="Pre" property="pre_change" sortable>
             <template v-slot:default="scope"><!-- v-if="scope.row.market.pre"-->
-              {{ $filters.toCurrency(scope.row.market.pre, scope.row.ticker.currency) }}
-              <span v-if="scope.row.market.pre_change">
-                ({{ $filters.round(scope.row.market.pre_change, 2) }}%)
+              {{ $filters.toCurrency(scope.row.pre, scope.row.ticker.currency) }}
+              <span v-if="scope.row.pre_change">
+                ({{ $filters.round(scope.row.pre_change, 2) }}%)
               </span>
               <span v-else class="">
                 -
@@ -245,14 +247,14 @@ export default {
   emits: ['recalculate', 'reload'],
   data: () => ({
     filter_accounts: new Set(),
-      search: '',
-      dialogVisible: false,
+    search: '',
+    dialogVisible: false,
     tickerDialogVisible: false,
-          tickerForm: {
-        ticker: '',
-        name: '',
-            ticker_yahoo: ''
-      }
+    tickerForm: {
+      ticker: '',
+      name: '',
+      ticker_yahoo: ''
+    }
   }),
 
   watch: {
@@ -287,7 +289,7 @@ export default {
       this.$emit('recalculate', val);
     },
     colorClass(item) {
-      if (item.column.property == 'market.price_change' || item.column.property == 'market.pre_change'
+      if (item.column.property == 'price_change' || item.column.property == 'pre_change'
           || item.column.property == 'current_benefit') {
         let objects = item.column.property.split('.')
         let value = 0;

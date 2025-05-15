@@ -16,9 +16,9 @@
                             :title="$filters.toCurrency(wallet_value, base_currency)">
                   <template #footer>
                     <div class="stats">
-                    <i class="nc-icon nc-refresh-69"></i>
-                    Total cost: {{ $filters.toCurrency(this.total_cost, base_currency) }}
-                  </div>
+                      <i class="nc-icon nc-refresh-69"></i>
+                      Total cost: {{ $filters.toCurrency(this.total_cost, base_currency) }}
+                    </div>
                   </template>
                 </stats-card>
               </template>
@@ -33,12 +33,13 @@
                 <stats-card type="success"
                             icon="fa fa-chart-line"
                             small-title="Current P/L"
-                             :title="`${$filters.toCurrency(total_current_benefits + total_benefits, base_currency)} (${this.benefits_percent}%)`">
+                            :title="`${$filters.toCurrency(total_current_benefits + total_benefits, base_currency)} (${this.benefits_percent}%)`">
                   <template #footer>
                     <div class="stats">
-                    <i class="nc-icon nc-refresh-69"></i>
-                    Realized: {{ $filters.toCurrency(total_benefits, base_currency) }} - Unrealized: {{ $filters.toCurrency(this.total_current_benefits, base_currency) }}
-                  </div>
+                      <i class="nc-icon nc-refresh-69"></i>
+                      Realized: {{ $filters.toCurrency(total_benefits, base_currency) }} - Unrealized:
+                      {{ $filters.toCurrency(this.total_current_benefits, base_currency) }}
+                    </div>
                   </template>
                 </stats-card>
               </template>
@@ -56,9 +57,9 @@
                             :title="$filters.toCurrency((this.wallet_value - this.base_previous_value ), base_currency)">
                   <template #footer>
                     <div class="stats">
-                    <i class="nc-icon nc-refresh-69"></i>
-                    Daily change: {{ this.daily_benefits_percent }}%
-                  </div>
+                      <i class="nc-icon nc-refresh-69"></i>
+                      Daily change: {{ this.daily_benefits_percent }}%
+                    </div>
                   </template>
                   <div class="stats" slot="footer">
                     <i class="nc-icon nc-refresh-69"></i>
@@ -75,7 +76,7 @@
       <el-tab-pane class="sidebar-wrapper" label="Wallet" name="first">
         <div class="row">
           <balance-table :base_currency="base_currency" :wallet="wallet" :loading="loading" type="exchange"
-                         @recalculate="recalculate" @reload="reload" />
+                         @recalculate="recalculate" @reload="reload"/>
         </div>
       </el-tab-pane>
       <el-tab-pane label="Distribution" name="second">
@@ -129,186 +130,6 @@ export default {
     async reload() {
       await this.getData();
     },
-    fillWallet(res) {
-      this.wallet = res.data;
-      let vm = this;
-      this.wallet = []
-      this.total_cost = 0;
-      this.total_current_benefits = 0;  // wallet benefits taking into account if we sell the wallet right now
-      this.total_benefits = 0;  // executed benefits from the wallet
-      this.wallet_value = 0;  // current wallet value given the current market price
-      this.base_previous_value = 0;  // wallet value from previous day
-
-      let bar = new Promise((resolve, reject) => {
-        res.data.forEach(function (t, index, array) {
-          t.children = t.open_orders;
-          t.ticker = {"ticker": t.currency, "name": t.currency};
-          t.symbol = t.currency + "USD"; // change here the symbol by trading_view symbol
-          t.container_id = t.symbol; // div id for trading view
-          t.base_current_value = t.current_value;
-          t.style = "3";
-          if (t.currency === undefined) {
-            return;
-          }
-
-          t.children.forEach(function (c) {
-            c.ticker = {
-              "ticker": c.order.value_date.split(' ')[0],
-            }
-            c.id = t.id + "_" + c.id;
-            c.price = c.order.price;
-          });
-          vm.wallet.push(t);
-
-          // update global stats
-          vm.total_cost += t.price * t.amount;
-          console.log("Total cost: ", t.price * t.amount);
-          console.log("Base cost: ", t.base_cost);
-          vm.wallet_value += t.current_value;
-          // vm.benefits += t.benefits;
-          vm.benefits += t.current_benefit;
-          vm.total_benefits += t.benefits;
-          vm.total_current_benefits += t.current_benefit;
-          // vm.total_value += t.base_current_value;
-          // console.log("Total value: " + vm.total_value + " - " + t.base_current_value);
-          vm.base_previous_value += t.previous_day_value;
-
-          if (index === array.length - 1) resolve();
-        });
-      });
-
-      bar.then(() => {
-        //console.log("Total_value: " + this.total_value);
-        console.log("Wallet_value: " + this.wallet_value);
-        console.log("Total_cost: " + this.total_cost);
-        console.log("base_previous_value: " + this.base_previous_value);
-        console.log("Win/Lose: " + (this.wallet_value - this.total_cost) + ". Current benefits: " + this.total_current_benefits);
-        console.log("Final cost: " + (this.total_cost - this.total_benefits));
-        this.wallet.forEach(function (t) {
-          t['percentage'] = Number(parseFloat(t.current_value) / vm.wallet_value * 100).toFixed(2);
-          t['base_current_value'] = Number(parseFloat(t.current_value)).toFixed(2);
-        });
-
-        // card stats
-        this.current_benefits_percent = Number(this.wallet_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-        this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-        // calc percentage for the day
-        this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
-      });
-      this.loading = false;
-    },
-    fillStats(res) {
-      let resStatus = res.status === 200;
-      let stats = res.data;
-      let total_invested = stats.buy + stats.sell + stats.gain;
-      this.gain = this.wallet_value + stats.gain - total_invested;
-      console.log("Full stats");
-      console.log("Stats gain: ", stats.gain);
-      console.log("Stats buy: ", stats.buy);
-      console.log("Stats sell: ", stats.sell);
-      console.log("Total invested: ", total_invested);
-      console.log("Gain: ", this.gain);
-    },
-    updateGlobalStats() {
-      this.total_cost = 0;
-      this.total_current_benefits = 0;
-      this.total_benefits = 0;
-      this.wallet_value = 0;
-      this.base_previous_value = 0;
-
-      this.wallet.forEach(t => {
-        if (!t.current_price) return;
-
-        this.total_cost += t.price * t.amount;
-        this.wallet_value += t.current_value || 0;
-        this.total_current_benefits += t.current_benefit || 0;
-        this.total_benefits += t.benefits || 0;
-        this.base_previous_value += t.previous_day_value || 0;
-      });
-
-      this.current_benefits_percent = Number(this.wallet_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
-    }
-    ,
-    /*async getData2() {
-      this.loading = true;
-
-      try {
-        // Phase 1: Load wallet assets (no prices yet)
-        const walletRes = await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/wallet/assets");
-        const walletItems = walletRes.data.map(item => ({
-          ...item,
-          current_price: null,
-          current_value: null,
-          previous_day_value: null,
-          current_benefit: null,
-          base_cost: 0,
-          loading: true // mark as loading prices
-        }));
-
-        this.wallet = walletItems;
-        this.updateGlobalStats(); // optional: show partial stats
-
-        this.loading = false;
-
-        // Phase 2: Load prices async, don't block UI
-        const currencies = walletItems.map(item => item.currency).filter(Boolean);
-        const priceRes = await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/wallet/prices", {
-          currencies: currencies
-        });
-
-        const prices = priceRes.data;
-        const prices_eur = prices.eur || {};
-        const prices_usd = prices.usd || {};
-        const prices_btc = prices.btc || {};
-        const changes_24h = prices.changes_24h || {};
-
-        // Merge prices into wallet
-        this.wallet = this.wallet.map(item => {
-          let current_price = 0;
-          let current_price_eur = 0;
-          let current_price_currency = '';
-
-          if (prices_eur[item.currency]) {
-            current_price = 1 / prices_eur[item.currency];
-            current_price_eur = current_price;
-            current_price_currency = 'eur';
-          } else if (prices_usd[item.currency]) {
-            current_price = 1 / prices_usd[item.currency];
-            current_price_eur = current_price * prices_eur['USD'];
-            current_price_currency = 'usd';
-          } else if (prices_btc[item.currency]) {
-            current_price = 1 / prices_btc[item.currency];
-            current_price_eur = current_price * prices_eur['BTC'];
-            current_price_currency = 'btc';
-          }
-
-          const current_value = item.amount * current_price;
-          const previous_day_value = item.amount * (1 / (changes_24h[item.currency] || 1));
-          const current_benefit = current_value - item.cost;
-
-          return {
-            ...item,
-            current_price,
-            current_price_eur,
-            current_price_currency,
-            current_value,
-            previous_day_value,
-            current_benefit,
-            loading: false // price is now loaded
-          };
-        });
-
-        // Recalculate global stats now that prices are in
-        this.updateGlobalStats();
-      } catch (err) {
-        console.error("Wallet error:", err);
-        this.$notify({message: 'Error loading wallet data.', type: 'danger'});
-      }
-
-      this.loading = false;
-    },*/
     async getData() {
       this.loading = true;
 
@@ -348,7 +169,7 @@ export default {
                 "ticker": c.order.value_date.split(' ')[0],
               },
               id: t.id + "_" + c.id,
-              price: (c.order.type == 0 && c.order.price) ? c.order.price || 0 : (1/c.order.price || 0),
+              price: (c.order.type == 0 && c.order.price) ? c.order.price || 0 : (1 / c.order.price || 0),
               price_eur: c.user_price,
               cost: c.amount * c.order.price,
               current_price_currency: c.order.symbol.split('/')[1]

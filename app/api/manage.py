@@ -158,42 +158,42 @@ def seed_sample_transactions(account_id):
 
 def seed_sample_exchange_order(acc_id):
     from models.sql import db_session
-    from models.crypto import ExchangeOrder
+    from models.crypto import CryptoEvent
     objects = [
-        ExchangeOrder(
+        CryptoEvent(
             account_id=acc_id,
             external_id="external_id",
             value_date=datetime(datetime.now().year-1, 1, 1).strftime("%Y-%m-%d"),
-            pair="ETH/EUR",
+            symbol="ETH/EUR",
             amount=3,
-            type=ExchangeOrder.Type.BUY,
+            type=CryptoEvent.Type.BUY,
             price=950.2,
             fee=-12),
-        ExchangeOrder(
+        CryptoEvent(
             account_id=acc_id,
             external_id="external_id2",
             value_date=datetime(datetime.now().year-1, 1, 2).strftime("%Y-%m-%d"),
-            pair="ETH/EUR",
+            symbol="ETH/EUR",
             amount=3,
-            type=ExchangeOrder.Type.BUY,
+            type=CryptoEvent.Type.BUY,
             price=970.2,
             fee=-12),
-        ExchangeOrder(
+        CryptoEvent(
             account_id=acc_id,
             external_id="external_id3",
             value_date=datetime(datetime.now().year-1, 1, 3).strftime("%Y-%m-%d"),
-            pair="ETH/EUR",
+            symbol="ETH/EUR",
             amount=4,
-            type=ExchangeOrder.Type.SELL,
+            type=CryptoEvent.Type.SELL,
             price=960.2,
             fee=-13),
-        ExchangeOrder(
+        CryptoEvent(
             account_id=acc_id,
             external_id="external_id4",
             value_date=datetime(datetime.now().year, 1, 3).strftime("%Y-%m-%d"),
-            pair="ETH/EUR",
+            symbol="ETH/EUR",
             amount=4,
-            type=ExchangeOrder.Type.BUY,
+            type=CryptoEvent.Type.BUY,
             price=950.2,
             fee=-14)
     ]

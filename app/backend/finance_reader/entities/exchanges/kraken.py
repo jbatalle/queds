@@ -102,16 +102,15 @@ class Kraken(AbstractExchange):
 
     def get_orders(self):
         """Fetches and parses Kraken orders."""
-        self._logger.info("Get Kraken Closed orders")
+        self._logger.info("Get Kraken Ledger orders...")
         ledgers = self.get_ledgers()
 
+        self._logger.info("Get Kraken Trading orders...")
         orders = self.get_paginated_data("/0/private/TradesHistory", type='trades', params={"ofs": 0, "trades": True})
 
-        #orders = self.fetch_with_retry("/0/private/TradesHistory", params={"ofs": 0, "trades": True})
+        self._logger.info("Converting Kraken orders...")
         parsed_orders = self._convert_orders(ledgers, orders)
 
-        # Pagination for additional orders
-        #parsed_orders.extend(self.get_paginated_orders(orders['result']['count'], ledgers))
         self._logger.info(f"Read {len(parsed_orders)} closed orders")
         return parsed_orders
 
@@ -133,7 +132,7 @@ class Kraken(AbstractExchange):
 
     def get_transactions(self):
         """Fetches transactions (ledgers) from Kraken API."""
-        # TODO: check ETH.F,ETHW, SGB... deposits
+
         transactions = self.ledgers.values()  # self.get_paginated_data("/0/private/Ledgers")
         arr_transactions = []
         for t in transactions:
@@ -141,9 +140,7 @@ class Kraken(AbstractExchange):
             trans.account_id = self.account_id
             trans.external_id = t['refid']
             trans.currency = self.clean_symbol(t['asset'])
-            if trans.currency == 'BSV':
-                print("CHeck")
-            trans.value_date = datetime.fromtimestamp(t['time'])
+            trans.value_date = datetime.fromtimestamp(t['time'], timezone.utc)
             if t['type'] == 'withdrawal':
                 trans.type = OrderType.WITHDRAWAL
             elif t['type'] == 'deposit':
@@ -160,10 +157,10 @@ class Kraken(AbstractExchange):
                 trans.type = OrderType.DEPOSIT
 
             if trans.type == OrderType.AIRDROP and float(t['amount']) < 0:
-                # THIS should be a sell - BSV as example
+                # This should be a sell - BSV as example
                 pass
-            trans.amount = abs(float(t['amount'])) + float(t['fee'])
-            trans.fee = t['fee']
+            trans.amount = round(abs(float(t['amount'])) + float(t['fee']), 8)
+            trans.fee = float(t['fee'])
             arr_transactions.append(trans)
 
         self._logger.info(f"Found {len(arr_transactions)} transactions")
@@ -179,29 +176,30 @@ class Kraken(AbstractExchange):
                 self._logger.error(f"NO ledger orders for {orderid}!")
                 continue
 
-            # if order['status'] != 'closed':
-                # continue
             new_order = Order()
             new_order.account_id = self.account_id
+
             new_order.external_id = orderid
             if len(order['pair']) > 6:
                 new_order.pair = order['pair'][1:4] + '/' + order['pair'][5:]
             else:
                 new_order.pair = order['pair'][:3] + '/' + order['pair'][3:]
-            new_order.value_date = datetime.fromtimestamp(order['time'])
-            # new_order.time = int((date - timedelta(hours=1)).strftime("%s"))
-
+            new_order.value_date = datetime.fromtimestamp(order['time'], timezone.utc)
             new_order.type = OrderType.SELL if order['type'] == 'sell' else OrderType.BUY
-
             new_order.amount = float(order['vol'])
+            new_order.fee = 0
+
+            # instead of read the fee from order, we get the fee from ledger because sometimes the fee is applied to the buy item
+            # so in that case we decrease the amount bought with the fee
+            # if everything looks normal, we get the fee from the sell item as usual
             for l in ledger_orders:
-                if f"X{order['pair'].split('/')[0]}" == l['asset']:
-                    new_order.amount -= l['fee']
-                    # TODO: remove fee?
+                if f"X{new_order.pair.split('/')[0]}" == l['asset']:
+                    new_order.amount -= float(l['fee'])
+                elif f"Z{new_order.pair.split('/')[1]}" == l['asset']:
+                    new_order.fee += float(l['fee'])
 
             new_order.price = float(order['price'])
             new_order.cost = float(order['cost'])
-            new_order.fee = float(order['fee'])
             arr_orders.append(new_order)
         return arr_orders
 
@@ -214,170 +212,3 @@ class Kraken(AbstractExchange):
         if symbol.endswith(".F"):
             symbol = symbol.split(".")[0]
         return symbol
-
-    def get_transactions_old(self):
-        self._logger.info("Get transactions...")
-        total_transactions = []
-        offset = 0
-        i = 0
-        while i < 5:
-            try:
-                transactions = self.query("/0/private/Ledgers", params={"ofs": 0}).json()
-            except Exception as e:
-                self._logger.error(e)
-                return
-
-            if 'result' in transactions:
-                break
-
-            self._logger.error(transactions)
-            i += 1
-            time.sleep(5)
-
-        total_transactions.extend(transactions['result']['ledger'].values())
-        max_count = transactions['result']['count']
-        offset += 50
-        while offset < max_count:
-            time.sleep(5)
-            try:
-                transactions = self.query("/0/private/Ledgers", params={"ofs": offset}).json()
-            except Exception as e:
-                self._logger.exception(e)
-                return
-            total_transactions.extend(transactions['result']['ledger'].values())
-            if len(transactions['result']['ledger'].items()) == 50:
-                offset += 50
-            else:
-                offset += len(transactions['result']['ledger'].items())
-
-        arr_transactions = []
-        for t in total_transactions:
-            trans = Transaction()
-            trans.account_id = self.account_id
-            trans.external_id = t['refid']
-            if len(t['asset']) > 3:
-                trans.currency = t['asset'][1:]
-            else:
-                trans.currency = t['asset']
-
-            trans.value_date = datetime.fromtimestamp(t['time'])
-            # trans.time = int((date - timedelta(hours=1)).strftime("%s"))
-            if t['type'] == 'withdrawal':
-                trans.type = OrderType.WITHDRAWAL
-            elif t['type'] == 'deposit':
-                trans.type = OrderType.DEPOSIT
-            else:
-                continue
-            trans.amount = abs(float(t['amount'])) + t['fee']
-            trans.fee = t['fee']
-            arr_transactions.append(trans)
-
-        self._logger.info("Found {0} transactions".format(len(arr_transactions)))
-        return arr_transactions
-
-    def identifying_fees(self):
-        a = {
-  'aclass': 'forex',
-  'cost': '22.12090',
-  'fee': '0.05751',
-  'leverage': '0','maker': False,'margin': '0.00000','misc': '','ordertxid': 'OUQT2M-M36RE-INY4ID','ordertype': 'market', 'pair': 'XETHZEUR',
-  'price': '248.96000',
- 'time': 1508704405.071527,'trade_id': 5980568,  'type': 'buy',
-  'vol': '0.08885322'
-}
-        b = {
-  'aclass': 'forex',
-  'cost': '24.90000',
-  'fee': '0.06474',
-  'leverage': '0',   'maker': False,  'margin': '0.00000',  'misc': '','ordertxid': 'OYS4QF-NF4XC-OY3WYX','ordertype': 'market',   'pair': 'XETHZEUR',
-    'price': '249.00000',
-  'time': 1508704366.045528,   'trade_id': 5980567, 'type': 'buy',
-  'vol': '0.10000000'
-}
-        total_cost = a['vol']*a['price']
-        a_cost = round(float(a['vol'])*float(a['price']) + float(a['fee']), 5)
-        b_cost = round(float(b['vol'])*float(b['price']) + float(b['fee']), 5)
-        print(a_cost)
-        print(b_cost)
-
-        vol_a = float(a['cost'])/float(a['price'])
-        vol_b = float(b['cost']) / float(b['price'])
-        print(vol_a)
-        print(vol_b)
-
-        balance1 = self.calculate_final_eth(a)
-        balance2 = self.calculate_final_eth(b)
-        print("Order 1 ", balance1)
-        print("Order 2 ", balance2)
-
-        detect_fee_method(a)
-        detect_fee_method(b)
-
-    @staticmethod
-    def calculate_final_eth(order):
-        cost = float(order['cost'])  # Cost in EUR
-        fee = float(order['fee'])  # Fee in EUR
-        vol = float(order['vol'])  # Volume (ETH)
-        price = float(order['price'])  # Price in EUR per ETH
-        volume = float("{:0.8f}".format(cost/price))
-        import math
-        volume = math.floor((cost / price) * 10 ** 8) / 10 ** 8
-        adjusted_vol = vol - (fee / price)
-
-        if volume == vol:
-            # fee is in target ETH
-            eth_fee = fee / price
-            balance = vol - eth_fee
-        else:
-            # fee is in EUR
-            balance = vol
-
-        return balance, cost
-
-    def detect_fee_method(order):
-        volume = float(order['vol'])
-        cost = float(order['cost'])
-        fee = float(order['fee'])
-        price = float(order['price'])
-
-        # Calculate theoretical cost based on volume and price
-        expected_cost = volume * price
-
-        # Calculate fee as percentage
-        fee_percentage = fee / cost
-
-        # If fee was applied to EUR:
-        # The pretax cost would be (cost - fee)
-        # And volume would be exactly as reported
-        if_eur_fee_expected_volume = (cost - fee) / price
-        eur_fee_volume_diff = abs(volume - if_eur_fee_expected_volume) / volume
-
-        # If fee was applied to ETH:
-        # The reported volume would be post-fee
-        # And the original volume would be (volume + fee_in_eth)
-        fee_in_eth = fee / price
-        if_eth_fee_original_volume = volume + fee_in_eth
-        if_eth_fee_expected_cost = if_eth_fee_original_volume * price
-        eth_fee_cost_diff = abs(cost - if_eth_fee_expected_cost) / cost
-
-        # Additional check: look at the roundness of volume
-        # Volumes like 0.10000000 suggest EUR fee (user specified exact ETH amount)
-        # Less round volumes suggest ETH fee
-        volume_roundness = len(order['vol'].rstrip('0').split('.')[1]) if '.' in order['vol'] else 0
-
-        print(volume_roundness)
-        # Combine the evidence
-        if volume_roundness == 0 or volume_roundness <= 5:
-            # Round volume suggests EUR fee
-            if eur_fee_volume_diff < 0.01:  # Within 1% margin of error
-                print("Fee applied to EUR")
-                return "Fee applied to EUR"
-
-        # Compare differences - smaller difference indicates likely method
-        print(eth_fee_cost_diff, eur_fee_volume_diff)
-        if eth_fee_cost_diff < eur_fee_volume_diff:
-            print("ETH")
-            return "Fee applied to ETH"
-        else:
-            print("EUR")
-            return "Fee applied to EUR"

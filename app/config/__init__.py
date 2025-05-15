@@ -87,6 +87,10 @@ class Settings:
                     'handlers': self.enabled_handlers,
                     'level': logging.WARNING
                 },
+                'curl_cffi.requests': {  # disable requests library logging
+                    'handlers': self.enabled_handlers,
+                    'level': logging.WARNING
+                },
                 'sqlalchemy': {
                     'handlers': self.enabled_handlers,
                     'level': logging.ERROR

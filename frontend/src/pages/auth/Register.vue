@@ -1,34 +1,11 @@
 <template>
-  <div class="register-page">
+  <div class="login-page">
     <app-navbar></app-navbar>
     <div class="wrapper wrapper-full-page ">
-      <div class="full-page register-page section-image" filter-color="black">
+      <div class="full-page login-page section-image" filter-color="black">
         <div class="content">
           <div class="container">
-            <div class="row">
-              <div class="col-lg-5 col-md-5 ml-auto">
-                <info-section class="mt-5"
-                              type="primary"
-                              title="Stocks"
-                              description="Portfolio for different Brokers."
-                              icon="nc-icon nc-tv-2">
-
-                </info-section>
-                <info-section type="primary"
-                              title="Crypto"
-                              description="Portfolio for different Exchanges."
-                              icon="nc-icon nc-html5">
-
-                </info-section>
-
-                <info-section type="primary"
-                              title="Bank statements"
-                              description="List of Bank statements."
-                              icon="nc-icon nc-atom">
-
-                </info-section>
-              </div>
-              <div class="col-lg-4 col-md-6 mr-auto">
+              <div class="col-lg-4 col-md-6 ml-auto mr-auto">
                 <form @submit.prevent="register">
                 <card type="signup">
                   <h3 slot="header" class="header text-center">Register</h3>
@@ -43,11 +20,11 @@
                   <el-button native-type="submit" slot="footer" type="primary" round block class="mb-3">Get started</el-button>
                 </card>
                 </form>
-              </div>
             </div>
           </div>
         </div>
         <app-footer></app-footer>
+        <div class="full-page-background" style="background-image: url(/static/img/background/background-2.jpg) "></div>
       </div>
     </div>
   </div>
@@ -58,15 +35,16 @@ import AppNavbar from '@/components/Dashboard/Layout/AppNavbar.vue';
 import AppFooter from '@/components/Dashboard/Layout/AppFooter.vue';
 import {Card} from '@/components/UIComponents';
 import formMixin from "@/mixins/form-mixin";
-  export default {
-    mixins: [formMixin],
-    components: {
-      Card,
-      AppNavbar,
-      AppFooter,
-    },
+
+export default {
+  mixins: [formMixin],
+  components: {
+    Card,
+    AppNavbar,
+    AppFooter,
+},
     data() {
-      return {
+    return {
         name: null,
         email: null,
         password: null,

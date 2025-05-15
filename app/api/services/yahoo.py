@@ -1,4 +1,3 @@
-import requests
 import json
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
@@ -7,6 +6,7 @@ import binascii
 import pickle
 import logging
 from services import redis_svc
+from curl_cffi import requests
 
 
 logger = logging.getLogger(__name__)
@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 class YahooClient:
 
     def __init__(self):
-        self.client = requests.Session()
+        self.client = requests.Session(impersonate="chrome")
         self.client.headers.update(
             {
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.8,es;q=0.6,ca;q=0.4',
-                'Accept-Encoding': 'deflate'
+                'Accept-Encoding': 'gzip, deflate, br, zstd'
             }
         )
         self.redis = redis_svc
@@ -41,12 +41,7 @@ class YahooClient:
         cached_symbols = self.redis.get('symbols')
         # if all symbols are cached, return them
         if cached_symbols:
-            print("Cached: ", cached_symbols['symbols'])
-            #print([s['symbol'] for s in cached_symbols['symbols']])
-            #print(symbols.split(","))
-            #print([s['symbol'] for s in cached_symbols['symbols'] if s['symbol'] in symbols.split(",")])
-            #print(all(symbol in [s['symbol'] for s in cached_symbols['symbols']] for symbol in symbols.split(",")))
-
+            logger.debug(f"Cached: {[s['symbol'] for s in cached_symbols['symbols']]}")
 
         if cached_symbols and all(symbol in [s['symbol'] for s in cached_symbols['symbols']] for symbol in symbols.split(",")):
             return cached_symbols['symbols']
@@ -54,7 +49,7 @@ class YahooClient:
         crumb = r.text
 
         if r.status_code != 200:
-            # print(f"Regenerate cookies due state: {r.status_code}")
+            logger.debug(f"Regenerate cookies due state: {r.status_code}")
             self.generate_cookies()
             r = self.client.get("https://query2.finance.yahoo.com/v1/test/getcrumb")
             crumb = r.text
@@ -135,17 +130,23 @@ class YahooClient:
     def get_yahoo_symbol(self, symbol):
         url = "http://d.yimg.com/autoc.finance.yahoo.com/autoc?query={}&region=1&lang=en".format(symbol)
         url = "https://finance.yahoo.com/_finance_doubledown/api/resource/searchassist;searchTerm={}?device=console&returnMeta=true".format(symbol)
+        url = f"https://query1.finance.yahoo.com/v1/finance/search?q={symbol}&lang=es-ES&region=ES&quotesCount=1&newsCount=0"
 
         r = self.client.get(url)
         if r.status_code != 200:
-            logger.error(f"Status code: {r.status_code}. Error: {r.text}")
+            logger.error(f"Status code: {r.status_code}. Error: {url}")
             return None
 
         try:
             result = r.json()
         except:
-            logger.error("Unable to read response as json")
+            logger.error(f"Unable to read response as json. Url: {url}")
             return None
+
+        if len(result['quotes']) == 0:
+            return None
+
+        return result['quotes'][0]['symbol']
 
         if len(result['data']['items']) == 1:
             return result['data']['items'][0]['symbol']
@@ -189,5 +190,5 @@ class YahooClient:
             }
             rate = round(a['close'], 2)
 
-        self.redis.store('currency', {"USD/EUR": rate})
+        self.redis.store('currency', {"USD/EUR": rate}, expiration=3600*6)
         return rate

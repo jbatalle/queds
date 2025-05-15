@@ -1,18 +1,22 @@
 <template>
-  <nav :class="classes" class="navbar navbar-expand-lg">
+  <nav :class="classes" class="navbar navbar-expand-lg" >
     <div class="container-fluid">
-      <slot></slot>
-      <slot name="toggle-button">
-        <button aria-controls="navigation-index"
-                @click="toggleMenu"
-                aria-expanded="true" aria-label="Toggle navigation"
-                class="navbar-toggler" data-toggle="collapse" type="button"><span
-            class="navbar-toggler-bar navbar-kebab"></span><span class="navbar-toggler-bar navbar-kebab"></span><span
-            class="navbar-toggler-bar navbar-kebab"></span></button>
-      </slot>
-      <div class="collapse navbar-collapse justify-content-end show"
-           :class="navbarMenuClasses"
-           v-show="showNavbar"
+      <div class="navbar-wrapper">
+        <slot></slot>
+      </div>
+
+      <button aria-controls="navigation-index"
+              @click="toggleMenu"
+              aria-label="Toggle navigation"
+              class="navbar-toggler"
+              type="button">
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-end"
+           :class="{ show: showNavbar }"
            id="navigation">
         <ul class="navbar-nav">
           <slot name="navbar-menu"></slot>
@@ -21,43 +25,35 @@
     </div>
   </nav>
 </template>
-<script>
 
+<script>
 export default {
   name: 'navbar',
   props: {
-    showNavbar: {
-      type: Boolean,
-      description: "Whether navbar is visible"
-    },
     navbarMenuClasses: {
       type: [String, Object],
-      description: 'Navbar menu css classes'
+      default: ''
     },
     transparent: {
       type: Boolean,
-      default: true,
-      description: 'Whether navbar is transparent'
+      default: true
     },
     position: {
       type: String,
-      default: 'absolute',
-      description: 'Navbar position (absolute|fixed|relative)'
+      default: 'absolute'
     },
     type: {
       type: String,
       default: 'white',
       validator(value) {
         return ['white', 'default', 'primary', 'danger', 'success', 'warning', 'info'].includes(value);
-      },
-      description: 'Navbar type (primary|info|danger|default|warning|success)'
+      }
     }
   },
-  model: {
-    prop: 'showNavbar',
-    event: 'change'
-  },
-  components: {
+  data() {
+    return {
+      showNavbar: false
+    }
   },
   computed: {
     classes() {
@@ -66,18 +62,46 @@ export default {
       return [
         {'navbar-transparent': !this.showNavbar && this.transparent},
         {[color]: this.showNavbar || !this.transparent},
-        navPosition]
+        {'show': this.showNavbar},
+        navPosition
+      ]
     }
   },
   methods: {
     toggleMenu() {
-      this.$emit('change', !this.showNavbar);
+      this.showNavbar = !this.showNavbar;
     }
   }
 }
 </script>
+
 <style scoped>
 .navbar-relative {
   position: relative;
+}
+
+nav.show {
+  position: relative;
+}
+
+@media (max-width: 991px) {
+  .navbar {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .navbar-toggler {
+    display: block;
+  }
+  .navbar-collapse {
+    display: none;
+    width: 100%;
+  }
+  .navbar-collapse.show {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
 }
 </style>

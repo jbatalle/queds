@@ -1,16 +1,21 @@
 from wallet_processor.entities import AbstractEntity
 from models.system import Account, Entity
 from models.crypto import ExchangeWallet, ExchangeClosedOrder, ExchangeProxyOrder, \
-    ExchangeOpenOrder, ExchangeBalance, CryptoEvent
+    ExchangeOpenOrder, ExchangeBalance, CryptoEvent, TransactionLog
 from wallet_processor.utils import BalanceQueue, Transaction
 from wallet_processor.utils.crypto_prices import get_price
 from sqlalchemy.orm import joinedload
+from datetime import datetime, timedelta
 
 
 class CryptoProcessor(AbstractEntity):
     def __init__(self):
         super().__init__()
         self.withdrawals = {}
+        self.logs = []
+
+    def generate_transaction_logs(self):
+        TransactionLog.bulk_save_objects(self.logs)
 
     @staticmethod
     def clean(orders):
@@ -71,17 +76,25 @@ class CryptoProcessor(AbstractEntity):
             deposit.withdrawal = None
 
             if deposit.symbol not in self.withdrawals or len(self.withdrawals[deposit.symbol]) == 0:
-                self._logger.error(f"{deposit.value_date.strftime('%Y-%m-%d %H:%M:%S')} - {deposit.symbol} - "
-                                   f"No withdrawal detected for {deposit.symbol}. Amount: {deposit.amount} at {deposit.account.entity.name}")
+                self._logger.warning(f"{deposit.value_date.strftime('%Y-%m-%d %H:%M:%S')} - {deposit.symbol} - "
+                                   f"Deposit of {deposit.amount}{deposit.symbol} without withdrawal at {deposit.account.entity.name}")
+                self.logs.append(TransactionLog(message=f"Deposit of {deposit.amount}{deposit.symbol} without withdrawal",
+                                             log_type='deposit_without_withdrawal', account_id=deposit.account.id,
+                                             sell_event_id=deposit.id))
                 continue
 
             # search for the according withdrawal
             wth_order = None
             for withdrawal in [w for w in self.withdrawals[deposit.symbol] if w.status != 'DEPOSITED']:
-                withdraw_amount = withdrawal.amount + withdrawal.fee
+                withdraw_amount = round(withdrawal.amount - withdrawal.fee, 8)
+                # self._logger.warning(f"Deposit {deposit.symbol}: {deposit.amount} vs Withdrawal: {withdraw_amount}. Diff: {abs(withdraw_amount - deposit.amount)}")
                 if (withdraw_amount >= deposit.amount
-                        and abs(withdraw_amount - deposit.amount) < 1.0
-                        and withdrawal.account_id != deposit.account_id):
+                        and abs(withdraw_amount - deposit.amount) <= 0.02
+                        # and abs(withdraw_amount - deposit.amount) < 1.0
+                        and withdrawal.account_id != deposit.account_id#):
+                        # and deposit.value_date > withdrawal.value_date
+                        and deposit.value_date < withdrawal.value_date + timedelta(days=1)):
+                    # self._logger.warning(f"Match Deposit {deposit.symbol}: {deposit.amount} vs Withdrawal: {withdraw_amount}. Diff: {abs(withdraw_amount - deposit.amount)}")
                     wth_order = withdrawal
                     wth_order.status = 'DEPOSITED'
                     wth_order.account_id = deposit.account_id
@@ -91,17 +104,29 @@ class CryptoProcessor(AbstractEntity):
                     # change dates in case withdrawal is older than deposit
                     if deposit.value_date < wth_order.value_date:
                         # self._logger.warning(f"Deposit is previous than withdrawal. Changing dates {order.value_date} < {wth_order.value_date}")
-                        wth_order.value_date = deposit.value_date
+                        # wth_order.value_date = deposit.value_date - timedelta(seconds=1)
+                        deposit.value_date = wth_order.value_date + timedelta(seconds=1)
                     break
 
             if not wth_order:
                 self._logger.error(f"{deposit.value_date.strftime('%Y-%m-%d %H:%M:%S')} - {deposit.symbol} - "
                                    f"Unable to match withdrawal with deposit. Amount: {deposit.amount} at {deposit.account.entity.name}")
 
+        for w in withdrawals:
+            if w.status == 'DEPOSITED':
+                continue
+            self._logger.warning(f"{w.value_date.strftime('%Y-%m-%d %H:%M:%S')} - {w.symbol} - "
+                                   f"Withdrawal no deposited of {w.amount}{w.symbol} from {w.account.entity.name}")
+            self.logs.append(TransactionLog(message= f"Withdrawal no deposited of {w.amount}{w.symbol} from {w.account.entity.name}",
+                    log_type='withdrawal_without_deposit', account_id=w.account.id, sell_event_id=w.id))
+
         self._logger.debug(
-            f"withdrawals deposited: {len([w for w in withdrawals if w.status == 'DEPOSITED'])}/{len(withdrawals)}. "
+            f"Withdrawals deposited: {len([w for w in withdrawals if w.status == 'DEPOSITED'])}/{len(withdrawals)}. "
             f"Deposited withdrawals: {len([d for d in deposits if d.withdrawal is not None])}/{len(deposits)}."
         )
+
+        # reorder in case we change value_date
+        orders = sorted(orders, key=lambda x: (x.value_date, x.external_id))
         return orders
 
     def print_operation(self, queue, order, operation):
@@ -138,7 +163,7 @@ class CryptoProcessor(AbstractEntity):
                 buy_transaction = Transaction(Transaction.Type.BUY, order, source, order.amount, order.price)
                 order.cost = round(order.cost, 8) # TODO: return to 4?
                 if order.cost == 0:
-                    print("CHECK possible buy without items?")
+                    self._logger.warning("CHECK possible buy without items?")
                 sell_transaction = Transaction(Transaction.Type.SELL, order, target, order.cost, order.price, order.fee)
                 track_sell = False
             else:
@@ -181,42 +206,6 @@ class CryptoProcessor(AbstractEntity):
             return sell_info, None
         return None, None
 
-
-        if order.type == CryptoEvent.Type.BUY and target == 'EUR':
-            buy_transaction = Transaction(Transaction.Type.BUY, order, source, order.amount, order.price)
-            order.cost = round(order.cost, 4)
-            sell_transaction = Transaction(Transaction.Type.SELL, order, target, order.cost, order.price, order.fee)
-            queue.buy(buy_transaction)
-            queue.sell(sell_transaction)
-            self._logger.debug(f"Current EUR: {queue.current_amount('EUR')}. Current {source}: {queue.current_amount(source)}")
-            return None, None
-
-        if order.type == CryptoEvent.Type.BUY:
-            target_price = get_price(target, "EUR", order.value_date)
-            source_price = order.price * target_price
-            sell_transaction = Transaction(Transaction.Type.SELL, order, target, order.cost, target_price, order.fee)
-            buy_transaction = Transaction(Transaction.Type.BUY, order, source, order.amount, source_price)
-        elif order.type == CryptoEvent.Type.SELL and target == 'EUR':
-            order.cost = round(order.cost, 4)
-            sell_transaction = Transaction(Transaction.Type.SELL, order, source, order.amount, order.price)
-            buy_transaction = Transaction(Transaction.Type.BUY, order, target, order.cost, order.price, order.fee)
-        elif order.type == CryptoEvent.Type.SELL:
-            target_price = get_price(target, "EUR", order.value_date)
-            source_price = order.price * target_price
-            sell_transaction = Transaction(Transaction.Type.SELL, order, source, order.amount, source_price)
-            buy_transaction = Transaction(Transaction.Type.BUY, order, target, order.cost, target_price, order.fee)
-        else:
-            self._logger.debug("Not sell and buy transactions, something happened here!")
-            return None, None
-
-        sell_info = queue.sell(sell_transaction)
-        queue.buy(buy_transaction)
-        self._logger.debug(f"Current EUR: {queue.current_amount('EUR')}. Current {source}: {queue.current_amount(source)}. Current {target}: {queue.current_amount(target)}")
-
-        if sell_info:
-            return sell_info, None
-        return None, None
-
     def process_transactions(self, queue, order):
         if order.rx_address and 'MAINTENANCE' in order.rx_address:
             # TODO: review this? should be a sell?
@@ -224,6 +213,13 @@ class CryptoProcessor(AbstractEntity):
             return None, None
 
         buy_transaction = None
+        timestamp = order.value_date.strftime('%Y-%m-%d %H:%M:%S')
+        self._logger.debug(
+            f"{timestamp} - {CryptoEvent.get_type(order.type)} - {order.amount}{order.symbol} to/from "
+            f"{order.account.entity.name}. "
+            f"Current EUR: {queue.current_amount('EUR')}. "
+            f"Current {order.symbol}: {queue.current_amount(order.symbol)}."
+        )
         # self._logger.debug(
         #    f"{value_date.strftime('%Y-%m-%d %H:%M:%S')} - {CryptoEvent.get_type(order.type)} - {order.amount}{order.symbol} to/from {order.account.entity.name}. "
         #    f"Current: {queue.current_amount(order.symbol)}{order.symbol}")
@@ -279,7 +275,7 @@ class CryptoProcessor(AbstractEntity):
                     try:
                         partial_fee = buy_order.fee / (buy_order.trade.amount / sell_order.amount)
                     except:
-                        self._logger.warning(f"Calc of partial fee fails for {sell_order.sell_trade.ticker}. Buy fee: {buy_order.fee}. BUy amount: {buy_order.trade.amount}. Sell amount: {sell_order.amount}")
+                        self._logger.warning(f"Calc of partial fee fails for {sell_order.sell_trade.ticker}. Buy fee: {buy_order.fee}. Buy amount: {buy_order.trade.amount}. Sell amount: {sell_order.amount}")
                         partial_fee = 0
                 else:
                     try:
@@ -287,6 +283,10 @@ class CryptoProcessor(AbstractEntity):
                     except:
                         # self._logger.warning(f"Amount is 0! When checking order {buy_order.amount}{sell_order.sell_trade.ticker}")
                         partial_fee = 0
+
+                #TransactionLog.log(message=f"", log_type='Buy' if order.type == CryptoEvent.Type.BUY else 'Sell', account_id=order.account.account_id,
+                        # sell_event_id=order.id,
+                # buy_event_id=order.id)
 
                 proxy_orders.append(ExchangeProxyOrder(
                     closed_order=closed_order,
@@ -333,7 +333,8 @@ class CryptoProcessor(AbstractEntity):
                     total_cost = amount * avg_price
                     fees = order.fee
                     if order.trade:
-                        open_orders.append(ExchangeOpenOrder(order_id=order.trade.transaction_id, amount=order.amount, user_price=order.price))
+                        open_orders.append(ExchangeOpenOrder(order_id=order.trade.transaction_id, amount=order.amount,
+                                                             user_price=order.price, exchange_id=order.exchange_id ))
                     continue
 
                 avg_price = (amount * avg_price + order.amount * order.price) / (amount + order.amount)
@@ -342,7 +343,8 @@ class CryptoProcessor(AbstractEntity):
                 total_cost += order.price * order.amount  # * partial_order.trade.currency_rate
                 fees += order.fee
                 if order.trade:
-                    open_orders.append(ExchangeOpenOrder(order_id=order.trade.transaction_id, amount=order.amount, user_price=order.price))
+                    open_orders.append(ExchangeOpenOrder(order_id=order.trade.transaction_id, amount=order.amount,
+                                                         user_price=order.price, exchange_id=order.exchange_id))
 
             if amount == 0:
                 self._logger.info(f"Ticker {ticker} has 0 total amount, skipping.")
@@ -411,22 +413,6 @@ class CryptoProcessor(AbstractEntity):
         """Placeholder for calculating benefits."""
         pass
 
-    def process_pending_transactions(self, queue, orders, tracked_orders):
-        """(Optional) Debugging helper for unmatched withdrawals."""
-        self._logger.warning("Testing deposits/withdrawals..")
-        return
-        withdrawals = queue.withdrawals
-        for symbol, withdrawal in withdrawals.items():
-            for wth in withdrawal:
-                if wth.status == 'DEPOSITED':
-                    self._logger.info(f"Deposit: {wth.amount}{wth.symbol} at {wth.value_date} to {wth.account.entity.name}. Fees: {wth.fee}")
-                    continue
-
-                self._logger.info(f"Pending withdrawal: {wth.amount}{wth.symbol} at {wth.value_date} from {wth.account.entity.name}")
-                order = Transaction(Transaction.Type.SELL, wth, wth.symbol, wth.amount, 0, wth.fee)
-                sell_order = queue.withdrawal_old(order)
-                tracked_orders.append(sell_order)
-
     def get_balances(self, accounts):
         """Returns total balances for a user across all accounts."""
         balances = ExchangeBalance.query.options(joinedload(ExchangeBalance.account)).filter(
@@ -437,5 +423,5 @@ class CryptoProcessor(AbstractEntity):
         for b in balances:
             currency_balances[b.currency] = currency_balances.get(b.currency, 0) + b.balance
 
-        self._logger.info("Currency balances: ", currency_balances)
+        self._logger.info(f"Currency balances: {currency_balances}")
         return currency_balances

@@ -19,6 +19,7 @@ Check out the demo at https://queds.alwaysdata.net/overview (user: demo@queds.co
 * Dividends tracking
 * Price alerts via Telegram
 * Default portfolio currency setting
+* Create a Trading Log with all the movements and relations between orders
 
 ## Table of Contents
 1. [Getting Started](#getting-started)

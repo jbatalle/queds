@@ -60,12 +60,14 @@ class WatchlistItems(Resource):
         log.info(f"Tickers without yahoo: {to_be_req}")
         for no_yahoo_symbol in to_be_req:
             yahoo_symbol = y.get_yahoo_symbol(no_yahoo_symbol.ticker)
+            if not yahoo_symbol:
+                continue
             log.info(f"{no_yahoo_symbol.ticker} - {yahoo_symbol}")
             no_yahoo_symbol.ticker_yahoo = yahoo_symbol
             q = no_yahoo_symbol.save()
             log.info(q)
 
-        tickers = {t.ticker_yahoo: t for t in tickers}
+        tickers = {t.ticker_yahoo: t for t in tickers if t.ticker_yahoo}
         symbols = ",".join(list(tickers.keys()))
         log.info(f"Symbols: {symbols}")
         if not symbols:

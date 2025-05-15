@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import hashlib
 import hmac
 from finance_reader.entities import TimeoutRequestsSession
 from finance_reader.entities.exchanges import AbstractExchange
 from models.dtos.exchange_dtos import ExchangeWallet, Order, Transaction, OrderType
+import pytz
 
 
 class Bitstamp(AbstractExchange):
@@ -102,9 +103,16 @@ class Bitstamp(AbstractExchange):
         arr_orders = []
         transactions = []
         for order in orders:
+
+            try:
+                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S.%f")
+            except:
+                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S")
+
             if order['type'] == '0' or order['type'] == '1':
                 # deposit -> 0 withdraw -> 1
                 print("Deposit/Withdrawal", order)
+                order['datetime'] = dt
                 transactions.append(order)
                 continue
             if order['type'] not in ['2', '27']:
@@ -130,15 +138,10 @@ class Bitstamp(AbstractExchange):
             new_order.external_id = order['id']
             split_pair = pair.split("_")
             new_order.pair = (split_pair[0] + '/' + split_pair[1]).upper()
-            import pytz
-            try:
-                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S.%f")
-            except:
-                dt = datetime.strptime(order['datetime'], "%Y-%m-%d %H:%M:%S")
 
             print(f"{pair} - {dt}")
             # new_order.value_date = self.convert_text_to_datetime(new_order.value_date)
-            dt = dt.replace(tzinfo=pytz.UTC)  # Assume UTC if no timezone is provided
+            dt = dt.replace(tzinfo=pytz.UTC)
             new_order.value_date = dt.astimezone(pytz.timezone("Europe/Madrid"))
             print(f"{pair} final - {new_order.value_date}")
             amount = float(order[pair.split("_")[0]])
@@ -203,8 +206,10 @@ class Bitstamp(AbstractExchange):
             else:
                 trans.type = OrderType.DEPOSIT
             trans.amount = o['amount']
-            date = datetime.fromtimestamp(o['datetime'])
-            trans.value_date = date # - timedelta(hours=1)
+            #date = datetime.fromtimestamp(o['datetime'])
+            #trans.value_date = date # - timedelta(hours=1)
+            # trans.value_date = trans.value_date.astimezone(pytz.timezone("Europe/Madrid"))
+            trans.value_date = datetime.fromtimestamp(o['datetime'], timezone.utc)
             trans.currency = o['currency']
             trans.rx_address = o['destinationAddress']
             trans.fee = 0
@@ -215,15 +220,32 @@ class Bitstamp(AbstractExchange):
         transactions = []
         for o in orders:
             trans = Transaction()
+            # search transaction in self.transactions
+            # trans.value_date = datetime.fromtimestamp(o['datetime'])
+            fee = 0
+            for t in self.transactions:
+                if o['currency'].lower() not in t:
+                    continue
+                if t.get('used', None):
+                    continue
+                if t['type'] != '1':
+                    continue
+                if abs(float(t[o['currency'].lower()]) - float(t['fee'])) == float(o['amount']):
+                    t['used'] = True
+                    fee = float(t['fee'])
+                    break
+
             trans.account_id = self.account_id
             trans.type = OrderType.WITHDRAWAL
             trans.external_id = o['txid']
-            trans.amount = o['amount']
-            trans.value_date = datetime.fromtimestamp(o['datetime'])
+            trans.amount = float(o['amount'])
+            #trans.value_date = datetime.fromtimestamp(o['datetime'])
+            # trans.value_date = trans.value_date.astimezone(pytz.timezone("Europe/Madrid"))
+            # new_order.value_date = datetime.fromtimestamp(order['time'], timezone.utc)
+            trans.value_date = datetime.fromtimestamp(o['datetime'], timezone.utc)
             trans.currency = o['currency']
             trans.rx_address = o['destinationAddress']
-            # TODO: check the fee!
-            trans.fee = 0
+            trans.fee = fee
             transactions.append(trans)
         return transactions
 

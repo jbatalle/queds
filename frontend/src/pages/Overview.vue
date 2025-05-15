@@ -121,14 +121,6 @@
                     <td>{{ $filters.toCurrency(realized_gains_ytd, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(totalPL, base_currency) }}</td>
                   </tr>
-                  <tr>
-                    <td><strong>Fiat Balance</strong></td>
-                    <td colspan="7">{{ $filters.toCurrency(fiat, base_currency) }}</td>
-                  </tr>
-                  <tr class="table-info">
-                    <td><strong>Total Portfolio</strong></td>
-                    <td colspan="7">{{ $filters.toCurrency(total_wallet_value + fiat, base_currency) }}</td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -648,6 +640,8 @@ export default {
       let crypto_wallet_cost = 0;
       let crypto_wallet_value = 0;
 
+      console.log(this.exchangeAccounts);
+
       assets.forEach(asset => {
         const price = prices.eur[asset.currency];
         crypto_wallet_value += asset.amount * (1/price || 0);
@@ -663,7 +657,13 @@ export default {
             console.log("BIG wallet cost", asset.currency, crypto_wallet_cost, order);
           }
           if (!isNaN(price) && price > 0) {
-                this.exchangeAccounts.find(e => e.id === order.order.account_id).virtual_balance += order.amount * (1/price || 0);
+            if (order.exchange_id === 11 || order.exchange_id === 22 ) {
+              console.log("Binance order, ", order.order.symbol, order.amount, (1/price || 0), order.amount * (1/price || 0));
+              this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (1/price || 0);
+            } else {
+              this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (price || 0);
+           // this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (price || 0);
+            }
           }
         });
         if (asset) this.total_assets.push(asset);
@@ -682,7 +682,7 @@ export default {
       console.log("Crypto invested: ", this.crypto_invested);
       console.log("Crypto cost: ", this.crypto_wallet_cost);
       console.log("Crypto realized gains ytd: ", this.crypto_realized_gains_ytd);
-      console.log("Total Crypto gain: ", this.total_Crypto_gain);
+      console.log("Total Crypto gain: ", this.total_crypto_gain);
 
       console.log("Crypto P/L: ", this.crypto_wallet_value - this.crypto_wallet_cost);
       console.log("Crypto P/L: ", this.crypto_wallet_value + this.crypto_gain - this.total_invested);
@@ -697,7 +697,7 @@ export default {
           // Check if any open_orders belong to this account
           if (w.open_orders && Array.isArray(w.open_orders)) {
             w.open_orders.forEach(order => {
-              if (order.order && order.order.account_id === account.id) {
+              if (order.order && order.exchange_id === account.id) {
                 // Add wallet amount to the virtual_balance of the account
                 if (!isNaN(w.current_price_eur)) {
                   account.virtual_balance += order.amount * w.current_price_eur;

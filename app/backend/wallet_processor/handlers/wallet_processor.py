@@ -47,14 +47,10 @@ class WalletProcessor:
         logger.info("Preprocessing orders...")
         orders = self.processor.preprocess(orders)
 
-        logger.info(f"Found: {len(orders)} orders, {len(transactions)} are transactions. Starting wallet calculation...")
+        logger.info(f"Found: {len(orders)} orders. Starting wallet calculation...")
         tracked_orders = []
         queue = BalanceQueue()
 
-        # orders = [o for o in orders if o.ticker.ticker in ['DENB', 'DEN', 'DNRCQ', 'DNRRW']]
-        # orders = [o for o in orders if o.ticker.ticker in ['HSTO']]
-        # orders = [o for o in orders if o.ticker.ticker in ['NBRVF', 'NBRV']]
-        # orders = [o for o in orders if (o.__name__ == 'ExchangeTransactionDTO' and o.currency in ['LTC']) or (o.__name__ == 'ExchangeOrderDTO' and 'LTC' in o.pair)]
         orders_queue = deque(orders)
         requeue_counter = {}
         while orders_queue:
@@ -68,11 +64,10 @@ class WalletProcessor:
                 orders_queue.insert(requeue_counter.get(enqueue.external_id, 1), enqueue)
                 requeue_counter[enqueue.external_id] = requeue_counter.get(enqueue.external_id, 0) + 1
 
-        logger.info("Processing pending transactions...")
-        self.processor.process_pending_transactions(queue, orders, tracked_orders)
-
         logger.info("Validating benefits from closed orders...")
-        # self.processor.check_benefits(queue, orders, tracked_orders)
+        self.processor.check_benefits(queue, orders, tracked_orders)
+
+        self.processor.generate_transaction_logs()
 
         logger.info("Validating wallet results...")
         queue.queues = {k: v for k, v in queue.queues.items() if v}

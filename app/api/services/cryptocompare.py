@@ -14,12 +14,85 @@ class CryptoCompareClient:
     def __init__(self):
         self.client = requests.Session()
         self.redis = redis_svc
-        self.prices = {}
 
-    import requests
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from datetime import datetime, timedelta
-    import logging
+    def _fetch_and_cache(self, source, target, redis_key, endpoint, cache_expiry=None):
+        cached_symbols = self.redis.get(redis_key) or {}
+        normalized_target = [s.replace("IOTA", "MIOTA").replace("BTTC", "BTT") for s in target]
+        missing_symbols = [s for s in normalized_target if s not in cached_symbols]
+
+        if not missing_symbols:
+            return cached_symbols
+
+        logger.debug(f"Missing symbols for {redis_key}: {missing_symbols}")
+        timestamp = int((datetime.today() - timedelta(days=1)).timestamp())
+        failed_symbols = set()
+        update = False
+
+        def fetch_chunk(chunk):
+            try:
+                symbols_str = ",".join(chunk)
+                logger.debug(f"Querying {endpoint} for: {symbols_str} (len: {len(symbols_str)})")
+                response = requests.get(f"https://min-api.cryptocompare.com{endpoint}",
+                                        params={"fsym": source, "tsyms": symbols_str, "ts": timestamp}
+                )
+                data = response.json()
+                if data.get('Response') == 'Error':
+                    logger.warning(f"Error response for chunk {chunk}: {data.get('Message')}")
+                    return {}, chunk
+                # result = data.get(source, data)  # handles /price vs /pricehistorical
+                result = data
+                # logger.debug(f"Retrieved data: {result} - {response.url} - {symbols_str}")
+                return result, []
+            except Exception as e:
+                logger.error(f"Request failed for chunk {chunk}: {e}")
+                return {}, chunk
+
+        chunks = [missing_symbols[i:i + 4] for i in range(0, len(missing_symbols), 4)]
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(fetch_chunk, chunk) for chunk in chunks]
+            for future in as_completed(futures):
+                result, failed = future.result()
+                if result:
+                    cached_symbols.update(result)
+                    update = True
+                failed_symbols.update(failed)
+
+        if update:
+            if cache_expiry:
+                self.redis.store(redis_key, cached_symbols, cache_expiry)
+            else:
+                self.redis.store(redis_key, cached_symbols)
+
+        for symbol in failed_symbols:
+            cached_symbols.pop(symbol, None)
+
+        return cached_symbols
+
+    def get_prices(self, source, target):
+        return self._fetch_and_cache(
+            source=source,
+            target=target,
+            redis_key='crypto_prices',
+            endpoint='/data/price',
+            cache_expiry=600
+        )
+
+    def get_changes(self, source, target):
+        return self._fetch_and_cache(
+            source=source,
+            target=target,
+            redis_key='crypto_changes',
+            endpoint='/data/pricehistorical'
+        )
+
+
+class CryptoCompareClientOld:
+
+    def __init__(self):
+        self.client = requests.Session()
+        self.redis = redis_svc
+        self.prices = {}
 
     logger = logging.getLogger(__name__)
 

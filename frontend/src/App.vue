@@ -1,9 +1,9 @@
 <template>
   <!--div :class="{'nav-open': $sidebar.showSidebar}"-->
   <div>
-    <notifications transition-name="notification-list" transition-mode="out-in">
+    <!--notifications transition-name="notification-list" transition-mode="out-in">
 
-    </notifications>
+    </notifications-->
     <router-view name="header"></router-view>
     <!--transition name="fade" mode="out-in"-->
       <router-view></router-view>

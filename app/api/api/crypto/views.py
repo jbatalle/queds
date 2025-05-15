@@ -49,6 +49,8 @@ class BalanceList(Resource):
 
         wallet_items = (ExchangeWallet.query
                         .options(joinedload(ExchangeWallet.open_orders)
+                                 .joinedload(ExchangeOpenOrder.exchange))
+                        .options(joinedload(ExchangeWallet.open_orders)
                                  .joinedload(ExchangeOpenOrder.order)
                                  .joinedload(CryptoEvent.account))
                         .filter(ExchangeWallet.user_id == user_id).all())
@@ -271,7 +273,7 @@ class CalcStats(Resource):
 
             # sell_amount = o.sell_transaction.shares * o.sell_transaction.price * o.sell_transaction.currency_rate
             # We need to use the buy shares, as the sell_transaction can have partial sells
-            sell_amount = buy_shares * o.sell_order.price
+            sell_amount = buy_shares * (o.sell_order.price or 0)
             sell_fees = o.sell_order.fee
             total_sell_value = sell_amount + sell_fees
 

@@ -10,6 +10,7 @@ from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_sqlalchemy import SQLAlchemy
 
+
 # import config and models from main path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
 

@@ -31,7 +31,6 @@ class CSVReader:
         if not csv_handler:
             return
 
-        # account = Account.query.filter(Account.id==account_id).one()
         account = Account.get_by_account_id(account_id)
         logger.info("Processing CSV...")
 
@@ -45,10 +44,5 @@ class CSVReader:
         else:
             broker_reader = BrokerReader()
             broker_reader.parse_read(account_id, account, orders)
-        return
 
-        ExchangeReader()._parse_read(account_id, 0, orders, transactions)
-        from models.crypto import ExchangeOrder, ExchangeTransaction
-        ExchangeOrder.bulk_insert([o.to_dict() for o in orders])
-        ExchangeTransaction.bulk_insert([o.to_dict() for o in transactions])
-        logger.info("Read done!")
+        return

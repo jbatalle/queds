@@ -1,5 +1,5 @@
 <template>
-  <navbar navbar-menu-classes="navbar-right" v-model="showMenu">
+  <navbar navbar-menu-classes="navbar-right">
     <div class="navbar-wrapper">
       <a class="navbar-brand" href="/">Queds Dashboard</a>
     </div>

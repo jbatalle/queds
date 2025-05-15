@@ -3,7 +3,6 @@
     <app-navbar></app-navbar>
     <div class="wrapper wrapper-full-page">
       <div class="full-page login-page section-image">
-        <!--   you can change the color of the filter page using: data-color="blue | azure | green | orange | red | purple" -->
         <div class="content">
           <div class="container">
             <div class="header-body text-center" style="margin-bottom: 15px;">
@@ -50,9 +49,9 @@
 </template>
 <script>
 import {ElInput, ElNotification, ElButton} from 'element-plus';
-import {Card} from '@/components/UIComponents';
 import AppNavbar from '@/components/Dashboard/Layout/AppNavbar.vue';
 import AppFooter from '@/components/Dashboard/Layout/AppFooter.vue';
+import {Card} from '@/components/UIComponents';
 import formMixin from "@/mixins/form-mixin";
 import IsDemo from '@/isDemo.js';
 

@@ -30,7 +30,7 @@ sql_conf = settings.SQL_CONF
 if sql_conf['db_type'] == 'postgresql':
     connection_string = f'postgresql://{sql_conf["user"]}:{sql_conf["password"]}@{sql_conf["host"]}:{sql_conf["port"]}/{sql_conf["database"]}'
 else:
-    connection_string = f"sqlite:///{sql_conf["database"]}"
+    connection_string = f'sqlite:///{sql_conf["database"]}'
 
 from models import sql
 from models.broker import *

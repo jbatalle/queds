@@ -1,6 +1,7 @@
 from collections import deque, defaultdict
 from functools import reduce
 import logging
+import traceback
 
 logger = logging.getLogger("utils.process")
 
@@ -23,6 +24,7 @@ class Transaction:
         self.ticker = ticker
         self.amount = amount
         self.price = price
+        self.account_id = order.account_id
         self.fees = round(fees, 8) if fees else 0.0
         # self.currency_rate = round(order.currency_rate, 4) if hasattr(order, 'currency_rate') else 1
         self.currency_rate = order.currency_rate if hasattr(order, 'currency_rate') else 1
@@ -30,7 +32,8 @@ class Transaction:
 
     @property
     def cost(self):
-        return round(self.amount * self.price, 4)
+        """Cost in base currency."""
+        return self.amount * self.price
 
     @property
     def cost_base_currency(self):
@@ -59,10 +62,10 @@ class Transaction:
 
 class PartialOrder:
     """
-    Represents a percentage of an amount bought in the past, and the corresponding trade.
+    Represents a partial portion of a buy order.
     """
 
-    def __init__(self, amount, order, original_trade=None):
+    def __init__(self, amount, order, original_trade=None, exchange_id=None):
         """
         :param order: corresponding trade or None if unaccounted
         :param original_trade: reference to the original buy trade before splits
@@ -70,19 +73,15 @@ class PartialOrder:
         self.amount = amount
         self.trade = order
         self.original_trade = original_trade or order
+        self.exchange_id = exchange_id or getattr(order, 'account_id', None)
 
     @property
     def fee(self):
-        if self.trade:
-            return self.trade.fees
-        return 0
+        return self.trade.fees if self.trade else 0
 
     @property
     def price(self):
-        if self.trade is None:
-            return 0
-
-        return self.trade.price
+        return self.trade.price if self.trade else 0
 
     @property
     def cost(self):
@@ -107,18 +106,15 @@ class PartialOrder:
 
 class SellInfo:
     """
-    Information about a sell action, such as cost / proceeds, profit / loss, etc.
+    Info related to a sell transaction.
     """
 
     def __init__(self, sell_trade, buy_items):
         self.sell_trade = sell_trade  # the trade representing the sale
-        if not buy_items:
-            # TODO: include info here
-            logger.warning(f"No buy items found for {sell_trade.ticker}!")
-        for b in buy_items:
-            if not isinstance(b, PartialOrder):
-                logger.error("No PartialOrder found!")
-        self.buy_items = buy_items  # list of buys from the past associated with the sale
+        self.buy_items = buy_items or [] # list of buys from the past associated with the sale
+
+        if not self.buy_items:
+            logger.warning(f"No buy items found for {self.sell_trade.ticker}")
 
     def __str__(self):
         return f"Sell: {self.sell_trade.ticker} {self.amount}@{self.sell_trade.price} - {self.cost_sell} - {self.cost_buy}"
@@ -128,19 +124,14 @@ class SellInfo:
         """
         The amount sold (in original currency).
         """
-        amount = 0
-        for buy_item in self.buy_items:
-            amount += buy_item.amount
-        return amount
+        return sum(buy_item.amount for buy_item in self.buy_items)
 
     @property
     def average_price(self):
         """
         The average price of the sold items
         """
-        if self.amount == 0:
-            return 0
-        return self.cost_buy / self.amount
+        return self.cost_buy / self.amount if self.amount != 0 else 0
 
     @property
     def cost_sell(self):
@@ -155,9 +146,7 @@ class SellInfo:
         """
         Cost when selling (in tax currency).
         """
-        currency_rate = 1
-        if self.sell_trade.currency_rate is not None:
-            currency_rate = self.sell_trade.currency_rate
+        currency_rate = self.sell_trade.currency_rate or 1
         return self.sell_trade.amount * self.sell_trade.price * currency_rate + self.sell_trade.fees
 
     @property
@@ -166,7 +155,9 @@ class SellInfo:
         Cost when buying (in tax currency).
         """
 
-        return reduce(lambda a, b: a + b.cost, self.buy_items, 0.0)  # summarize cost of all buy items
+        a = sum(buy_item.cost for buy_item in self.buy_items)
+        # b = reduce(lambda a, b: a + b.cost, self.buy_items, 0.0)  # summarize cost of all buy items
+        return a
 
     @property
     def cost_buy_in_eur(self):
@@ -179,22 +170,20 @@ class SellInfo:
             if buy_item.amount == 0:
                 continue
             # Calculate the base cost
-            item_cost = buy_item.cost * (
-                buy_item.trade.currency_rate if hasattr(buy_item.trade, 'currency_rate') else 1)
-            # item_cost2 = buy_item.cost * buy_item.original_currency_rate
-            # print(f"Item cost diff: {item_cost} vs {item_cost2}. {buy_item.trade.currency_rate} vs {buy_item.original_currency_rate}")
+            item_cost = buy_item.cost * getattr(buy_item.trade, 'currency_rate', 1)
 
             # Calculate proportional fees for partial sells
-            if self.sell_trade.fees != 0:
-                if buy_item.trade:
+            if self.sell_trade.fees != 0 and buy_item.trade:
+            # if self.sell_trade.fees != 0:
+                #if buy_item.trade:
                     try:
                         proportional_fees = (buy_item.amount / buy_item.trade.amount) * buy_item.trade.fees
+                        item_cost -= proportional_fees
                     except Exception as e:
                         logger.error(f"ERROR: {str(e)}")
-                        proportional_fees = 0
-                else:
-                    proportional_fees = 0
-                item_cost -= proportional_fees
+                        # proportional_fees = 0
+                #else:
+                    #proportional_fees = 0
 
             total_cost += item_cost
 
@@ -210,13 +199,6 @@ class SellInfo:
 
     @property
     def benefits_in_eur(self):
-        # if self.trade is None or self.open_order is None:
-        #     return 0
-        #
-        # if self.sell_trade.currency_rate:
-        #     return self.cost_sell - self.cost_buy
-
-        # return self.cost_sell * self.sell_trade.currency_rate - self.cost_buy * self.sell_trade.currency_rate
         if self.sell_trade.currency_rate is None:
             currency_rate = 0
         else:
@@ -229,19 +211,17 @@ class BalanceQueue:
     def __init__(self):
         self.queues = defaultdict(lambda: deque())
         self.withdrawals = defaultdict()
-        self.reverse_splits = defaultdict()
-        self.splits = []
 
     def current_amount(self, ticker):
         if ticker not in self.queues:
             return 0
-        current_amount = round(sum([o.amount for o in self.queues[ticker]]), 8)
-        if current_amount < 0:
-            logger.warning(f"Current amount is negative! {current_amount} for {ticker}")
+        total = round(sum([o.amount for o in self.queues[ticker]]), 8)
+        if total < 0:
+            logger.warning(f"Negative balance detected for {ticker}: {total}")
         return round(sum([o.amount for o in self.queues[ticker]]), 8)
 
-    #def average_price(self, ticker):
-    #    return round(([o.amount for o in self.queues[ticker]]), 8)
+    def current_amount_by_exchange(self):
+        pass
 
     @staticmethod
     def _is_empty(queue):
@@ -249,8 +229,7 @@ class BalanceQueue:
 
     @staticmethod
     def _pop(queue):
-        item = queue.popleft()
-        return item
+        return queue.popleft()
 
     @staticmethod
     def _put_back(queue, item):
@@ -258,67 +237,79 @@ class BalanceQueue:
 
     @staticmethod
     def _put(queue, item):
-        if item.amount == 0:
-            logger.debug(f"Put data with amount 0 for {item.trade.ticker}")
         queue.append(item)
-
-    def withdrawal_old(self, order):
-        queue = self.queues[order.ticker]
-        items_bought = []
-        remaining_sell_amount = order.amount - order.fees
-        # if order.ticker not in self.withdrawals:
-            # self.withdrawals[order.ticker] = []
-
-        while remaining_sell_amount > 0:
-            if self._is_empty(queue):  # no bought items left but sell is not fully covered
-                items_bought.append(PartialOrder(remaining_sell_amount, None))
-                logger.warning(
-                    f"ALERT - NO BOUGHT ITEM LEFT for withdrawal! Pair: {order.ticker}. Current amount is {self.current_amount(order.ticker)}")
-                break
-
-            item = self._pop(queue)
-            if remaining_sell_amount < item.amount:  # sell amount is entirely covered by bought items
-                items_bought.append(PartialOrder(remaining_sell_amount, item.trade))
-                item.amount = float(
-                    "{:0.8f}".format(item.amount - remaining_sell_amount - (order.fees if order.fees else 0)))
-                self._put_back(queue, item)
-                break
-            elif remaining_sell_amount >= item.amount:  # bought item is fully consumed by sell
-                items_bought.append(item)
-                remaining_sell_amount = float("{:0.8f}".format(remaining_sell_amount - item.amount))
-            else:
-                logger.error("Unhandled condition. Please check!")
-
-        withdrawal_order = SellInfo(order, items_bought)
-        # self.withdrawals[order.currency].append(withdrawal_order)
-        return withdrawal_order
 
     def deposit(self, order, withdrawals, buy_order=None):
         # check here if DEPOSITED
         if hasattr(order, 'withdrawal') and order.withdrawal:
+            logger.debug(f"Queue amount before deposit for {order.symbol}: {self.current_amount(order.symbol)}")
             # remove withdrawal fee from queue
+            if order.symbol == 'FLR':
+                print(f"CHECK WITHDRAWAL OF {order.symbol}. REVIEW THE SECOND DEPOSIT. Current amount is {self.current_amount(order.symbol)}. Order: {order.amount}")
+
             queue = self.queues[order.symbol]
             withdrawal = next(w for w in withdrawals[order.symbol] if w.id == order.withdrawal)
             if withdrawal.fee == 0 and withdrawal.amount != order.amount:
                 withdrawal.fee = withdrawal.amount - order.amount
-            queue[0].amount = float("{:0.8f}".format(queue[0].amount - withdrawal.fee))
 
+            remaining_sell_amount = order.amount + withdrawal.fee  # deposit_amount
+            put_back_orders = []
+            while remaining_sell_amount > 0:
+                if self._is_empty(queue):  # no bought items left but sell is not fully covered
+                    # items_bought.append(PartialOrder(remaining_sell_amount, None))
+                    logger.warning(
+                        f"ALERT - NO BOUGHT ITEM LEFT for deposit! Pair: {order.symbol}. Current amount is {self.current_amount(order.symbol)}")
+                    break
+
+                item = self._pop(queue)
+                if item.exchange_id == order.account_id:
+                    put_back_orders.append(item)
+                    continue
+
+                logger.debug(f"POP item for deposit: {item.amount}@{order.symbol}. Remaining: {remaining_sell_amount}@{order.symbol}")
+                if remaining_sell_amount < item.amount:  # sell amount is entirely covered by bought items
+                    # two items, the first continue belongs to first exchange, the second to the target exchange
+
+                    # reinsert to source exchange the rest of the amount
+                    item.amount = float("{:0.8f}".format(item.amount - remaining_sell_amount))
+                    put_back_orders.append(PartialOrder(item.amount, item.trade))
+                    put_back_orders.append(PartialOrder(remaining_sell_amount, item.trade, exchange_id=order.account_id)) # , order.account))
+                    logger.debug(f"Insert {remaining_sell_amount} to target exchange and reinsert {item.amount} to source exchange")
+                    break
+                elif remaining_sell_amount >= item.amount:  # bought item is fully consumed by sell
+                    # items_bought.append(item)
+                    logger.debug(f"Reinsert {item.amount} to target exchange")
+                    remaining_sell_amount = float("{:0.8f}".format(remaining_sell_amount - item.amount))
+                    put_back_orders.append(PartialOrder(item.amount, item.trade, exchange_id=order.account_id))
+                    # self._put_back(queue, )
+
+            total_fee = withdrawal.fee
+            if total_fee > 0:
+                print("CHECK, we need to remove the fee from the source? item.exchange_id == order.account_id")
+            for p in reversed(put_back_orders):
+                if total_fee >= p.amount:
+                    total_fee = total_fee - p.amount
+                    continue
+                elif p.amount > total_fee > 0 and p.exchange_id == order.account_id:
+                    p.amount -= total_fee
+                    total_fee = 0
+                self._put_back(queue, p)
+
+            logger.debug(f"Queue amount after deposit for {order.symbol}: {self.current_amount(order.symbol)}")
             return
 
-        # deposit without withdrawal detected, adding to the queue with buy at market price
-        # logger.debug(f"Inserting transaction to the queue! {order.currency} - {order.amount}")
+        # Deposit without matching withdrawal → treat as new buy
         self._put(self.queues[order.symbol], PartialOrder(order.amount, buy_order))
 
     def withdrawal(self, order, withdrawals):
-        # check here if DEPOSITED
         if hasattr(order, 'deposit') and order.deposit:
             # do nothing
-            return
+            return None
 
         order = Transaction(Transaction.Type.SELL, order, order.symbol, order.amount, 0, order.fee)
-        queue = self.queues[order.ticker]
-        items_bought = []
         remaining_sell_amount = order.amount - order.fees
+        items_bought = []
+        queue = self.queues[order.ticker]
         # if order.ticker not in self.withdrawals:
             # self.withdrawals[order.ticker] = []
 
@@ -342,71 +333,8 @@ class BalanceQueue:
             else:
                 logger.error("Unhandled condition. Please check!")
 
-        withdrawal_order = SellInfo(order, items_bought)
-        # self.withdrawals[order.currency].append(withdrawal_order)
-        return withdrawal_order
-
-    def deposit_old(self, order):
-        """
-            when deposit is detected, instead of adding to the queue, we change only the account_id of the order
-        """
-        if order.currency == 'EUR':
-            self._put(self.queues[order.currency], PartialOrder(order.amount, None))
-            return
-
-        if order.currency not in self.withdrawals or len(self.withdrawals[order.currency]) == 0:
-            logger.error(
-                f"Unable to match withdrawal {order.currency} order with deposit order. Deposit amount: {order.amount}")
-            self._put(self.queues[order.currency], PartialOrder(order.amount, None))
-            return
-
-        # search for the according withdrawal
-        wth_order = None
-        for o in [w for w in self.withdrawals[order.currency] if w.status != 'DEPOSITED']:
-            # TODO: fee is required?
-            # withdraw_amount = o.sell_trade.amount + o.sell_trade.fee
-            withdraw_amount = o.amount + o.fee
-            if withdraw_amount >= order.amount and withdraw_amount - order.amount < 1.0:
-                wth_order = o
-                break
-
-        if wth_order:
-            # TODO: change account of buy orders, and modify the queue order with the new account
-            wth_order.status = 'DEPOSITED'
-            wth_order.account_id = order.account_id
-            # self.withdrawals[order.currency].remove(wth_order)
-            # for o in wth_order.buy_items:
-                # o.account_id = order.account_id
-                # self._put(self.queues[order.currency], o)
-        else:
-            logger.warning(f"Unable to get withdrawal order for deposit of {order.amount}{order.currency}")
-            # self._put(self.queues[order.currency], PartialOrder(order.amount, None))
-
-        return
-
-    def withdrawal_to_remove(self, order):
-        # instead of remove from the queue, i keep the list of withdrawals in a separate list
-        # why? withdrawal can take several hours, so we cannot confirm the diposit immediately
-        # if we operate when the deposit is not confirmed, we can have a problem with the queue
-        # queue remains equal
-        #  TODO: fees should be considered
-
-        # we consider the withdrawal without selling from the queue
-        if order.currency not in self.withdrawals:
-            self.withdrawals[order.currency] = []
-        self.withdrawals[order.currency].append(order)
-
-        # TODO: remove fees from the queue
-        if order.fee > 0:
-            queue = self.queues[order.currency]
-            logger.warning(f"Fee detected for withdrawal: {order.fee}")
-            order = Transaction(Transaction.Type.SELL, order, order.currency, order.fee, 0, 0)
-            sell_order = self.sell(order)
-        elif order.fee >= 0:
-            queue = self.queues[order.currency]
-            logger.warning(f"Fee detected for withdrawal of {order.amount}{order.currency}: {order.fee}")
-            order = Transaction(Transaction.Type.SELL, order, order.currency, order.fee, 0, 0)
-            sell_order = self.sell(order)
+        # TODO: what to do with this sell?
+        return SellInfo(order, items_bought)
 
     def buy(self, order):
         if order.order_type == 'StockTransactionDTO':
@@ -414,7 +342,8 @@ class BalanceQueue:
         else:
             amount = order.amount - order.fees
         if amount == 0:
-            logger.warning(f"Buying amount 0 for {order.ticker}")
+            # logger.warning(f"Buying amount is 0 for {order.ticker}")
+            return
         self._put(self.queues[order.ticker], PartialOrder(amount, order))
 
     def sell(self, order):
@@ -423,8 +352,6 @@ class BalanceQueue:
         queue = self.queues[order.ticker]
         fees = order.fees if order.order_type != 'StockTransactionDTO' else 0
 
-        if order.transaction_id == 12113:
-            print("Check here, no items bought??!!!")
         while remaining_sell_amount > 0:
 
             if self._is_empty(queue):  # no bought items left but sell is not fully covered
@@ -440,15 +367,18 @@ class BalanceQueue:
             if remaining_sell_amount < item.amount:  # sell amount is entirely covered by bought items
                 items_bought.append(PartialOrder(remaining_sell_amount, item.trade))
                 # item.amount = float("{:0.8f}".format(item.amount - remaining_sell_amount - order.fee))
-                if order.order_type != 'StockTransactionDTO':
-                    item.amount = float("{:0.8f}".format(item.amount - remaining_sell_amount - fees))
-                else:
-                    item.amount = item.amount - remaining_sell_amount
+                #if order.order_type != 'CryptoEventDTO':
+#                    item.amount = float("{:0.8f}".format(item.amount - remaining_sell_amount - fees))
+#                else:
+#                    item.amount = item.amount - remaining_sell_amount
+                #if item.amount - remaining_sell_amount - fees < 0:
+#                    print("ANALYZE THIS")
+                item.amount = float("{:0.8f}".format(item.amount - remaining_sell_amount - fees))
 
-                if item.amount == 0:
+                #if item.amount == 0:
                     # no put_back
-                    logger.warning(f"Item amount is 0. {order.ticker}")
-                    pass
+                    #logger.warning(f"Item amount is 0. {order.ticker}")
+                    #pass
                 if item.amount > 0:
                     self._put_back(queue, item)
                 else:
@@ -458,11 +388,11 @@ class BalanceQueue:
                 items_bought.append(item)
                 # remaining_sell_amount -= item.amount
 
-                if order.order_type != 'StockTransactionDTO':
+                if order.order_type == 'CryptoEventDTO':
                     remaining_sell_amount = float("{:0.8f}".format(remaining_sell_amount - item.amount))
                 else:
                     remaining_sell_amount = remaining_sell_amount - item.amount
             else:
-                logger.error("Unhandled condition. Please check!")
+                logger.error("Unhandled condition:\n" + traceback.format_exc())
 
         return SellInfo(order, items_bought)

@@ -25,7 +25,7 @@
                     :cell-style="{ padding: '0', height: '20px' }">
                   <el-table-column label="Symbol" property="ticker.ticker">
                     <template #header>
-                      <el-input v-model="search" size="mini" placeholder="Symbol search"/>
+                      <el-input v-model="search" size="small" placeholder="Symbol search"/>
                     </template>
                     <template v-slot:default="scope">
                       <a @click="handleClick(scope.$index, scope.row)">{{ scope.row.symbol }}</a>
@@ -98,34 +98,6 @@
       </template>
     </el-dialog>
 
-    <el-dialog title="Read account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
-               :before-close="handleReadClose" v-loading="loading">
-      <div v-loading="loading">
-        <div class="card-body">
-          <form>
-            <div class="row">
-              <div class="col-md-12">
-                <div class="form-group2">
-                  <div class="sub-title my-2 text-sm text-gray-600">
-                    Insert a passphrase for credential encryption
-                  </div>
-                  <el-input type="password"
-                            label="Insert a passphrase for credential encryption"
-                            placeholder="passphrase">
-                  </el-input>
-                </div>
-              </div>
-            </div>
-            <div class="clearfix"></div>
-          </form>
-        </div>
-        <footer class="el-dialog__footer">
-          <el-button @click="readDialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="readAccount">Read</el-button>
-        </footer>
-      </div>
-    </el-dialog>
-
     <el-dialog title="Add watchlist" v-model="dialogVisible" width="40%" :close-on-press-escape="true"
                :before-close="handleClose">
       <div class="card-body">
@@ -144,7 +116,7 @@
         </form>
       </div>
       <footer class="el-dialog__footer">
-        <el-button @click="readDialogVisible = false">Cancel</el-button>
+        <el-button @click="handleClose">Cancel</el-button>
         <el-button type="primary" @click="addWatchlist">Confirm</el-button>
       </footer>
     </el-dialog>
@@ -253,7 +225,7 @@ export default {
     },
     async getData() {
       await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/analysis/watchlist").then(this.fillWatchlists);
-      await this.getWallet();
+      //await this.getWallet();
     },
     async get_watchlist(item) {
       console.log(this.watchlists)

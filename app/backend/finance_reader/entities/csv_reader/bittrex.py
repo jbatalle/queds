@@ -1,6 +1,7 @@
 from finance_reader.entities.csv_reader import ExchangeCSVProcessor
 from models.dtos.exchange_dtos import Order, Transaction, OrderType
 from datetime import datetime
+import pytz
 
 
 class Bittrex(ExchangeCSVProcessor):
@@ -22,7 +23,8 @@ class Bittrex(ExchangeCSVProcessor):
                 order = Order()
                 order.account_id = account.id
                 order.external_id = t.external_id
-                order.value_date = t.value_date
+                # order.value_date = t.value_date
+                order.value_date = t.value_date.replace(tzinfo=pytz.UTC)
                 order.pair = f"{t.currency}/EUR"
                 order.amount = t.amount
                 order.type = OrderType.SELL
@@ -59,6 +61,7 @@ class Bittrex(ExchangeCSVProcessor):
             order.account_id = account.id
             order.external_id = data.get("TXID")
             order.value_date = datetime.strptime(data.get("Time (UTC)"), "%Y-%m-%dT%H:%M:%S")
+            order.value_date = order.value_date.replace(tzinfo=pytz.UTC)
             order.pair = data.get("Market").replace("-->", "/")
             order.amount = float(data.get("Quantity (Base)"))
             order.type = type
@@ -88,6 +91,7 @@ class Bittrex(ExchangeCSVProcessor):
             # account=account,
             trans.external_id = data.get("TxId").replace('"', '')
             trans.value_date = datetime.strptime(data.get("Date"), "%Y-%m-%d %H:%M:%S.%f")
+            trans.value_date = trans.value_date.replace(tzinfo=pytz.UTC)
             #if trans.value_date > datetime(2024,1,1):
                 #continue
             trans.amount = abs(float(data.get("Amount")))
