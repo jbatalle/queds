@@ -76,7 +76,7 @@ class WalletPrices(Resource):
         currencies = data.get('currencies', [])
 
         if not currencies:
-            return {'error': 'No currencies provided'}, 400
+            return [], 200
 
         c = CryptoCompareClient()
         prices_eur = c.get_prices("EUR", currencies)

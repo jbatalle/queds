@@ -1,6 +1,5 @@
-import requests
+from curl_cffi import requests
 import csv
-import requests.utils
 import logging
 import json
 import os
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 class YahooClient:
 
     def __init__(self):
-        self.client = requests.Session()
+        self.client = requests.Session(impersonate="chrome")
         self.client.headers.update(
             {
                 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.110 Safari/537.36',

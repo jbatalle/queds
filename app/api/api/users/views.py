@@ -1,9 +1,10 @@
-from flask import request
+from flask import request, jsonify, make_response
 from datetime import datetime, timezone, timedelta
 from flask_restx import Resource, fields, Namespace
 from models.system import Account, Entity, User
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from api import demo_check
+from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt,
+                                unset_jwt_cookies)
+from api import demo_check, add_token_to_blacklist
 
 namespace = Namespace("users")
 
@@ -125,17 +126,8 @@ class LogoutUser(Resource):
 
     @jwt_required()
     def post(self):
-        # TODO: remove token; for the moment the cookie is remove from front but not disabled
-        return {"success": True}, 200
-
-        _jwt_token = request.headers["authorization"]
-
-        jwt_block = JWTTokenBlocklist(jwt_token=_jwt_token, created_at=datetime.now(timezone.utc))
-        jwt_block.save()
-
-        self.set_jwt_auth_active(False)
-        self.save()
-
-        return {"success": True}, 200
-
-
+        jti = get_jwt()['jti']
+        add_token_to_blacklist(jti)
+        response = make_response({"msg": "Logout successful"}, 200)
+        unset_jwt_cookies(response)
+        return response

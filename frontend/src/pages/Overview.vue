@@ -193,7 +193,7 @@
       </div>
 
       <!-- Performance Over Time (Portfolio Growth) -->
-      <div class="col-md-6">
+      <!--div class="col-md-6">
         <chart-card
           v-if="performanceChart?.labels?.length > 0"
           :chart-data="performanceChart"
@@ -206,7 +206,7 @@
             <h5 class="title">Portfolio Growth</h5>
           </template>
         </chart-card>
-      </div>
+      </div-->
     </div>
   </div>
 </template>

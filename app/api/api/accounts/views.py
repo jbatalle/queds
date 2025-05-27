@@ -2,7 +2,7 @@ import logging
 from flask_restx import Resource, fields, Namespace
 from models.system import Account, Entity, User, EntityCredentialType, AccountCredentialParam
 from flask import request, jsonify, render_template, make_response
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from api import filter_by_username, demo_check
 from services.queue import queue_read
 from models.cryptography import AESCipher
@@ -175,10 +175,12 @@ class AccountCredentials(Resource):
                     "value": encrypted_value.decode()
                 }
                 stmt = insert(AccountCredentialParam).values(values)
-                stmt = stmt.on_conflict_do_update(constraint="cred_type_account_uc",
-                                                  set_={
-                                                      "value": stmt.excluded.value
-                                                  })
+                # stmt = stmt.on_conflict_do_update(constraint="cred_type_account_uc", set_={"value": stmt.excluded.value})
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["credential_type_id", "account_id"],
+                    set_={"value": stmt.excluded.value}
+                )
+
                 cred_param.update_on_conflict(stmt)
         except Exception as e:
             log.error("Error saving account credential: {0}".format(e))
@@ -268,6 +270,7 @@ class UploadCSV(Resource):
 
     @jwt_required()
     def post(self):
+        user_id = get_jwt_identity()
         account_id = request.form.get("account_id")  # Adjust key based on your form field name
         log.info(f"Processing CSV file. Account ID: {account_id}")
         uploaded_file = request.files.get("file")
@@ -283,6 +286,7 @@ class UploadCSV(Resource):
             "entity_type": account.entity.type,
             "entity_name": account.entity.name,
             "account_id": account.id,
+            "user_id": user_id,
             "data": content
         }
 

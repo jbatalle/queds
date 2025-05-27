@@ -71,16 +71,12 @@ export default {
                 .then(response => {
                     context.commit('logout');
                     localStorage.removeItem("access_token");
-                    console.log("Redirect to login")
                     router.push({name: "Login"});
                     //return response.data;
                 }).catch(function (error) {
                     console.log("Error with logout, redirect to login page");
                     localStorage.removeItem("access_token");
-                    //context.commit('logout');
-                    console.log("Forward to login");
                     router.push({name: "Login"});
-                    console.log("Redirected");
                 });
         }
     }

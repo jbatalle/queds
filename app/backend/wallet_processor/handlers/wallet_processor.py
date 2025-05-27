@@ -23,7 +23,7 @@ class WalletProcessor:
 
     def process(self, data):
         if not self._validate_data(data):
-            logger.error("Received invalid data")
+            logger.error(f"Received invalid data: {data}")
             return
 
         mode = data.get('mode')

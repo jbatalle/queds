@@ -1,9 +1,17 @@
-# -*- encoding: utf-8 -*-
 from flask_jwt_extended import get_jwt_identity
-from models.system import User
 
 from config import settings
 from functools import wraps
+
+blacklist = set() # jwt blacklist
+
+
+def add_token_to_blacklist(jti):
+    blacklist.add(jti)
+
+
+def is_token_blacklisted(jti):
+    return jti in blacklist
 
 
 def filter_by_username(object):

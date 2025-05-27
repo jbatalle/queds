@@ -180,12 +180,12 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="Value" property="current_value" sortable>
+          <el-table-column label="Value" property="base_current_value" sortable>
             <template v-slot:default="scope">
               <span v-if="type==='broker'">
                 {{
                   $filters.toCurrency(scope.row.current_value, scope.row.ticker.currency)
-                }} ({{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}€)
+                }} <span v-if="scope.row.ticker.currency != 'EUR'">({{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}€)</span>
               </span>
               <span v-else>
                 {{ $filters.toCurrency(scope.row.current_value, scope.row.current_price_currency, 2) }}
@@ -202,10 +202,10 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column v-if="type==='broker'" label="Day Change" property="price_change" sortable>
+          <el-table-column v-if="type==='broker'" label="Day Change" property="day_change" sortable>
             <template v-slot:default="scope"><!-- v-if="scope.row.market.price_change"-->
               <span v-if="scope.row.price_change">
-              {{ $filters.round(scope.row.price_change, 2) }}%
+              {{$filters.round(scope.row.day_change, 2)}} ({{ $filters.round(scope.row.price_change, 2) }}%)
               </span>
               <span v-else class="">
                 -
@@ -248,7 +248,6 @@ export default {
   data: () => ({
     filter_accounts: new Set(),
     search: '',
-    dialogVisible: false,
     tickerDialogVisible: false,
     tickerForm: {
       ticker: '',
@@ -272,7 +271,7 @@ export default {
   },
   methods: {
     handleClose() {
-      this.dialogVisible = false;
+      this.tickerDialogVisible = false;
     },
     openTickerDialog(ticker) {
       this.tickerForm = JSON.parse(JSON.stringify(ticker));
@@ -290,7 +289,7 @@ export default {
     },
     colorClass(item) {
       if (item.column.property == 'price_change' || item.column.property == 'pre_change'
-          || item.column.property == 'current_benefit') {
+          || item.column.property == 'current_benefit' || item.column.property == 'day_change') {
         let objects = item.column.property.split('.')
         let value = 0;
         if (objects.length > 1) {

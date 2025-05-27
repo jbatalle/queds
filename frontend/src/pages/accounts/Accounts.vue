@@ -5,50 +5,50 @@
     <div class="card-body">
       <form>
         <div class="row">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <p>Account type</p>
-            <el-select
-                label="Account type"
-                v-model="credential.entity"
-                :class="errors.entity ? 'select-danger' : ''"
+            <el-select label="Account type" v-model="credential.entity" :class="errors.entity ? 'select-danger' : ''"
                 placeholder="Select account">
-              <el-option
-                  :error="errors.entity ? errors.entity : ''"
-                  v-for="item in entities"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id">
+              <el-option :error="errors.entity ? errors.entity : ''" v-for="item in entities" :key="item.id"
+                  :label="item.name" :value="item.id">
               </el-option>
             </el-select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <p>Read mode</p>
+            <el-select label="Account type" v-model="inputMethod" placeholder="Read mode">
+              <el-option label="API" value="api"></el-option>
+              <el-option label="Manual" value="manual"></el-option>
+            </el-select>
+          </div>
+          <div class="col-md-2">
             <p>Currency</p>
-            <el-select
-                label="Currency"
-                v-model="credential.currency"
-                :class="errors.currency ? 'select-danger' : ''"
+            <el-select label="Currency" v-model="credential.currency" :class="errors.currency ? 'select-danger' : ''"
                 placeholder="Currency">
-              <el-option
-                  :error="errors.currency ? errors.currency : ''"
-                  v-for="item in ['EUR', 'USD']"
-                  :key="item"
-                  :label="item"
-                  :value="item">
+              <el-option :error="errors.currency ? errors.currency : ''" v-for="item in ['EUR', 'USD']" :key="item"
+                  :label="item" :value="item">
               </el-option>
             </el-select>
           </div>
           <div class="col-md-4">
             <p>Account name</p>
-            <el-input type="text"
-                      label="Account name"
-                      placeholder="Account name"
-                      :error="errors.name ? errors.name : ''"
+            <el-input type="text" label="Account name" placeholder="Account name" :error="errors.name ? errors.name : ''"
                       v-model="credential.name">
             </el-input>
           </div>
         </div>
+
+        <div class="row">
         <div class="clearfix"></div>
-        <div class="row" v-if="credential.entity">
+        <div class="col-md-12">
+
+        </div>
+
+          </div>
+        <div class="row" v-if="credential.entity && inputMethod === 'manual'">
+          <!-- Manual credential inputs -->
+        </div>
+        <div class="row" v-if="credential.entity && inputMethod === 'api'">
           <div class="col-md-12">
             <div class="form-group2">
               <h4>Insert credentials</h4>
@@ -65,7 +65,7 @@
             </div>
           </div>
         </div>
-        <div class="row" v-if="credential.entity">
+        <div class="row" v-if="credential.entity && inputMethod === 'api'">
           <div class="col-md-12">
             <div class="form-group2">
               <div class="sub-title my-2 text-sm text-gray-600">
@@ -261,7 +261,8 @@ export default {
       crowdAccounts: [],
       entities: [],
       entity_credentials: [],
-      loading: false
+      loading: false,
+      inputMethod: 'api'
     }
   },
   created() {
@@ -282,20 +283,6 @@ export default {
       },
       deep: true
     },
-    // "credential.entity": {
-    //   handler(entity) {
-    //     if (entity !== undefined) {
-    //       this.getAccountCredentialTypes(entity);
-    //     }
-    //   },
-    //   deep: true
-    // },
-    // "credential": {
-    //   handler(val, oldVal) {
-    //     this.errors = {};
-    //   },
-    //   deep: true
-    // },
   },
   methods: {
     async deleteAccount() {
@@ -364,10 +351,10 @@ export default {
       if (!this.credential.currency) {
         this.errors.currency = 'The currency is required';
       }
-      if (!this.credential.parameters.length && this.credential.id == undefined) {
+      if (!this.credential.parameters.length && this.inputMethod === 'api' && this.credential.id == undefined) {
         this.errors.parameters = 'Credentials are required';
       }
-      if (!this.credential.encrypt_password && this.credential.id == undefined) {
+      if (!this.credential.encrypt_password && this.inputMethod === 'api' && this.credential.id == undefined) {
         this.errors.encrypt_password = 'Encryption password is required';
       }
 
@@ -410,7 +397,9 @@ export default {
         "parameters": parameters,
         "encrypt_password": this.credential.encrypt_password
       }
-      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + account.id + '/credentials', data).then(this.checkCredential);
+      if (this.credential.parameters.length) {
+        await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + account.id + '/credentials', data).then(this.checkCredential);
+      }
       await this.getData()
     },
     checkCredential(res) {

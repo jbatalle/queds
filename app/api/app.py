@@ -9,6 +9,7 @@ from flask_jwt_extended import JWTManager
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_sqlalchemy import SQLAlchemy
+from api import is_token_blacklisted
 
 
 # import config and models from main path
@@ -35,8 +36,11 @@ app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 app.config['JWT_SECRET_KEY'] = settings.JWT_SECRET_KEY
+app.config['JWT_BLACKLIST_ENABLED'] = True
+app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 
 jwt = JWTManager(app)
+blacklist = set()  # TODO: move to redis
 
 log = logging.getLogger(__name__)
 authorizations = {
@@ -82,6 +86,11 @@ def handle_jwt_exceptions(error):
 def handle_no_result_exception(error):
     """Return a custom not found error message and 404 status code"""
     return {'message': 'Not Found'}, 404
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    return is_token_blacklisted(jwt_payload['jti'])
 
 
 def initialize_app(flask_app):

@@ -252,7 +252,6 @@ class WalletPrices(Resource):
         return jsonify(tickers_by_ticker)
 
 
-
 @namespace.route('/orders')
 class OrdersCollection(Resource):
 

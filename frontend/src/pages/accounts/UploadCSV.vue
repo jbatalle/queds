@@ -75,10 +75,10 @@ export default {
       console.error('Upload error:', err);
       // Handle upload error logic (e.g., display error message)
     },
-openUploadDialog(account){
-      console.log("Open dialog")
-      console.log(account)
-},
+    openUploadDialog(account){
+          console.log("Open dialog")
+          console.log(account)
+    },
     closeUploadDialog(){
       this.dialogVisible = false;
       this.$emit('upload-success');
@@ -93,7 +93,7 @@ openUploadDialog(account){
       // Implement logic to submit the form data (account ID and uploaded file)
       if (!this.formData.accountId || !this.formData.csvFile) {
         // Handle missing data error
-        return;
+        // return;
       }
       // You can use FormData or other methods to send data to the backend
       this.closeUploadDialog()
