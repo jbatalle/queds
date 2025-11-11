@@ -25,6 +25,7 @@ class YahooClient:
             }
         )
         self.redis = redis_svc
+        return
         if redis_svc.client:
             if not redis_svc.get('yahoo_cookies'):
                 self.generate_cookies()
@@ -96,7 +97,7 @@ class YahooClient:
 
     def generate_cookies(self):
         logger.info("Generating cookies!")
-        url = "https://finance.yahoo.com"
+        url = "https://finance.yahoo.com/"
         r = self.client.get(url)
 
         o = urlparse(r.url)
