@@ -40,6 +40,13 @@ class YahooClient:
                     "deleted": True if row[11] == 'DELETED' else False
                 }
 
+    def get_ticker_old(self, ticker):
+        search_by = ticker.isin if not ticker.ticker else ticker.ticker
+        r = self.client.get(f"https://query1.finance.yahoo.com/v1/finance/search?q={search_by}")
+        d = r.json()['quotes']
+        items = [c for c in d if c['typeDisp'] == 'Equity']
+        yahoo_symbol = None
+
     def get_ticker(self, ticker):
         # logger.debug(f"Trying to fetch symbol from yahoo for isin {ticker.isin}")
         search_by = ticker.isin if not ticker.ticker else ticker.ticker
@@ -80,6 +87,9 @@ class YahooClient:
         return yahoo_symbol
 
     def search_by_isin(self, tickers):
+        if not tickers:
+            return []
+
         isins = [t.isin for t in tickers]
         logger.info("Try to fetch symbol for: {}".format(isins))
         url = 'https://api.openfigi.com/v3/mapping'

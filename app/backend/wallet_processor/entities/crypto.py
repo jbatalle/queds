@@ -381,6 +381,32 @@ class CryptoProcessor(AbstractEntity):
 
         self._logger.info("Wallet calculation done")
 
+        self._calculate_staking(orders, tracked_orders)
+
+    def _calculate_staking(self, orders, tracked_orders):
+        staking_orders = {}
+        for order in orders:
+            if order.type != CryptoEvent.Type.STAKING:
+                continue
+
+            target_price = get_price(order.symbol, "EUR", order.value_date)
+            key = f"{order.symbol}_{order.value_date.year}"
+            if key not in staking_orders:
+                staking_orders[key] = []
+            staking_orders[key].append({
+                "symbol": order.symbol,
+                "amount": order.amount,
+                "price": target_price,
+                "value": order.amount * target_price,
+                "value_date": order.value_date,
+            })
+
+        for symbol, stacking_order in staking_orders.items():
+            amount = sum([o['amount'] for o in stacking_order])
+            value = sum([o['value'] for o in stacking_order])
+            print(f"Symbol {symbol}. Amount: {amount}. Value: {value}")
+
+
     @staticmethod
     def calc_balance_with_orders(orders):
         """Return token balances from a set of orders."""

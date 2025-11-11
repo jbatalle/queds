@@ -381,11 +381,11 @@ class BrokerProcessor(AbstractEntity):
         # Delete the OpenOrders
         OpenOrder.query.filter(OpenOrder.transaction_id.in_([t.id for t in orders])).delete()
 
-        # Delete the associated Wallets
-        Wallet.query.filter(Wallet.id.in_(wallet_ids)).delete()
+        # Delete only the order_id associated to Wallets
+        # Wallet.query.filter(Wallet.id.in_(wallet_ids)).delete()
 
-        # TODO: delete only the order_id related
-        # Wallet.query.filter(Wallet.user_id == user_id).delete()
+        # Delete all wallet realted to the user because if the user removes the account this is not cleaned
+        Wallet.query.filter(Wallet.user_id == user_id).delete()
         Wallet.bulk_object(to_insert)
         self._logger.info("Wallet calculation done")
 

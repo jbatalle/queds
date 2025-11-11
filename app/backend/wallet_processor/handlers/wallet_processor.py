@@ -70,12 +70,13 @@ class WalletProcessor:
         self.processor.generate_transaction_logs()
 
         logger.info("Validating wallet results...")
-        queue.queues = {k: v for k, v in queue.queues.items() if v}
-        try:
-            self.validate_wallet(accounts, queue, orders)
-        except Exception as e:
-            logger.error(f"Error validating wallet calculations: {e}")
-            logger.exception(e)
+        if queue.queues:
+            queue.queues = {k: v for k, v in queue.queues.items() if v}
+            try:
+                self.validate_wallet(accounts, queue, orders)
+            except Exception as e:
+                logger.error(f"Error validating wallet calculations: {e}")
+                logger.exception(e)
 
         logger.info("Calculation done. Generating closed orders...")
         self.processor.create_closed_orders(orders, tracked_orders)
