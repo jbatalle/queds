@@ -155,8 +155,8 @@ class WalletCollection(Resource):
             for oo in r.open_orders:
                 oo_item = oo.json
                 oo_item['transaction'] = oo.transaction.json
-                # oo_item['cost'] = oo.shares * oo.transaction.price
-                oo_item['cost'] = oo.shares * oo.price
+                oo_item['cost'] = oo.shares * oo.transaction.price
+                #oo_item['cost'] = oo.shares * oo_item['transaction']['price']
                 # TODO: transaction fee should be partial in case of partial sell
                 # oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
                 oo_item['base_cost'] = round(oo_item['cost'] * oo.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
@@ -263,6 +263,7 @@ class OrdersCollection(Resource):
         pagination = args.to_dict()
         search = args.get('search', None)
         user_id = get_jwt_identity()
+
         accounts = Account.query.filter(Account.user_id == user_id, Account.entity.has(type=Entity.Type.BROKER))
 
         if broker_names:
@@ -286,6 +287,7 @@ class OrdersCollection(Resource):
         items = []
         for order in orders:
             o = order.to_dict()
+            o['value_date'] = order.value_date.strftime("%d/%m/%Y")
             o['ticker'] = order.ticker.to_dict()
             items.append(o)
 
@@ -341,10 +343,12 @@ class Tax(Resource):
         items = []
         for r in closed_orders:
             item = r.sell_transaction.json
+            item['value_date'] = r.sell_transaction.value_date.strftime("%d/%m/%Y")
             # item['ticker'] = r.sell_transaction.ticker.to_dict()
             children = []
             for q in r.buy_transaction:
                 buy = q.transaction.json
+                buy['value_date'] = q.transaction.value_date.strftime("%d/%m/%Y")
                 buy['shares'] = q.shares
                 buy['price'] = q.price
                 buy['partial_fee'] = q.partial_fee

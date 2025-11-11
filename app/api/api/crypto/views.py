@@ -113,68 +113,48 @@ class OrdersCollection(Resource):
             exchange_list = exchange_names.split(",")
             accounts = accounts.filter(Account.name.in_(exchange_list))
         accounts = accounts.all()
-        account_ids = [a.id for a in accounts]
 
-        # If no accounts are found, return an empty result
-        if not account_ids:
-            return jsonify({
-                "results": [],
-                "pagination": {
-                    "count": 0,
-                    "page": 1,
-                    "per_page": pagination.get('limit', 50),
-                    "pages": 0
-                }
-            })
-
-        # Define limit and offset for pagination
-        limit = int(pagination.get('limit', 50))
-        page = int(pagination.get('page', 1)) - 1
-        offset = page * limit
-
-        query = CryptoEvent.query.filter(CryptoEvent.account_id.in_([a.id for a in accounts])) \
+        query = CryptoEvent.query \
+            .filter(CryptoEvent.account_id.in_([a.id for a in accounts])) \
             .order_by(CryptoEvent.value_date.desc())
 
         # Apply search filter
         if search:
+            # query = query.filter(or_(Ticker.ticker.ilike(f"%{search}%"), Ticker.name.ilike(f"%{search}%"), Ticker.isin.ilike(f"%{search}%")))
             query = query.filter(CryptoEvent.symbol.ilike(f"%{search}%"))
 
-        # Get total count before applying pagination
-        total = query.count()
+        limit = int(pagination.get('limit', 10))
+        page = int(pagination.get('page', 1)) - 1
+        orders = query.limit(limit).offset(page * limit).all()
 
-        # Apply pagination
-        paginated_results = query.limit(limit).offset(offset).all()
-
-        # Convert results to dictionary format
         items = []
-        for row in paginated_results:
-            o = row.to_dict()
+        for order in orders:
+            o = order.to_dict()
 
-            # Append currency details based on type
-            if row.type in [CryptoEvent.Type.BUY, CryptoEvent.Type.SELL]:
-                o['currency_source'] = row.symbol.split("/")[0]
-                o['currency_target'] = row.symbol.split("/")[1]
-            elif row.type == CryptoEvent.Type.DEPOSIT:
-                o['currency_source'] = row.symbol  # Currency is mapped to pair
+            if order.type in [CryptoEvent.Type.BUY, CryptoEvent.Type.SELL]:
+                o['currency_source'] = order.symbol.split("/")[0]
+                o['currency_target'] = order.symbol.split("/")[1]
+            elif order.type == CryptoEvent.Type.DEPOSIT:
+                o['currency_source'] = order.symbol  # Currency is mapped to pair
                 o['currency_target'] = ""
-            elif row.type == CryptoEvent.Type.WITHDRAWAL:
+            elif order.type == CryptoEvent.Type.WITHDRAWAL:
                 o['currency_source'] = ""
-                o['currency_target'] = row.symbol  # Currency is mapped to pair
+                o['currency_target'] = order.symbol  # Currency is mapped to pair
 
             items.append(o)
 
-        # Return results with pagination details
+        total = query.count()
+
         results = {
             "results": items,
             "pagination": {
                 "count": total,
-                "page": page + 1,
+                "page": page,
                 "per_page": limit,
-                "pages": (total + limit - 1) // limit,  # Total pages, handle edge cases
+                "pages": int(total / limit),
             },
         }
         return jsonify(results)
-        return
 
 
 @namespace.route('/tax')
@@ -183,6 +163,7 @@ class CryptoTax(Resource):
     def get(self):
         """Returns all closed orders."""
         args = request.args.to_dict()
+
         year = int(args.get('year', datetime.now().year - 1))
         user_id = get_jwt_identity()
         accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id,
