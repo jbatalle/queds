@@ -136,7 +136,6 @@ export default {
       }
     },
     collapseMenu() {
-      console.log("Collapse menu!");
       this.collapsed = !this.collapsed;
     },
     onItemClick() {

@@ -1,6 +1,6 @@
 <template>
   <div>
-  <el-dialog title="Adding account" v-model="dialogVisible" width="60%" :close-on-press-escape="true"
+  <el-dialog title="Add Account" v-model="dialogVisible" width="60%" :close-on-press-escape="true"
              :before-close="handleClose">
     <div class="card-body">
       <form>
@@ -93,7 +93,7 @@
     </template>
     <span slot="footer" class="dialog-footer"></span>
   </el-dialog>
-  <el-dialog title="Read account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
+  <el-dialog title="Read Account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
              :before-close="handleReadClose">
     <div v-loading="loading">
       <div class="card-body">
@@ -182,9 +182,9 @@
     </template>
   </el-dialog>
   <div class="row">
-    <div class="col-md-12">
+    <div class="col-md-12 mb-4">
       <account-table
-          title="Broker accounts"
+          title="Broker Accounts"
           :accounts="brokerAccounts"
           :table-columns="tableColumns"
           :account-type="1"
@@ -192,12 +192,11 @@
           @open-read-dialog="openReadDialog"
           @open-delete-dialog="openDeleteDialog"
           @open-upload-dialog="openUploadDialog"
-      >
-      </account-table>
+      />
     </div>
-    <div class="col-md-12">
+    <div class="col-md-12 mb-4">
       <account-table
-          title="Exchange accounts"
+          title="Exchange Accounts"
           :accounts="exchangeAccounts"
           :table-columns="tableColumns"
           :account-type="3"
@@ -205,8 +204,7 @@
           @open-read-dialog="openReadDialog"
           @open-delete-dialog="openDeleteDialog"
           @open-upload-dialog="openUploadDialog"
-      >
-      </account-table>
+      />
     </div>
   </div>
     </div>
@@ -339,7 +337,6 @@ export default {
       this.readDialogVisible = false;
     },
     async addAccount(done) {
-      console.log("Add or update account");
       this.errors = {};
       if (!this.credential.entity) {
         this.errors.entity = 'Choose an entity';
@@ -514,12 +511,10 @@ export default {
 }
 
 .text-red {
-  --un-text-opacity: 1;
-  color: rgba(248, 113, 113, var(--un-text-opacity));
+  color: #e74c3c;
 }
 
 .text-green {
-  --un-text-opacity: 1;
-  color: green;
-}
+  color: #2ecc71;
+  }
 </style>

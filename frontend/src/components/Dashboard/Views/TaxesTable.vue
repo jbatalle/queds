@@ -24,22 +24,22 @@
       </el-table-column>
       <el-table-column label="Price">
         <template v-slot:default="scope">
-                  <span v-if="type==='broker'">
-                  {{ $filters.toCurrency(scope.row.price, scope.row.currency) }}
-                    </span>
-          <span v-else>
-                    {{ $filters.toCurrency(scope.row.price, scope.row.target_currency, 8) }}
-                  </span>
+            <span v-if="type==='broker'">
+                {{ $filters.toCurrency(scope.row.price, base_currency) }}
+            </span>
+            <span v-else>
+                {{ $filters.toCurrency(scope.row.price, base_currency, 8) }}
+            </span>
         </template>
       </el-table-column>
       <el-table-column label="Fees" property="fees">
         <template v-slot:default="scope">
-                  <span v-if="type==='broker'">
-                  {{ $filters.toCurrency(scope.row.fees, base_currency) }}
-                    </span>
-          <span v-else>
-                    {{ $filters.toCurrency(scope.row.fee, scope.row.target_currency, 8) }}
-                  </span>
+            <span v-if="type==='broker'">
+                {{ $filters.toCurrency(scope.row.fees, base_currency) }}
+            </span>
+            <span v-else>
+                {{ $filters.toCurrency(scope.row.fee, scope.row.target_currency, 8) }}
+            </span>
         </template>
       </el-table-column>
       <el-table-column v-if="type==='broker'" label="Currency Rate" property="rate">

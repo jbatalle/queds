@@ -113,7 +113,7 @@ export default {
       });
       this.pagination.total = res.data.pagination.count;
       this.orders.forEach(function (s) {
-        s.value_date = s.value_date.split(' ')[0];
+        s.value_date = s.value_date; //.split(' ')[0];
         s.total = s.shares * s.price;
         if (s.type === 0) {
           s.type = "Buy";

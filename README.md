@@ -28,15 +28,6 @@ Check out the demo at https://queds.alwaysdata.net/overview (user: demo@queds.co
 
 ## Getting Started
 To get started with Queds Finance, you can deploy the tool using docker-compose or install each component individually.
-You also have the flexibility to choose between different deployment configurations.
-
-### Deployment Options
-You can choose how to deploy the application based on your needs:
-
-1. `docker-compose.yml` for a simplified environment
-   - Uses SQLite instead of PostgreSQL and an internal dictionary instead of Redis.
-2. `docker-compose.full.yml` for a complete environment
-   - Includes extra services: PostgreSQL (TimescaleDB) and Redis.
 
 ### Docker compose
 Deploy everything with docker-compose:
@@ -61,10 +52,11 @@ docker-compose -f docker-compose.full.yml up
 1. Visit http://0.0.0.0:6060
 2. Create a user using the Register form
 3. Add a broker/exchange account in Accounts view
-4. Execute a read over the accounts
-5. Check orders
-6. Execute wallet calculation in order to generate the Wallet and the Tax report
-7. Add stock to a watchlist
+4. Execute a read over the accounts or upload a CSV to an account
+5. Wait few seconds until the read finishes and the wallet is calculated
+6. Check orders
+7. Check the generated Wallet and the Tax report
+8. Add stock to a watchlist
 
 ## Development
 Queds Finance is built using Python, Vue, Redis, and Timescaledb. Here's an overview of the directory structure:
@@ -105,7 +97,7 @@ Create a database in Postgres(TimescaleDB) and apply migrations:
 BACKEND_SETTINGS=config.local alembic upgrade head
 ```
 
-Create new migrations:
+And for create new migrations:
 ```
 BACKEND_SETTINGS=conf.local alembic revision --autogenerate
 ```
@@ -121,6 +113,11 @@ To downgrade a migration, use:
 ```
 docker-compose run migrate /bin/bash
 cd app/models && alembic downgrade -1
+```
+
+Or directly with:
+```bash
+docker-compose -f docker-compose.yml restart migrate
 ```
 
 ### API

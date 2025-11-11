@@ -105,14 +105,14 @@ export default {
         //TODO: sum fees of children items
         //s.benefits = Number(s.shares * s.price *s.currency_rate + s.fees).toFixed(2);
         //s.benefits = s.cost;
-        s.value_date = s.value_date.split(' ')[0];
+        s.value_date = s.value_date; //.split(' ')[0];
         let sell_shares = 0;
         s.children.forEach(function (c) {
           c.id = s.id + "_" + c.id;
           c.shares = -c.shares;
           c.name = "";
           c.ticker = {ticker: "", currency: s.currency};
-          c.value_date = c.value_date.split(' ')[0];
+          c.value_date = c.value_date; //.split(' ')[0];
           c.fees = c.partial_fee; //c.fee + c.exchange_fee;
           s.benefits += c.price * c.shares * c.currency_rate + c.partial_fee;
           c.cost = c.shares * c.price * c.currency_rate + c.partial_fee;
