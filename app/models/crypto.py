@@ -100,7 +100,7 @@ class CryptoEvent(Base, CRUD):
             "external_id": self.external_id,
             "type": self.type,
             "account_id": self.account_id,
-            # "account": self.account.name,
+            "account": self.account.name,
             "value_date": self.value_date.strftime("%Y-%m-%d %H:%M:%S"),
             "symbol": self.symbol,
             "price": self.price,

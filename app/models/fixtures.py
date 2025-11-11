@@ -9,7 +9,7 @@ def list_entities():
     from models.system import User, Entity, EntityCredentialType, Account
     entities = [
         {
-            "name": "Degiro", "type": Entity.Type.BROKER, "active": True,
+            "name": "Degiro", "type": Entity.Type.BROKER, "active": True, "allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.USERNAME.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -36,16 +36,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "BBVA", "type": Entity.Type.BANK, "active": True,
-            "creds": [{
-                "cred_type": EntityCredentialType.Type.USERNAME.name,
-                "mode": EntityCredentialType.Mode.TEXT.name
-            }, {
-                "cred_type": EntityCredentialType.Type.PASSWORD.name,
-                "mode": EntityCredentialType.Mode.PASSWORD.name
-            }]
-        }, {
-            "name": "Bitstamp", "type": Entity.Type.EXCHANGE, "active": True,
+            "name": "Bitstamp", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -57,7 +48,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.TEXT.name
             }]
         }, {
-            "name": "Kraken", "type": Entity.Type.EXCHANGE, "active": True,
+            "name": "Kraken", "type": Entity.Type.EXCHANGE, "active": True,"allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -66,7 +57,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "Bittrex", "type": Entity.Type.EXCHANGE, "active": True,
+            "name": "Bittrex", "type": Entity.Type.EXCHANGE, "active": True,"allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -75,7 +66,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "Binance", "type": Entity.Type.EXCHANGE, "active": True,
+            "name": "Binance", "type": Entity.Type.EXCHANGE, "active": True,"allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -84,7 +75,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "Kucoin", "type": Entity.Type.EXCHANGE, "active": True,
+            "name": "Kucoin", "type": Entity.Type.EXCHANGE, "active": True,"allows_csv": True,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.API_KEY.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -116,25 +107,39 @@ def insert_creds(credentials):
     q = op.bulk_insert(table, credentials)
     return q
 
-
-def upgrade_fixtures():
+def get_db_entities():
     conn = op.get_bind()
     query = conn.execute(sa.text("select id, name from entities"))
     db_entities = query.fetchall()
     db_entities_names = {d.name: {"id": d.id, "name": d.name} for d in db_entities}
+    return db_entities_names
 
+def get_db_credentials():
+    conn = op.get_bind()
     query = conn.execute(sa.text("select entity_id, cred_type, mode from entity_credential_types"))
     db_creds = query.fetchall()
     db_creds_entity = [{"entity_id": d.entity_id, "cred_type": d.cred_type, "mode": d.mode} for d in db_creds]
+    return db_creds_entity
 
-    to_insert = []
-    cred_to_insert = []
+
+def upgrade_fixtures():
+    print("Upgrade fixtures...")
     entities = list_entities()
-    for entity in entities[8:]:
+
+    db_entities_names = get_db_entities()
+    to_insert = []
+    for entity in entities:
         if entity['name'] not in db_entities_names:
             to_insert.append(entity)
-            continue
-        # check creds
+
+    insert_entities(to_insert)
+
+    db_entities_names = get_db_entities()
+    db_creds_entity = get_db_credentials()
+
+    cred_to_insert = []
+    print(f"Entities: {len(entities)}")
+    for entity in entities:
         db_entity = db_entities_names[entity['name']]
         db_entity_creds = {f['cred_type']: f for f in db_creds_entity if f['entity_id'] == db_entity['id']}
         for c in entity['creds']:
@@ -144,23 +149,24 @@ def upgrade_fixtures():
             c['entity_id'] = db_entity['id']
             cred_to_insert.append(c)
 
-    insert_entities(to_insert)
+    print(f"Entities to be inserted: {len(to_insert)} and {len(cred_to_insert)} credential types")
+    # insert_entities(to_insert)
     insert_creds(cred_to_insert)
 
     print("Check creds")
 
 
 def upgrade():
-    entities = [{"name": "Degiro", "type": Entity.Type.BROKER, "active": True},
+    from models.system import User, Entity, EntityCredentialType, Account
+    entities = [{"name": "Degiro", "type": Entity.Type.BROKER, "active": True, "allows_csv": True},
                 {"name": "ClickTrade", "type": Entity.Type.BROKER, "active": True},
                 {"name": "IB", "type": Entity.Type.BROKER, "active": True},
-                {"name": "BBVA", "type": Entity.Type.BANK, "active": True},
-                {"name": "Bitstamp", "type": Entity.Type.EXCHANGE, "active": True},
-                {"name": "Kraken", "type": Entity.Type.EXCHANGE, "active": True},
-                {"name": "Bittrex", "type": Entity.Type.EXCHANGE, "active": True},
-                {"name": "Binance", "type": Entity.Type.EXCHANGE, "active": True},
-                {"name": "Kucoin", "type": Entity.Type.EXCHANGE, "active": True},
-                {"name": "Coinbase", "type": Entity.Type.EXCHANGE, "active": True}]
+                {"name": "Bitstamp", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True},
+                {"name": "Kraken", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True},
+                {"name": "Bittrex", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True},
+                {"name": "Binance", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True},
+                {"name": "Kucoin", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True},
+                {"name": "Coinbase", "type": Entity.Type.EXCHANGE, "active": True, "allows_csv": True}]
 
     print("Creating entities")
     table = sa.table('entities',
@@ -223,14 +229,6 @@ def upgrade():
         "mode": EntityCredentialType.Mode.TEXT.name
     }, {
         "entity_id": kraken_entity,
-        "cred_type": EntityCredentialType.Type.API_SECRET.name,
-        "mode": EntityCredentialType.Mode.PASSWORD.name
-    }, {
-        "entity_id": bittrex_entity,
-        "cred_type": EntityCredentialType.Type.API_KEY.name,
-        "mode": EntityCredentialType.Mode.TEXT.name
-    }, {
-        "entity_id": bittrex_entity,
         "cred_type": EntityCredentialType.Type.API_SECRET.name,
         "mode": EntityCredentialType.Mode.PASSWORD.name
     }, {
