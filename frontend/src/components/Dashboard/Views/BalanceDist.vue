@@ -3,7 +3,7 @@
     <div class="col-md-6">
       <chart-card v-if="investChart && investChart.labels.length > 0"
                   :chart-data="investChart"
-                  :chart-options="investChart.options"
+                  :chart-options="{ cutout: '65%', plugins: { legend: { position: 'bottom' }}}"
                   chart-type="Pie"
                   description=""
                   :key="investKey">
@@ -45,14 +45,14 @@
                         </span>
               </template>
             </el-table-column>
-            <el-table-column label="Base value" property="base_current_value">
+            <el-table-column label="Base value" property="base_current_value" sortable>
               <template v-slot:default="scope">
                 {{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}
               </template>
             </el-table-column>
             <el-table-column label="Percentage" property="percentage" sortable>
               <template v-slot:default="scope">
-                {{ scope.row.percentage }}%
+                {{ scope.row.percentage !== undefined && scope.row.percentage !== null ? Number(scope.row.percentage).toFixed(2) : '0.00' }}%
               </template>
             </el-table-column>
           </el-table>

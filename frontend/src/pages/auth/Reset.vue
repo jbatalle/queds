@@ -55,7 +55,7 @@ export default {
     async handleSubmit() {
        if (this.$isDemo) {
         await this.$notify({
-          type: "danger",
+          type: "error",
           message: "Password reset is disabled in the demo.",
         });
         return;
@@ -69,7 +69,7 @@ export default {
         this.$refs['reset_password_form'].reset()
       } catch (error) {
         await this.$notify({
-          type: "danger",
+          type: "error",
           message: "We can't find a user with that e-mail address.",
         });
         this.setApiValidation(error.response.data.errors);

@@ -93,7 +93,6 @@ export default {
         //TODO: sum fees of children items
         s.benefits_net = s.amount * s.price;
         s.benefits = Number((s.amount * s.price - s.fees).toFixed(2));
-        // console.log("Benefits:", s.benefits);
         s.value_date = s.value_date.split(' ')[0];
         //s.source_currency = s.pair.split("/")[0];
         s.target_currency = s.symbol.split("/")[1];
@@ -107,8 +106,6 @@ export default {
           s.benefits_net -= c.price * c.amount;
           s.benefits -= (c.price * c.amount + c.partial_fee); //- (c.fees/(s.shares/c.shares));
           c.cost = c.price * c.amount + c.partial_fee;
-          //console.log("Cost", c.price * c.amount + c.partial_fee);
-          //console.log("Benefits:", c.amount, c.price, c.partial_fee);
           s.benefits = Number((s.benefits).toFixed(2));
           c.fees = Number(c.fees).toFixed(2);
         });

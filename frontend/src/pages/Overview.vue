@@ -21,7 +21,7 @@
 
       <!-- Realized Gains Card -->
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top" title="Realized Profit from Closed Operations">
+        <el-popover trigger="hover" placement="top" content="Realized Profit from Closed Operations">
           <template #reference>
               <stats-card type="success" icon="nc-icon nc-globe" small-title="Closed positions"
                           :title="$filters.toCurrency(total_gain, base_currency)">
@@ -39,7 +39,7 @@
 
       <!-- Total P/L Card -->
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top" title="Total Profit including Open and Closed Positions">
+        <el-popover trigger="hover" placement="top" content="Total Profit including Open and Closed Positions">
           <template #reference>
             <stats-card type="success" icon="fa fa-chart-line" small-title="Total P/L" :title="$filters.toCurrency(totalPL, base_currency)">
               <template #footer>
@@ -56,7 +56,7 @@
 
       <!-- Available Fiat Card -->
       <div class="col-lg-3 col-md-6 col-sm-6">
-        <el-popover trigger="hover" placement="top" title="Available Fiat">
+        <el-popover trigger="hover" placement="top" content="Available Fiat">
           <template #reference>
             <stats-card type="success" icon="nc-icon nc-bank" small-title="Fiat"
                         :title="$filters.toCurrency(fiat, base_currency)">
@@ -75,21 +75,21 @@
     <!-- Portfolio Summary Table -->
     <div class="row mb-4">
       <div class="col-md-12">
-        <div class="card">
+        <div class="card elegant-card">
           <div class="card-header">
-            <h4 class="card-title">Portfolio Summary</h4>
+            <h4 class="card-title"><i class="fa fa-briefcase"></i> Portfolio Summary</h4>
           </div>
-          <div class="card-body">
+          <div class="card-body table-card-body">
             <div class="table-responsive">
-              <table class="table">
-                <thead>
+              <table class="table align-middle text-center">
+                <thead><!-- class="thead-light"-->
                   <tr>
                     <th>Category</th>
                     <th>Value ({{ base_currency }})</th>
                     <th>Cost ({{ base_currency }})</th>
                     <th>Unrealized P/L ({{ base_currency }})</th>
                     <th>Realized Gains ({{ base_currency }})</th>
-                    <th>Realized Gains YTD ({{ base_currency }})</th>
+                    <th>YTD ({{ base_currency }})</th>
                     <th>Total P/L  ({{ base_currency }})</th>
                   </tr>
                 </thead>
@@ -98,7 +98,10 @@
                     <td><strong>Brokers</strong></td>
                     <td>{{ $filters.toCurrency(broker_wallet_value, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(broker_wallet_cost, base_currency) }}</td>
-                    <td>{{ $filters.toCurrency(broker_unrealized_profit, base_currency) }} ({{ $filters.round((broker_unrealized_profit / broker_wallet_cost) * 100) }}%)</td>
+                    <td>
+                      {{ $filters.toCurrency(broker_unrealized_profit, base_currency) }} 
+                      ({{ broker_wallet_cost > 0 ? $filters.round((broker_unrealized_profit / broker_wallet_cost) * 100) : '0.00' }}%)
+                    </td>
                     <td>{{ $filters.toCurrency(broker_gain, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(broker_realized_gains_ytd, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(total_wallet_gain, base_currency) }}</td>
@@ -107,7 +110,10 @@
                     <td><strong>Crypto</strong></td>
                     <td>{{ $filters.toCurrency(crypto_wallet_value, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(crypto_wallet_cost, base_currency) }}</td>
-                    <td>{{ $filters.toCurrency(crypto_unrealized_profit, base_currency) }} ({{ $filters.round((crypto_unrealized_profit / crypto_wallet_cost) * 100) }}%)</td>
+                    <td>
+                      {{ $filters.toCurrency(crypto_unrealized_profit, base_currency) }}
+                      ({{ crypto_wallet_cost > 0 ? $filters.round((crypto_unrealized_profit / crypto_wallet_cost) * 100) : '0.00' }}%)
+                    </td>
                     <td>{{ $filters.toCurrency(crypto_gain, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(crypto_realized_gains_ytd, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(total_crypto_gain, base_currency) }}</td>
@@ -116,7 +122,10 @@
                     <td><strong>Total</strong></td>
                     <td>{{ $filters.toCurrency(total_wallet_value, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(total_wallet_cost, base_currency) }}</td>
-                    <td>{{ $filters.toCurrency(total_unrealized_profit, base_currency) }} ({{ $filters.round(total_unrealized_profit_percentage) }}%)</td>
+                    <td>
+                      {{ $filters.toCurrency(total_unrealized_profit, base_currency) }}
+                      ({{ total_wallet_cost > 0 ? $filters.round((total_unrealized_profit / total_wallet_cost) * 100) : '0.00' }}%)
+                    </td>
                     <td>{{ $filters.toCurrency(total_gain, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(realized_gains_ytd, base_currency) }}</td>
                     <td>{{ $filters.toCurrency(totalPL, base_currency) }}</td>
@@ -130,50 +139,154 @@
     </div>
 
     <div class="row">
+      <!-- Performance Over Time (Portfolio Growth) -->
+      <div class="col-lg-6 col-md-6 mb-4">
+        <chart-card
+          v-if="performanceChart?.labels?.length > 0"
+          :chart-data="performanceChart"
+          :chart-options="performanceChart.options"
+          chart-type="Line"
+          title="Portfolio Growth Over Time"
+          :key="performanceKey"
+        >
+          <template #header>
+            <h5 class="title">Portfolio Growth</h5>
+          </template>
+        </chart-card>
+      </div>
+
+      <div class="col-lg-3 col-md-3 mb-4">
+        <div class="card elegant-card mb-6">
+          <div class="card-header">
+            <h4 class="card-title"><i class="fa fa-arrow-up"></i> Top Gainers</h4>
+          </div>
+          <div class="card-body table-card-body">
+            <div class="table-responsive">
+              <table class="table align-middle text-center">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>P/L (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="asset in topGainers" :key="asset.currency">
+                    <td>{{ asset.currency }}</td>
+                    <td>{{ $filters.round(asset.pl_percent) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        </div>
+      <div class="col-lg-3 col-md-3 mb-4">
+        <div class="card elegant-card">
+          <div class="card-header">
+            <h4 class="card-title"><i class="fa fa-arrow-down"></i> Top Losers</h4>
+          </div>
+          <div class="card-body table-card-body">
+            <div class="table-responsive">
+              <table class="table align-middle text-center">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>P/L (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="asset in topLosers" :key="asset.currency">
+                    <td>{{ asset.currency }}</td>
+                    <td>{{ $filters.round(asset.pl_percent) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+        <!-- Recent Transactions Section -->
+    <div class="row">
+      <div class="col-md-12 mb-4">
+        <div class="card elegant-card">
+          <div class="card-header">
+            <h4 class="card-title"><i class="fa fa-history"></i> Recent Transactions</h4>
+          </div>
+          <div class="card-body table-card-body">
+            <div class="table-responsive">
+              <table class="table align-middle text-center">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Asset</th>
+                    <th>Amount</th>
+                    <th>Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="tx in recentTransactions" :key="tx.id" v-if="recentTransactions && recentTransactions.length > 0">
+                    <td>{{ tx.date }}</td>
+                    <td>{{ tx.type }}</td>
+                    <td>{{ tx.asset.name }}</td>
+                    <td>{{ tx.amount }}</td>
+                    <td>{{ $filters.toCurrency(tx.price, tx.asset.currency) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
       <!-- Portfolio Distribution Chart -->
-      <div class="col-md-4">
-        <chart-card
-          v-if="distributionChart?.labels?.length > 0"
-          :chart-data="distributionChart"
-          :chart-options="distributionChart.options"
-          chart-type="Pie"
-          title="Wallet Distribution (Brokers vs. Exchanges)"
-          :key="distributionKey"
-        >
-          <template #header>
-            <h5 class="title">Wallet Distribution</h5>
-          </template>
-        </chart-card>
-      </div>
+      <div class="col-lg-6 col-md-6 mb-6">
+      <div class="row">
+          <div class="col-lg-4 col-md-6 mb-6">
+            <chart-card
+              :chart-data="distributionChart"
+              :chart-options="{ cutout: '65%', plugins: { legend: { position: 'bottom' }}}"
+              chart-type="Pie"
+              title="Wallet Distribution (Brokers vs. Exchanges)"
+              :key="distributionKey"
+            >
+              <template #header>
+                <h5 class="title">Wallet Distribution</h5>
+              </template>
+            </chart-card>
+          </div>
 
-      <!-- Distribution by account -->
-      <div class="col-md-4">
-        <chart-card
-          v-if="accountDistributionChart?.labels?.length > 0"
-          :chart-data="accountDistributionChart"
-          :chart-options="accountDistributionChart.options"
-          chart-type="Pie"
-          title="Wallet Distribution by Account"
-          :key="accountDistributionKey"
-        >
-          <template #header>
-            <h5 class="title">Wallet by Account</h5>
-          </template>
-        </chart-card>
-      </div>
+          <!-- Distribution by account -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <chart-card
+              v-if="accountDistributionChart?.labels?.length > 0"
+              :chart-data="accountDistributionChart"
+              :chart-options="{ cutout: '65%', plugins: { legend: { position: 'bottom' }}}"
+              chart-type="Pie"
+              title="Wallet Distribution by Account"
+              :key="accountDistributionKey">
+              <template #header>
+                <h5 class="title">Wallet by Account</h5>
+              </template>
+            </chart-card>
+          </div>
 
-      <div class="col-md-4">
-        <chart-card
-          v-if="totalChart?.labels?.length > 0"
-          :chart-data="totalChart"
-          :chart-options="totalChart.options"
-          chart-type="Pie"
-          title="Total"
-          :key="totalKey">
-          <template #header>
-            <h5 class="title">Total Portfolio</h5>
-          </template>
-        </chart-card>
+          <div class="col-lg-4 col-md-6 mb-4">
+            <chart-card
+              v-if="totalChart?.labels?.length > 0"
+              :chart-data="totalChart"
+              :chart-options="{ cutout: '65%', plugins: { legend: { position: 'bottom' }}}"
+              chart-type="Pie"
+              title="Total"
+              :key="totalKey">
+              <template #header>
+                <h5 class="title">Asset Composition</h5>
+              </template>
+            </chart-card>
+          </div>
+          </div>
       </div>
 
       <!-- Account Distribution Bar Chart -->
@@ -181,9 +294,9 @@
         <chart-card
           v-if="accountBarChart?.labels?.length > 0"
           :chart-data="accountBarChart"
-          :chart-options="accountBarChart.options"
+          :chart-options="{ indexAxis: 'y', plugins: { legend: { display: false }}}"
           chart-type="Bar"
-          title="Wallet Distribution by Account"
+          title="Value per Account"
           :key="accountBarChartKey"
         >
           <template #header>
@@ -224,7 +337,7 @@ export default {
     ElPopover
   },
   data() {
-    return {
+     return {
       base_currency: localStorage.getItem('base_currency') || 'EUR',
       fx_rate: 1,
       total_assets: [],
@@ -288,6 +401,9 @@ export default {
       total_crypto_gain: 0,
 
       total_invested: 0,
+      recentTransactions: [],
+      topGainers: [],
+      topLosers: [],
 
       buy: 0,
       sell: 0,
@@ -338,25 +454,93 @@ export default {
           legend: { display: true },
         },
       },
+        // Store all broker orders for performance chart
+        allBrokerOrders: [],
     }
   },
   computed: {
     totalPL() {
       return this.total_wallet_value + this.total_gain - this.total_invested;
-    },
-    totalROI() {
-      return (((this.total_wallet_value + this.total_gain) / this.total_invested) - 1) * 100;
-    },
+    }
   },
   async mounted() {
-    this.totalChart = {
-      "options": {},
-      "datasets": [{"data": [1, 99]}]
-    }
-    await this.getData();
-    this.setupPerformanceChart();
+      this.totalChart = {
+        "options": {},
+        "datasets": [{"data": [1, 99]}]
+      }
+      await this.getData();
+      await this.fetchAllBrokerOrders();
+      await this.setupPerformanceChart();
+      await this.setupTopMovers();
+      await this.fetchRecentTransactions();
   },
   methods: {
+      async fetchAllBrokerOrders() {
+        // Fetch all broker orders for performance chart
+        try {
+          let page = 1;
+          let perPage = 1000;
+          let allOrders = [];
+          let keepFetching = true;
+          while (keepFetching) {
+            const res = await axios.get(import.meta.env.VITE_APP_BACKEND_URL + `/stock/orders?page=${page}&limit=${perPage}`);
+            const orders = res.data.results || [];
+            allOrders = allOrders.concat(orders);
+            if (orders.length < perPage) {
+              keepFetching = false;
+            } else {
+              page++;
+            }
+          }
+          this.allBrokerOrders = allOrders;
+        } catch (error) {
+          this.allBrokerOrders = [];
+        }
+      },
+    async fetchRecentTransactions() {
+      try {
+        const res = await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/orders?page=1&limit=5");
+        const orders = res.data.results || [];
+        this.recentTransactions = orders.map(s => ({
+          id: s.id,
+          date: s.value_date,
+          type: s.type === 0 ? "Buy"
+            : s.type === 2 ? "Reverse_buy"
+            : s.type === 3 ? "Reverse_sell"
+            : s.type === 4 ? "OTC_buy"
+            : s.type === 5 ? "OTC_sell"
+            : "Sell",
+          asset: s.ticker || s.symbol || s.isin || "-",
+          amount: s.shares,
+          price: s.price
+        }));
+      } catch (error) {
+        this.recentTransactions = [];
+      }
+    },
+    async setupTopMovers() {
+      if (!this.total_assets || this.total_assets.length === 0) return;
+      // Group by currency/ticker and sum profits
+      const grouped = {};
+      this.total_assets.forEach(asset => {
+        const key = asset.ticker ? asset.ticker.name : asset.currency;
+        if (!grouped[key]) {
+          grouped[key] = {
+            currency: key,
+            total_base_cost: 0,
+            total_base_current_value: 0
+          };
+        }
+        grouped[key].total_base_cost += asset.base_cost || 0;
+        grouped[key].total_base_current_value += asset.base_current_value || 0;
+      });
+      const assetsWithPL = Object.values(grouped).map(asset => ({
+        currency: asset.currency,
+        pl_percent: asset.total_base_cost > 0 ? ((asset.total_base_current_value - asset.total_base_cost) / asset.total_base_cost) * 100 : 0
+      }));
+      this.topGainers = [...assetsWithPL].sort((a, b) => b.pl_percent - a.pl_percent).slice(0, 5);
+      this.topLosers = [...assetsWithPL].sort((a, b) => a.pl_percent - b.pl_percent).slice(0, 5);
+    },
     calc_percentage(partial_balance, total) {
       return (parseFloat(partial_balance) / total * 100).toFixed(2);
     },
@@ -374,13 +558,31 @@ export default {
       console.log("Create distribution chart");
       const brokerValue = this.brokerAccounts.reduce((acc, broker) => acc + broker.virtual_balance, 0);
       const exchangeValue = this.exchangeAccounts.reduce((acc, exchange) => acc + exchange.virtual_balance, 0);
-      console.log("Broker value", brokerValue);
-      console.log("Exchange value", exchangeValue);
+
+      if (!(brokerValue > 0 || exchangeValue > 0 || this.fiat > 0)) {
+        this.distributionChart = {
+          labels: ["No data available"],
+          datasets: [
+            {
+              label: "Wallet Distribution",
+              backgroundColor: ["#d3d3d3"],
+              data: [100],
+            },
+          ],
+          options: {
+            responsive: true,
+            legend: { display: true },
+          },
+        };
+        this.distributionKey++;
+        return;
+      }
 
       this.distributionChart = {
         labels: ["Brokers", "Exchanges", "Fiat"],
         datasets: [
           {
+            label: "Wallet Distribution",
             backgroundColor: ["#FF6384", "#36A2EB", "#5cc305"],
             data: [brokerValue, exchangeValue, this.fiat],
           },
@@ -396,33 +598,52 @@ export default {
     createAccountDistributionChart() {
       const accounts = [...this.brokerAccounts, ...this.exchangeAccounts];
 
-      this.accountDistributionChart = {
-        labels: accounts.map((account) => account.name),
-        datasets: [
-          {
-            label: "Wallet Distribution",
-            backgroundColor: accounts.map(() => {
-              const r = Math.floor(Math.random() * 255);
-              const g = Math.floor(Math.random() * 255);
-              const b = Math.floor(Math.random() * 255);
-              return `rgb(${r}, ${g}, ${b})`;
-            }),
-            data: accounts.map((account) => account.virtual_balance),
+      const allZero = accounts.length === 0 || accounts.every(acc => acc.virtual_balance === 0);
+      if (allZero) {
+        this.accountDistributionChart = {
+          labels: ["No data available"],
+          datasets: [
+            {
+              label: "Wallet Distribution",
+              backgroundColor: ["#d3d3d3"],
+              data: [100],
+            },
+          ],
+          options: {
+            responsive: true,
+            legend: { display: true },
           },
-        ],
-        options: {
-          responsive: true,
-          legend: { display: true },
-        },
-      };
-      this.accountDistributionKey++;
+        };
+        this.accountDistributionKey++;
+      } else {
+        this.accountDistributionChart = {
+          labels: accounts.map((account) => account.name),
+          datasets: [
+            {
+              label: "Wallet Distribution",
+              backgroundColor: accounts.map(() => {
+                const r = Math.floor(Math.random() * 255);
+                const g = Math.floor(Math.random() * 255);
+                const b = Math.floor(Math.random() * 255);
+                return `rgb(${r}, ${g}, ${b})`;
+              }),
+              data: accounts.map((account) => account.virtual_balance),
+            },
+          ],
+          options: {
+            responsive: true,
+            legend: { display: true },
+          },
+        };
+        this.accountDistributionKey++;
+      }
 
       // Create Bar chart version
       this.accountBarChart = {
         labels: accounts.map((account) => account.name),
         datasets: [
           {
-           // label: "Balance2",
+            label: "Asset",
             backgroundColor: accounts.map(() => {
               const r = Math.floor(Math.random() * 255);
               const g = Math.floor(Math.random() * 255);
@@ -448,14 +669,12 @@ export default {
     },
     createPortfolioChart() {
       // shows distribution of assets in the portfolio by Broker/Exchange or Fiat
-      console.log("Create Portfolio chart");
-      console.log(this.total_assets);
       this.loaded = true;
       this.totalChart = {
-        labels: this.total_assets.map((asset) => asset.currency),
+        labels: this.total_assets.map((asset) => asset.ticker ? asset.ticker.name : asset.currency),
         datasets: [
           {
-            //label: this.total_assets.map(asset => asset.currency),
+            label: "Value",
             backgroundColor: this.total_assets.map(() => {
               const r = Math.floor(Math.random() * 255);
               const g = Math.floor(Math.random() * 255);
@@ -469,70 +688,96 @@ export default {
           responsive: true,
           legend: {display: false},
           plugins: {
-            legend: {display: false},
+           // legend: {display: false},
           },
         },
       }
       this.totalKey++;
     },
-    setupPerformanceChart() {
-      // Sample data for portfolio growth over time
-      // In production, this should use real historical data
-      const today = new Date();
-      const dates = [];
-      const values = [];
+    async setupPerformanceChart() {
+        // Use real broker orders to build historical portfolio value
+        if (!this.allBrokerOrders || this.allBrokerOrders.length === 0) {
+          this.performanceChart = { labels: [], datasets: [] };
+          this.performanceKey++;
+          return;
+        }
+        console.log(this.allBrokerOrders);
+        // Group orders by month/year
+        const orders = this.allBrokerOrders;
+        const monthly = {};
+        orders.forEach(order => {
+          // Parse date
+          const d = new Date(order.value_date);
+          const key = d.toLocaleDateString('default', { month: 'short', year: 'numeric' });
+          if (!monthly[key]) monthly[key] = [];
+          monthly[key].push(order);
+        });
 
-      // Generate 12 months of data points
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(today);
-        date.setMonth(today.getMonth() - i);
-        dates.push(date.toLocaleDateString('default', { month: 'short', year: 'numeric' }));
+        // Sort keys chronologically
+        const sortedKeys = Object.keys(monthly).sort((a, b) => {
+          const da = new Date(a);
+          const db = new Date(b);
+          return da - db;
+        });
 
-        // Generate a sample growth trend - replace with real historical data
-        const baseValue = this.total_wallet_value > 0 ? this.total_wallet_value * 0.7 : 1000;
-        const randomGrowth = Math.random() * 0.05 - 0.02; // -2% to +3% random change
-        const growthFactor = 1 + (i * 0.02) + randomGrowth; // Progressive growth plus random noise
-        values.push(baseValue * growthFactor);
-      }
+        // Calculate cumulative portfolio value for each month
+        let cumulative = 0;
+        const values = [];
+        console.log(sortedKeys);
+        sortedKeys.forEach(key => {
+          const monthOrders = monthly[key];
+          monthOrders.forEach(order => {
+            // Buy increases, Sell decreases
+            // Buy: 0, Reverse_buy: 2, OTC_buy: 4
+            // Sell: 1, Reverse_sell: 3, OTC_sell: 5
+            if ([0, 2, 4].includes(order.type)) {
+              cumulative += order.shares * order.price * (order.currency_rate || 1);
+            } else if ([1, 3, 5].includes(order.type)) {
+              cumulative -= order.shares * order.price * (order.currency_rate || 1);
+            }
+          });
+          values.push(cumulative);
+        });
 
-      this.performanceChart = {
-        labels: dates,
-        datasets: [{
-          label: 'Portfolio Value',
-          borderColor: '#4acccd',
-          pointBackgroundColor: '#4acccd',
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          fill: false,
-          borderWidth: 2,
-          data: values
-        }],
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: false,
-              ticks: {
-                callback: (value) => {
+        console.log("Values", values);
+        this.performanceChart = {
+          labels: sortedKeys,
+          datasets: [{
+            label: 'Portfolio Value',
+            borderColor: '#4acccd',
+            pointBackgroundColor: '#4acccd',
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            fill: false,
+            borderWidth: 2,
+            data: values
+          }],
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false,
+                ticks: {
+                  callback: (value) => {
+                    return this.$filters?.toCurrency
+                      ? this.$filters.toCurrency(value, this.base_currency)
+                      : value;
+                  }
+                }
+              }
+            },
+            tooltips: {
+              callbacks: {
+                label: (tooltipItem) => {
                   return this.$filters?.toCurrency
-                    ? this.$filters.toCurrency(value, this.base_currency)
-                    : value;
+                    ? this.$filters.toCurrency(tooltipItem.yLabel, this.base_currency)
+                    : tooltipItem.yLabel;
                 }
               }
             }
-          },
-          tooltips: {
-            callbacks: {
-              label: (tooltipItem) => {
-                return this.$filters?.toCurrency
-                  ? this.$filters.toCurrency(tooltipItem.yLabel, this.base_currency)
-                  : tooltipItem.yLabel;
-              }
-            }
           }
-        }
-      };
-      this.performanceKey++;
+        };
+        this.performanceKey++;
     },
     processStockStats(res) {
       let wallet = res.data;
@@ -562,10 +807,6 @@ export default {
       console.log("Realized Profit: ", this.broker_realized_profit);
       console.log("Unrealized Profit: ", this.broker_unrealized_profit);
 
-      //  {{ $filters.round((((wallet_value + gain) / total_invested) - 1) * 100) }}%
-      //this.roi = (this.wallet_value + this.total_invested) / this.total_invested;
-      this.roi = (((this.broker_wallet_value + this.gain) / this.total_invested) - 1) * 100;
-
       console.log("Broker accounts", this.accounts);
       this.accounts.forEach(account => {
         // Iterate over wallets and sum the amount*current_price_eur for each open order
@@ -585,6 +826,7 @@ export default {
               }
             }
           });
+         if (w) this.total_assets.push(w);
         });
       });
     },
@@ -606,13 +848,16 @@ export default {
       this.crypto_realized_gains_ytd += stats.current_year_gain;
     },
     fillTotalStats() {
-      console.log("-------------- Full stats --------------");
       this.fiat = this.brokerAccounts.reduce((acc, broker) => acc + (broker.balance || 0), 0) +
                 this.exchangeAccounts.reduce((acc, exchange) => acc + (exchange.balance || 0), 0);
 
       this.total_gain = this.broker_gain + this.crypto_gain;
       this.total_wallet_value = this.broker_wallet_value + this.crypto_wallet_value;
-      this.liquidity_ratio = (this.fiat / (this.total_wallet_value + this.fiat)) * 100;
+      if ((this.total_wallet_value + this.fiat) > 0) {
+        this.liquidity_ratio = (this.fiat / (this.total_wallet_value + this.fiat)) * 100;
+      } else {
+        this.liquidity_ratio = 0;
+      }
 
       this.total_wallet_cost = this.broker_wallet_cost + this.crypto_wallet_cost;
       this.total_invested = this.broker_invested + this.crypto_invested;
@@ -620,10 +865,11 @@ export default {
 
       this.total_realized_profit = this.broker_realized_profit + this.crypto_realized_profit;
       this.total_unrealized_profit = this.broker_unrealized_profit + this.crypto_unrealized_profit;
-      this.total_unrealized_profit_percentage = (this.total_unrealized_profit / this.total_wallet_cost) * 100;
-      this.roi = (((this.total_wallet_value + this.total_gain) / this.total_invested) - 1) * 100;
+      this.total_unrealized_profit_percentage = this.total_wallet_cost > 0 ? (this.total_unrealized_profit / this.total_wallet_cost) * 100: 0;
+      this.roi = this.total_invested > 0 ? (((this.total_wallet_value + this.total_gain) / this.total_invested) - 1) * 100: 0;
       this.realized_gains_ytd = this.broker_realized_gains_ytd + this.crypto_realized_gains_ytd;
 
+      console.log("-------------- Full stats --------------");
       console.log("Fiat: " + this.fiat);
       console.log("total_gain: " + this.total_gain);
       console.log("Current Wallet value: " + this.total_wallet_value);
@@ -640,8 +886,6 @@ export default {
       let crypto_wallet_cost = 0;
       let crypto_wallet_value = 0;
 
-      console.log(this.exchangeAccounts);
-
       assets.forEach(asset => {
         const price = prices.eur[asset.currency];
         crypto_wallet_value += asset.amount * (1/price || 0);
@@ -657,8 +901,8 @@ export default {
             console.log("BIG wallet cost", asset.currency, crypto_wallet_cost, order);
           }
           if (!isNaN(price) && price > 0) {
-            if (order.exchange_id === 11 || order.exchange_id === 22 ) {
-              console.log("Binance order, ", order.order.symbol, order.amount, (1/price || 0), order.amount * (1/price || 0));
+            if (order.exchange_id === 7 ) {
+              //console.log("Binance order, ", order.order.symbol, order.amount, (1/price || 0), order.amount * (1/price || 0));
               this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (1/price || 0);
             } else {
               this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (price || 0);
@@ -671,7 +915,11 @@ export default {
 
       this.crypto_wallet_value += crypto_wallet_value;
       this.crypto_wallet_cost += crypto_wallet_cost;
-      this.crypto_realized_profit = (this.crypto_gain / this.total_invested) * 100;
+      if (this.total_invested > 0) {
+        this.crypto_realized_profit = (this.crypto_gain / this.total_invested) * 100;
+      } else {
+        this.crypto_realized_profit = 0;
+      }
       this.crypto_unrealized_profit += this.crypto_wallet_value - this.crypto_wallet_cost;
       this.total_crypto_gain = this.crypto_wallet_value + this.crypto_gain - this.crypto_invested;
       //this.crypto_unrealized_profit += assets.reduce((acc, asset) => acc + (asset.current_benefit || 0), 0);
@@ -758,12 +1006,11 @@ export default {
             })
         ];
 
-    // Wait for all wallet requests to complete
-    await Promise.all(walletRequests);
+        // Wait for all wallet requests to complete
+        await Promise.all(walletRequests);
 
-    // Final step after all data is loaded
-    this.fillTotalStats();
-    console.log("All data loaded");
+        // Final step after all data is loaded
+        this.fillTotalStats();
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -808,5 +1055,54 @@ export default {
 
 .table-info {
   background-color: rgba(54, 162, 235, 0.1);
+}
+
+.portfolio-dashboard {
+  padding: 10px 15px;
+}
+
+.elegant-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.elegant-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.table-card-body {
+  padding: 0;
+}
+
+.table thead {
+  /*background-color: #f5f6fa;
+  //font-weight: 600;*/
+}
+
+.table th, .table td {
+  vertical-align: middle;
+}
+
+.chart-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.chart-row .chart-card {
+  margin: auto;
+}
+
+@media (max-width: 768px) {
+  .chart-row {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.stats i {
+  margin-right: 4px;
+  color: #4acccd;
 }
 </style>

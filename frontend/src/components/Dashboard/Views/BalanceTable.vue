@@ -1,12 +1,14 @@
 <template>
-
   <el-dialog title="Update ticker" v-model="tickerDialogVisible" width="60%" :close-on-press-escape="true"
              :before-close="handleClose">
     <el-form :model="tickerForm">
       <el-form-item label="Ticker Name">
         <el-input v-model="tickerForm.name"/>
       </el-form-item>
-      <el-form-item label="Ticker Symbol">
+      <el-form-item label="ISIN">
+        <el-input v-model="tickerForm.isin"/>
+      </el-form-item>
+      <el-form-item label="Symbol">
         <el-input v-model="tickerForm.ticker"/>
       </el-form-item>
       <el-form-item label="Yahoo Ticker Symbol">
@@ -142,9 +144,9 @@
           </el-table-column>
           <el-table-column label="Price" property="price">
             <template v-slot:default="scope">
-                        <span v-if="type==='broker'">
-                          {{ $filters.toCurrency(scope.row.price, scope.row.ticker.currency) }}
-                        </span>
+                <span v-if="type==='broker'">
+                  {{ $filters.toCurrency(scope.row.price, scope.row.ticker.currency) }}
+                </span>
               <span v-else>
                           {{ $filters.toCurrency(scope.row.price, scope.row.current_price_currency, 2) }}
                         </span>
@@ -251,6 +253,7 @@ export default {
     tickerDialogVisible: false,
     tickerForm: {
       ticker: '',
+      isin: '',
       name: '',
       ticker_yahoo: ''
     }

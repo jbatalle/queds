@@ -10,7 +10,7 @@
           </div>
           <div class="col-sm-4">
             <div class="pull-right">
-              <el-input class="input-sm" placeholder="Search" v-model="search" width="100%">
+              <el-input class="input-sm" placeholder="Search by ticker, ISIN..." v-model="search" width="100%">
                 <template #suffix>
                   <el-icon class="el-input__icon"></el-icon>
                   <i class="nc-icon nc-zoom-split"></i>

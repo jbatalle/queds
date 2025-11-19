@@ -1,6 +1,6 @@
 <template>
   <el-dialog title="Upload CSV" v-model="dialogVisible" width="60%" :close-on-press-escape="true"
-             :before-close="handleDeleteClose" @open-upload-csv="openUploadDialog">
+             :before-close="handleDeleteClose">
     <div class="card-body">
       <form>
         <el-upload
@@ -48,7 +48,6 @@ export default {
   },
   watch: {
     visible(newVal) {
-      console.log("visible to visible")
       this.dialogVisible = newVal;
       this.resetFormData();
     },
@@ -75,20 +74,11 @@ export default {
       console.error('Upload error:', err);
       // Handle upload error logic (e.g., display error message)
     },
-    openUploadDialog(account){
-          console.log("Open dialog")
-          console.log(account)
-    },
     closeUploadDialog(){
       this.dialogVisible = false;
       this.$emit('upload-success');
     },
     submitCSV() {
-      console.log("Submit csv");
-      console.log(this.dialogVisible);
-      console.log(this.account);
-      console.log("account id", this.formData.accountId);
-      console.log(uploadRef)
       t = uploadRef.value
       // Implement logic to submit the form data (account ID and uploaded file)
       if (!this.formData.accountId || !this.formData.csvFile) {

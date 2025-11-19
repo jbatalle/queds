@@ -135,74 +135,6 @@ export default {
       let resStatus = res.status === 200;
       this.fx_rate = Number(res.data).toFixed(2);
     },
-    fillWallet(res) {
-      this.wallet = res.data;
-      let vm = this;
-      this.wallet = []
-      this.total_cost = 0;
-      this.total_current_benefits = 0;  // wallet benefits taking into account if we sell the wallet right now
-      this.total_benefits = 0;  // executed benefits from the wallet
-      this.wallet_value = 0;  // current wallet value given the current market price
-      this.base_previous_value = 0;  // wallet value from previous day
-
-      let bar = new Promise((resolve, reject) => {
-        res.data.forEach(function (t, index, array) {
-          t.children = t.open_orders;
-          t.symbol = t.ticker.ticker; // change here the symbol by trading_view symbol
-          t.container_id = t.ticker.ticker;
-          t.style = "3";
-          // if no current_change, fx_rate not required
-          // if (t.current_value == t.shares * t.market.price) {
-          if (t.ticker.currency != 'EUR') {
-            t.break_even = t.break_even * vm.fx_rate;
-          }
-
-          t.children.forEach(function (c) {
-            c.ticker = {
-              "ticker": c.transaction.value_date.split(' ')[0],
-              "currency": t.ticker.currency
-            }
-            c.id = t.id + "_" + c.id;
-            c.price = c.transaction.price;
-          });
-          vm.wallet.push(t);
-
-          // update global stats
-          vm.total_cost += t.base_cost;
-          vm.total_benefits += t.benefits;
-          vm.total_current_benefits += t.current_benefit;
-          vm.wallet_value += t.base_current_value;
-          // console.log(t.symbol + " - " + t.base_current_value + " Total wallet value: " + vm.wallet_value + "€ -");
-          vm.base_previous_value += t.base_previous_value;
-
-          if (index === array.length - 1) resolve();
-        });
-      });
-
-      // - wallet_value -> DONE
-      // - unrealized gains/loses -> total_current_benefits
-      // - realized gains/loses -> total_benefits
-      // TODO: from /stats endpoint because we look for closed orders and from benefits
-      // console.log("Base previous_value: ", this.base_previous_value);
-      console.log("Wallet value: ", this.wallet_value);
-      console.log("Total current benefits", this.total_current_benefits);
-      console.log("Total benefits: ", this.total_benefits);
-      console.log("Total benefits + current benefits", this.total_benefits + this.total_current_benefits);
-      bar.then(() => {
-        console.log("Win/Lose: " + (this.wallet_value - this.total_cost) + ". Current benefits: " + this.total_current_benefits);
-        console.log("Final cost: " + (this.total_cost - this.total_benefits));
-        this.wallet.forEach(function (t) {
-          t['percentage'] = Number(parseFloat(t.base_current_value) / vm.wallet_value * 100).toFixed(2);
-        });
-
-        // card stats
-        this.current_benefits_percent = Number(this.wallet_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-        this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-        // calc percentage for the day
-        this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
-      });
-      this.loading = false;
-    },
     async getData() {
       this.loading = true;
 
@@ -212,14 +144,14 @@ export default {
         await this.loadPricesAndUpdateWallet();
       } catch (err) {
         console.error("Wallet error:", err);
-        this.$notify({message: 'Error loading wallet data.', type: 'danger'});
+        this.$notify({message: 'Error loading wallet data.', type: 'error'});
       }
 
       this.loading = false;
     },
 
     async loadWalletAssets() {
-      // Phase 1: Load wallet assets (no prices yet)
+      // Load wallet assets (no prices yet)
       const walletRes = await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/stock/wallet/assets");
 
       // Initialize wallet arrays and counters
@@ -230,16 +162,16 @@ export default {
       this.wallet_value = 0;
       this.base_previous_value = 0;
 
-      // Process wallet items partially - similar to fillWallet but without full price data
+      // Process wallet items partially
       const vm = this;
       const walletItems = walletRes.data.map(t => {
         // Process children (open orders)
         if (t.open_orders) {
           t.children = t.open_orders.map(c => {
-            //console.log(c.order.symbol, (c.order.type == 0 && c.order.price) ? c.order.price || 0 : (1/c.order.price || 0), c.price);
             return {
               ...c,
               ticker: {
+                "id": t.ticker.id,
                 "ticker": c.transaction.value_date.split(' ')[0],
                 "currency": t.ticker.currency
               },
@@ -256,10 +188,10 @@ export default {
 
         return {
           ...t,
-          ticker: {"ticker": t.ticker.ticker, "name": t.ticker.name, "yahoo": t.ticker.ticker_yahoo, "currency": t.ticker.currency},
+          ticker: {"id": t.ticker.id, "ticker": t.ticker.ticker, "isin": t.ticker.isin, "name": t.ticker.name, "yahoo": t.ticker.ticker_yahoo, "currency": t.ticker.currency},
           symbol: t.ticker.ticker,
           container_id: t.ticker.ticker,
-          base_current_value: t.current_value || 0,
+          base_current_value: t.current_value * this.fx_rate || 0,
           style: "3",
           current_price: null,
           current_value: null,
@@ -274,7 +206,7 @@ export default {
     },
 
     async loadPricesAndUpdateWallet() {
-      // Phase 2: Load prices async, don't block UI
+      // Load prices async, don't block UI
       let tickers = this.wallet.map(item => {return { ticker: item.ticker.ticker, ticker_yahoo: item.ticker.yahoo};}).filter(Boolean); // removes undefined/null values
       const priceRes = await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/stock/wallet/prices", {
         tickers: tickers
@@ -295,64 +227,68 @@ export default {
       this.base_previous_value = 0;
 
       this.wallet = this.wallet.map(t => {
-        console.log(t);
+        let item_fx = 1
+        if (t.ticker.currency != 'EUR') {
+          item_fx = this.fx_rate;
+        }
+        if (t.ticker.currency != 'EUR') {
+          // the break_even is in EUR, we need to convert it to the ticker currency
+          t.break_even = t.break_even / vm.fx_rate;
+        }
         let priceData = prices[t.symbol];
         let current_value = 0;
         let previous_day_value = 0;
-        console.log(priceData);
+
         if (priceData !== undefined) {
           //const priceData = this.calculatePriceData(t, prices_eur, prices_usd, prices_btc);
-          current_value = t.shares * priceData.price;
-          previous_day_value = t.shares * priceData.previous_close;
+          t.current_value = t.shares * priceData.price;
+          t.previous_day_value = t.shares * priceData.previous_close;
+          //  r.shares * (item['market'].get('previous_close', 0) or 0)
+          t.base_current_value = t.current_value * item_fx;
+          t.base_previous_value = t.previous_day_value * item_fx;
+          t.day_change = t.base_current_value-t.base_previous_value;
           t.current_price = priceData.price;
           t.price_change = previous_day_value;
           t.pre = priceData.pre;
           t.pre_change = priceData.pre_change;
         }
 
-        console.log("Current value: ", current_value);
-        console.log("Current price: ", t.price);
-        console.log("Current shares: ", t.shares);
-        // console.log(t.currency, changes_24h[t.currency]);
-        //console.log("Previous_day_value ", previous_day_value, (1 / (changes_24h[t.currency] || 1)));
-
-        // console.log(t.currency, "Total cost ", vm.total_cost, t.price * t.amount, t.price, t.amount);
-        const current_benefit = current_value - (t.price * t.shares);
+        t.current_benefit = t.base_current_value - t.base_cost;//(t.price * t.shares);
 
         // Update global stats (similar to the loop in fillWallet)
-        console.log(t);
         vm.total_cost += t.price * t.shares;
-        console.log("Accumulative cost:", vm.total_cost, t.currency, "Cost:", t.price * t.shares);
-        vm.wallet_value += current_value;
+        vm.wallet_value += t.base_current_value;
         vm.total_benefits += t.benefits || 0;
-        vm.total_current_benefits += current_benefit;
-        vm.base_previous_value += previous_day_value;
-        //console.log(vm.base_previous_value);
+        vm.total_current_benefits += t.current_benefit;
+        vm.base_previous_value += t.base_previous_value;
 
         return {
           ...t,
-          ...priceData,
-          current_value,
-          previous_day_value,
-          current_benefit,
           loading: false // price is now loaded
         };
       });
 
-      // Calculate percentages for each wallet item
-      this.wallet.forEach(t => {
-        t.percentage = Number(parseFloat(t.current_value) / this.wallet_value * 100).toFixed(2);
-        t.base_current_value = Number(parseFloat(t.current_value)).toFixed(2);
+      this.wallet = this.wallet.map(t => {
+        t.percentage = Number(parseFloat(t.base_current_value) / this.wallet_value * 100);
+        return t;
       });
 
       // Calculate card stats
       this.current_benefits_percent = Number(this.wallet_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
+      if (this.total_cost > 0) {
+        this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
+      } else {
+        this.benefits_percent = 0;
+      }
+      if (this.base_previous_value > 0) {
+        this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
+      } else {
+        this.daily_benefits_percent = 0;
+      }
 
       console.log("Wallet_value: " + this.wallet_value);
       console.log("Total_cost: " + this.total_cost);
-      console.log("base_previous_value: " + this.base_previous_value);
+      console.log("Base_previous_value: " + this.base_previous_value);
       console.log("Win/Lose: " + (this.wallet_value - this.total_cost) + ". Current benefits: " + this.total_current_benefits);
       console.log("Final cost: " + (this.total_cost - this.total_benefits));
     },
@@ -382,7 +318,7 @@ export default {
         current_price_currency
       };
     },
-  },
+  }
 };
 </script>
 <style>

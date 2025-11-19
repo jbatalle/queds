@@ -137,15 +137,14 @@ export default {
         await this.loadWalletAssets();
         await this.loadPricesAndUpdateWallet();
       } catch (err) {
-        console.error("Wallet error:", err);
-        this.$notify({message: 'Error loading wallet data.', type: 'danger'});
+        this.$notify({message: 'Error loading wallet data.', type: 'error'});
       }
 
       this.loading = false;
     },
 
     async loadWalletAssets() {
-      // Phase 1: Load wallet assets (no prices yet)
+      // Load wallet assets (no prices yet)
       const walletRes = await axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/wallet/assets");
 
       // Initialize wallet arrays and counters
@@ -156,13 +155,12 @@ export default {
       this.wallet_value = 0;
       this.base_previous_value = 0;
 
-      // Process wallet items partially - similar to fillWallet but without full price data
+      // Process wallet items partially
       const vm = this;
       const walletItems = walletRes.data.map(t => {
         // Process children (open orders)
         if (t.open_orders) {
           t.children = t.open_orders.map(c => {
-            //console.log(c.order.symbol, (c.order.type == 0 && c.order.price) ? c.order.price || 0 : (1/c.order.price || 0), c.price);
             return {
               ...c,
               ticker: {
@@ -199,7 +197,7 @@ export default {
     },
 
     async loadPricesAndUpdateWallet() {
-      // Phase 2: Load prices async, don't block UI
+      // Load prices async, don't block UI
       const currencies = this.wallet.map(item => item.currency).filter(Boolean);
       const priceRes = await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/crypto/wallet/prices", {
         currencies: currencies
@@ -230,21 +228,15 @@ export default {
         if (changes_24h[t.currency] !== undefined) {
           previous_day_value = t.amount * (1 / (changes_24h[t.currency]));
         }
-        // console.log(t.currency, changes_24h[t.currency]);
-        //console.log("Previous_day_value ", previous_day_value, (1 / (changes_24h[t.currency] || 1)));
-
-        // console.log(t.currency, "Total cost ", vm.total_cost, t.price * t.amount, t.price, t.amount);
         const current_benefit = current_value - (t.price * t.amount);
 
-        // Update global stats (similar to the loop in fillWallet)
-        console.log(t);
+        // Update global stats
+        console.log("CAlculating", t.price, t.amount, vm.total_cost);
         vm.total_cost += t.price * t.amount;
-        console.log("Accumulative cost:", vm.total_cost, t.currency, "Cost:", t.price * t.amount);
         vm.wallet_value += current_value;
         vm.total_benefits += t.benefits || 0;
         vm.total_current_benefits += current_benefit;
         vm.base_previous_value += previous_day_value;
-        //console.log(vm.base_previous_value);
 
         return {
           ...t,
@@ -264,12 +256,20 @@ export default {
 
       // Calculate card stats
       this.current_benefits_percent = Number(this.wallet_value / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
-      this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
+      if (this.total_cost > 0) {
+        this.benefits_percent = Number((Number(this.wallet_value) + parseFloat(this.total_benefits)) / parseFloat(this.total_cost) * 100 - 100).toFixed(2);
+      } else {
+        this.benefits_percent = 0;
+      }
+      if (this.base_previous_value > 0) {
+        this.daily_benefits_percent = Number((Number(this.wallet_value) - parseFloat(this.base_previous_value)) / parseFloat(this.base_previous_value) * 100).toFixed(2);
+      } else {
+        this.daily_benefits_percent = 0;
+      }
 
       console.log("Wallet_value: " + this.wallet_value);
       console.log("Total_cost: " + this.total_cost);
-      console.log("base_previous_value: " + this.base_previous_value);
+      console.log("Base_previous_value: " + this.base_previous_value);
       console.log("Win/Lose: " + (this.wallet_value - this.total_cost) + ". Current benefits: " + this.total_current_benefits);
       console.log("Final cost: " + (this.total_cost - this.total_benefits));
     },

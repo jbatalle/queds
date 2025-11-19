@@ -31,16 +31,18 @@
         <el-table-column label="actions">
           <template v-slot:default="scope">
             <el-tooltip content="Read" placement="top">
-              <el-button type="primary" size="small" aria-label="read" class=""
-                         @click="openReadDialog(scope.$index, scope.row)">
-                <i class="nc-icon nc-button-play"></i>
-              </el-button>
+            <el-button type="primary" size="small" aria-label="read" class=""
+                   @click="openReadDialog(scope.$index, scope.row)"
+                   :disabled="scope.row.allows_csv">
+             <i class="nc-icon nc-button-play"></i>
+            </el-button>
             </el-tooltip>
             <el-tooltip content="Upload" placement="top">
-              <el-button type="success" size="small" aria-label="upload button" icon
-                         @click="openUploadCsvDialog(scope.$index, scope.row)">
-                <i class="nc-icon nc-cloud-upload-94"></i>
-              </el-button>
+            <el-button type="success" size="small" aria-label="upload button" icon
+                   @click="openUploadCsvDialog(scope.$index, scope.row)"
+                   :disabled="!scope.row.allows_csv">
+             <i class="nc-icon nc-cloud-upload-94"></i>
+            </el-button>
             </el-tooltip>
             <el-tooltip content="Edit" placement="top">
               <el-button type="warning" size="small" aria-label="read" icon

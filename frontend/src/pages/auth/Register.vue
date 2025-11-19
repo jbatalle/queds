@@ -73,7 +73,7 @@ export default {
         } catch (error) {
           let error_msg = error.response.data.errors || error.response.data.message;
           this.$notify({
-            type: 'danger',
+            type: 'error',
             message: error.response.data.message,
           })
           this.setApiValidation(error.response.data.errors);

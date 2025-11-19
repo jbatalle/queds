@@ -17,9 +17,9 @@
           <div class="col-md-3">
             <p>Read mode</p>
             <el-select label="Account type" v-model="inputMethod" placeholder="Read mode">
-              <el-option label="API" value="api"></el-option>
-              <el-option label="Manual" value="manual"></el-option>
-            </el-select>
+                <el-option label="API" value="api"></el-option>
+                <el-option v-if="selectedEntityAllowsCsv" label="Manual" value="manual"></el-option>
+              </el-select>
           </div>
           <div class="col-md-2">
             <p>Currency</p>
@@ -257,6 +257,7 @@ export default {
       exchangeAccounts: [],
       brokerAccounts: [],
       crowdAccounts: [],
+      selectedEntityAllowsCsv: false,
       entities: [],
       entity_credentials: [],
       loading: false,
@@ -277,6 +278,13 @@ export default {
       handler(entity) {
         if (entity !== undefined) {
           this.getAccountCredentialTypes(entity);
+            // Find the selected entity and update allows_csv
+            const selected = this.entities.find(e => e.id === entity);
+            this.selectedEntityAllowsCsv = selected ? !!selected.allows_csv : false;
+            // If allows_csv is false and inputMethod is manual, force API
+            if (!this.selectedEntityAllowsCsv && this.inputMethod === 'manual') {
+              this.inputMethod = 'api';
+            }
         }
       },
       deep: true
@@ -363,7 +371,8 @@ export default {
       let data = {
         "name": this.credential.name,
         "entity_id": this.credential.entity,
-        "currency": this.credential.currency
+        "currency": this.credential.currency,
+        "allows_csv": this.inputMethod === 'manual' ? true : false
       }
       let vm = this;
       if (this.credential['id'] != undefined) {
@@ -415,6 +424,7 @@ export default {
         this.credential["entity"] = account.entity_id;
         this.credential["currency"] = account.currency;
         this.credential["name"] = account.name;
+        this.inputMethod = account.allows_csv ? 'manual' : 'api';
       }
       this.errors = [];
       this.entities = [];
