@@ -80,6 +80,7 @@ class Entity(Base, CRUD):
     name = Column(String(20), unique=True, nullable=False)
     active = Column(Boolean, default=True)
     type = Column(Integer)
+    allows_csv = Column(Boolean, nullable=False, default=False)
 
     def __str__(self):
         return self.name
@@ -136,6 +137,7 @@ class Account(Base, CRUD):
     balance = Column(Float, default=0)
     virtual_balance = Column(Float, default=0)
     user_id = Column(Integer, ForeignKey('users.id'))
+    allows_csv = Column(Boolean, nullable=False, default=False)
 
     account_credential_params = relationship("AccountCredentialParam")
 

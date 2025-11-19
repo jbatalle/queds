@@ -171,7 +171,7 @@ class Ticker(Base, CRUD):
         INACTIVE = 1
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ticker = Column(String(8), nullable=False)
+    ticker = Column(String(12), nullable=False)
     name = Column(String(150))
     currency = Column(String(5))
     isin = Column(String(50))

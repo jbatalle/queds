@@ -6,13 +6,17 @@ import datetime
 mysql_engine = None
 db_session = None
 Base = declarative_base()
+# Base.query = db_session.query_property() if db_session else None
 settings = None
 
+
+def bind_query_to_session(session):
+    Base.query = session.query_property()
 
 def create_db_connection(SQL_CONF):
     global settings
 
-    options = {'pool_size': 15}
+    options = {'pool_size': 20}
     return do_create_engine(SQL_CONF['db_type'], SQL_CONF['user'], SQL_CONF['password'], SQL_CONF['host'], SQL_CONF['port'],
                             SQL_CONF['database'], options)
 
@@ -28,7 +32,7 @@ def do_create_engine(db_type, user, password, host, port, database, options={}):
         raise ValueError(f"Unsupported database type: {db_type}")
 
     mysql_engine = create_engine(conn_string, pool_pre_ping=True, pool_timeout=20, pool_recycle=299, echo=False, isolation_level='AUTOCOMMIT', **options)
-    db_session = scoped_session(sessionmaker(bind=mysql_engine))  # type: Session
+    db_session = scoped_session(sessionmaker(bind=mysql_engine, expire_on_commit=False))  # type: Session
     Base.query = db_session.query_property()
     return mysql_engine
 
@@ -92,7 +96,7 @@ class CRUD:
     @property
     def dto(self):
         dto_dict = {field.name: getattr(self, field.name) for field in self.__table__.c}
-        options = self.query._with_options
+        # options = self.query._with_options
 
         for relationship in self.__mapper__.relationships:
             rel_name = relationship.key

@@ -18,7 +18,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "ClickTrade", "type": Entity.Type.BROKER, "active": True,
+            "name": "ClickTrade", "type": Entity.Type.BROKER, "active": True, "allows_csv": False,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.USERNAME.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -27,7 +27,7 @@ def list_entities():
                 "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
-            "name": "IB", "type": Entity.Type.BROKER, "active": True,
+            "name": "IB", "type": Entity.Type.BROKER, "active": True, "allows_csv": False,
             "creds": [{
                 "cred_type": EntityCredentialType.Type.USERNAME.name,
                 "mode": EntityCredentialType.Mode.TEXT.name
@@ -92,7 +92,8 @@ def insert_entities(entities):
     table = sa.table('entities',
                      sa.column('type', sa.Integer),
                      sa.column('name', sa.String),
-                     sa.column('active', sa.Integer)
+                     sa.column('active', sa.Integer),
+                     sa.column('allows_csv', sa.Boolean)
                      )
     q = op.bulk_insert(table, entities)
     return q
