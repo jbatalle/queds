@@ -2,14 +2,15 @@
 Queds Finance is a finance portfolio management tool that allows you to track your finance assets, including stock transactions, crypto transactions, and bank statements. It automatically reads data from various brokers abd crypto exchanges, making it easier for you to manage your investments.
 
 ## Demo
-Check out the demo at https://queds.alwaysdata.net/overview (user: demo@queds.com, password: superpassword)
+Check out the demo at http://queds.alwaysdata.net/overview
 
 ## Features
 * Stock and crypto portfolio tracking
 * Wallet tracking with Session/Pre/Post market prices
-* Tax calculation with FIFO method
-* Coin tracking using FIFO
-* Asset watchlist for monitoring stock and coins
+* Wallet movement tracking with tax basis explanation per transaction
+* Tax calculation with FIFO
+* Profit/Loss dashboard with realized and unrealized gain tracking
+* Watchlist for monitoring assets
 * Automatic data import from Degiro, Clicktrade and InteractiveBrokers
 * Automatic data import from exchanges: Bitstamp, Kraken, Bittrex, Binance and KuCoin
 * TradingView graphs for visualizing asset performance
