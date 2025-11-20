@@ -1,6 +1,6 @@
 import router from "@/router";
 import axios from "axios";
-const API_URL = "api/users";
+const API_URL = "/api/users";
 
 export default {
     state: {

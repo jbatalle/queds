@@ -17,7 +17,10 @@
                   <el-input v-model="password" class="mb-2 mt-1" addon-left-icon="nc-icon nc-key-25" placeholder="Password" type="password"/>
                   <validation-error :errors="apiValidationErrors.password"/>
                   <el-input v-model="password_confirmation" class="mb-2 mt-1" addon-left-icon="nc-icon nc-key-25" placeholder="Password confirmation" type="password"/>
-                  <el-button native-type="submit" slot="footer" type="primary" round block class="mb-3">Get started</el-button>
+                  <validation-error :errors="apiValidationErrors.password_confirmation"/>
+                  <div slot="footer" class="text-center">
+                    <el-button native-type="submit" slot="footer" type="primary" round class="mb-3">Get started</el-button>
+                  </div>
                 </card>
                 </form>
             </div>
@@ -42,7 +45,9 @@ export default {
     Card,
     AppNavbar,
     AppFooter,
-},
+    ElButton,
+    [ElInput.name]: ElInput
+  },
     data() {
     return {
         name: null,

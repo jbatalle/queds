@@ -112,31 +112,21 @@ export default {
       // You can add your own logic here to update the tab name on the server, etc.
     },
     handleTabsEdit(targetName, action) {
-      console.log(action);
       if (action === 'add') {
-        console.log("Add tab");
         this.tabIndex += 1
-        console.log(this.tabIndex)
-        console.log( `newTab${this.tabIndex}`);
         const newTabName = `newTab${this.tabIndex}`
-        console.log(newTabName);
         this.editableTabs.push({
           title: 'New Tab',
           name: newTabName,
           editing: true,
           content: 'New Tab content ' + newTabName,
         })
-        console.log(this.editableTabs);
-        this.editableTabsValue = newTabName
-        console.log(this.editableTabsValue);
+        
+        this.editableTabsValue = newTabName;
       } else if (action === 'remove') {
-        console.log("Remove tab");
         const tabs = this.editableTabs;
         let activeName = this.editableTabsValue;
-        console.log(activeName);
-        console.log(targetName)
         if (activeName === targetName) {
-          console.log("Acativename === targetname");
           tabs.forEach((tab, index) => {
             if (tab.name === targetName) {
               const nextTab = tabs[index + 1] || tabs[index - 1]
@@ -146,46 +136,31 @@ export default {
             }
           })
         }
-        console.log(activeName);
         this.editableTabsValue = activeName
-        console.log(this.editableTabs);
         this.editableTabs = tabs.filter((tab) => tab.name !== targetName)
-        console.log(this.editableTabs);
       }
     }, filterTable() {
-      console.log(this.filterTag);
-      console.log(this.filterTag === "");
-      console.log(this.filterTag == "");
-      console.log(this.filterTag == undefined);
       if (this.filterTag === "") {
         this.filteredData = this.tableData;
         return;
       }
-      console.log("FIlter table");
-      console.log(this.filterTag)
       const filteredData = this.tableData.filter(row => {
         return row.tags.includes(this.filterTag);
       });
-      console.log(this.tableData);
-      console.log(filteredData);
+      
       this.$refs.tagTable.setCurrentRow(null);
       this.$refs.tagTable.clearSort();
       this.filteredData = filteredData;
     },
     handleSelect(item) {
-      console.log("handle selectg " + item);
-      console.log("Craete here new tag")
-    }, createFilter(queryString) {
-      console.log()
+      console.log("Handle Selected:", item);
+    }, 
+    createFilter(queryString) {
+      console.log("Create filter");
       return this.restaurants.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0
     },
     querySearch(queryString, cb) {
-      console.log(queryString);
-//const results = queryString;
-      console.log(this.tableData);
       let filteredData = this.tableData.filter(row => {
-        console.log(row.tags);
-        console.log(row.tags.includes(queryString));
         return row.tags.includes(queryString);
       });
       // call callback function to return suggestions

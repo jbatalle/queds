@@ -38,16 +38,13 @@ docker-compose up
 ```
 Check the VUE_APP_BACKEND_URL environment variable in docker-compose.yml. 
 
-The database is created automatically via alembic migrations. To be sure, once everything is ready, apply migrations again.
+The database is created automatically via alembic migrations. You can check it applying migrations again with:
 ```
 docker-compose run migrate
 ```
 
-#### Full environment
-```
-docker-compose -f docker-compose.full.yml build --parallel
-docker-compose -f docker-compose.full.yml up
-```
+#### Sqlite environment
+If you want to use SQLite, define the database file path in the configuration file.
 
 ## Initial steps
 1. Visit http://0.0.0.0:6060

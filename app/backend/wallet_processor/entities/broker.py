@@ -208,6 +208,9 @@ class BrokerProcessor(AbstractEntity):
         # Calculate split ratio
         if split_order.price != 0:
             ratio = round(order.price/split_order.price)
+            if ratio == 0:
+                self._logger.warning(f"Ratio is 0: {ratio}")
+                ratio = 1
             fractional_shares = total_shares_before_split % ratio
         elif split_order.amount != 0 and order.amount > 0:
             ratio = round(split_order.amount/order.amount)

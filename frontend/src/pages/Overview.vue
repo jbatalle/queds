@@ -555,30 +555,10 @@ export default {
       return account;
     },
     createDistributionChart() {
-      console.log("Create distribution chart");
       const brokerValue = this.brokerAccounts.reduce((acc, broker) => acc + broker.virtual_balance, 0);
       const exchangeValue = this.exchangeAccounts.reduce((acc, exchange) => acc + exchange.virtual_balance, 0);
-
-      if (!(brokerValue > 0 || exchangeValue > 0 || this.fiat > 0)) {
-        this.distributionChart = {
-          labels: ["No data available"],
-          datasets: [
-            {
-              label: "Wallet Distribution",
-              backgroundColor: ["#d3d3d3"],
-              data: [100],
-            },
-          ],
-          options: {
-            responsive: true,
-            legend: { display: true },
-          },
-        };
-        this.distributionKey++;
-        return;
-      }
-
-      this.distributionChart = {
+      const hasData = brokerValue > 0 || exchangeValue > 0 || this.fiat > 0;
+      this.distributionChart = hasData ? {
         labels: ["Brokers", "Exchanges", "Fiat"],
         datasets: [
           {
@@ -591,55 +571,62 @@ export default {
           responsive: true,
           legend: { display: true },
         },
+      } : {
+        labels: ["No data available"],
+        datasets: [
+          {
+            label: "Wallet Distribution",
+            backgroundColor: ["#d3d3d3"],
+            data: [100],
+          },
+        ],
+        options: {
+          responsive: true,
+          legend: { display: true },
+        },
       };
       this.distributionKey++;
     },
     // Distribution by individual accounts
     createAccountDistributionChart() {
       const accounts = [...this.brokerAccounts, ...this.exchangeAccounts];
-
-      const allZero = accounts.length === 0 || accounts.every(acc => acc.virtual_balance === 0);
-      if (allZero) {
-        this.accountDistributionChart = {
-          labels: ["No data available"],
-          datasets: [
-            {
-              label: "Wallet Distribution",
-              backgroundColor: ["#d3d3d3"],
-              data: [100],
-            },
-          ],
-          options: {
-            responsive: true,
-            legend: { display: true },
+      const hasData = accounts.length > 0 && accounts.some(acc => acc.virtual_balance !== 0);
+      this.accountDistributionChart = hasData ? {
+        labels: accounts.map((account) => account.name),
+        datasets: [
+          {
+            label: "Wallet Distribution",
+            backgroundColor: accounts.map(() => {
+              const r = Math.floor(Math.random() * 255);
+              const g = Math.floor(Math.random() * 255);
+              const b = Math.floor(Math.random() * 255);
+              return `rgb(${r}, ${g}, ${b})`;
+            }),
+            data: accounts.map((account) => account.virtual_balance),
           },
-        };
-        this.accountDistributionKey++;
-      } else {
-        this.accountDistributionChart = {
-          labels: accounts.map((account) => account.name),
-          datasets: [
-            {
-              label: "Wallet Distribution",
-              backgroundColor: accounts.map(() => {
-                const r = Math.floor(Math.random() * 255);
-                const g = Math.floor(Math.random() * 255);
-                const b = Math.floor(Math.random() * 255);
-                return `rgb(${r}, ${g}, ${b})`;
-              }),
-              data: accounts.map((account) => account.virtual_balance),
-            },
-          ],
-          options: {
-            responsive: true,
-            legend: { display: true },
+        ],
+        options: {
+          responsive: true,
+          legend: { display: true },
+        },
+      } : {
+        labels: ["No data available"],
+        datasets: [
+          {
+            label: "Wallet Distribution",
+            backgroundColor: ["#d3d3d3"],
+            data: [100],
           },
-        };
-        this.accountDistributionKey++;
-      }
+        ],
+        options: {
+          responsive: true,
+          legend: { display: true },
+        },
+      };
+      this.accountDistributionKey++;
 
-      // Create Bar chart version
-      this.accountBarChart = {
+      // Bar chart version
+      this.accountBarChart = hasData ? {
         labels: accounts.map((account) => account.name),
         datasets: [
           {
@@ -664,13 +651,34 @@ export default {
             legend: {display: false},
           },
         },
+      } : {
+        labels: ["No data available"],
+        datasets: [
+          {
+            label: "Asset",
+            backgroundColor: ["#d3d3d3"],
+            data: [100],
+          },
+        ],
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          },
+          plugins: {
+            legend: {display: false},
+          },
+        },
       };
       this.accountBarChartKey++;
     },
     createPortfolioChart() {
       // shows distribution of assets in the portfolio by Broker/Exchange or Fiat
       this.loaded = true;
-      this.totalChart = {
+      const hasData = this.total_assets && this.total_assets.length > 0;
+      this.totalChart = hasData ? {
         labels: this.total_assets.map((asset) => asset.ticker ? asset.ticker.name : asset.currency),
         datasets: [
           {
@@ -687,49 +695,75 @@ export default {
         options: {
           responsive: true,
           legend: {display: false},
-          plugins: {
-           // legend: {display: false},
-          },
+          plugins: {},
         },
-      }
+      } : {
+        labels: ["No data available"],
+        datasets: [
+          {
+            label: "Value",
+            backgroundColor: ["#d3d3d3"],
+            data: [100],
+          },
+        ],
+        options: {
+          responsive: true,
+          legend: { display: true },
+        },
+      };
       this.totalKey++;
     },
     async setupPerformanceChart() {
         // Use real broker orders to build historical portfolio value
         if (!this.allBrokerOrders || this.allBrokerOrders.length === 0) {
-          this.performanceChart = { labels: [], datasets: [] };
+          this.performanceChart = {
+            labels: ["No data available"],
+            datasets: [
+              {
+                label: 'Portfolio Value',
+                borderColor: '#d3d3d3',
+                pointBackgroundColor: '#d3d3d3',
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                fill: false,
+                borderWidth: 2,
+                data: [0]
+              }
+            ],
+            options: {
+              responsive: true,
+              scales: {
+                y: {
+                  beginAtZero: false
+                }
+              },
+              plugins: {
+                legend: { display: true },
+              },
+            }
+          };
           this.performanceKey++;
           return;
         }
-        console.log(this.allBrokerOrders);
         // Group orders by month/year
         const orders = this.allBrokerOrders;
         const monthly = {};
         orders.forEach(order => {
-          // Parse date
           const d = new Date(order.value_date);
           const key = d.toLocaleDateString('default', { month: 'short', year: 'numeric' });
           if (!monthly[key]) monthly[key] = [];
           monthly[key].push(order);
         });
-
-        // Sort keys chronologically
         const sortedKeys = Object.keys(monthly).sort((a, b) => {
           const da = new Date(a);
           const db = new Date(b);
           return da - db;
         });
-
-        // Calculate cumulative portfolio value for each month
         let cumulative = 0;
         const values = [];
-        console.log(sortedKeys);
         sortedKeys.forEach(key => {
           const monthOrders = monthly[key];
           monthOrders.forEach(order => {
-            // Buy increases, Sell decreases
-            // Buy: 0, Reverse_buy: 2, OTC_buy: 4
-            // Sell: 1, Reverse_sell: 3, OTC_sell: 5
             if ([0, 2, 4].includes(order.type)) {
               cumulative += order.shares * order.price * (order.currency_rate || 1);
             } else if ([1, 3, 5].includes(order.type)) {
@@ -738,8 +772,6 @@ export default {
           });
           values.push(cumulative);
         });
-
-        console.log("Values", values);
         this.performanceChart = {
           labels: sortedKeys,
           datasets: [{

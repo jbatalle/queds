@@ -15,8 +15,6 @@ services:
     environment:
       - FLASK_ENV=development
       - BACKEND_SETTINGS=config.full
-#      - PYTHON_FILE=app.py
-#      - PYTHON_ARGS="run -h 0.0.0.0:${PORT}"
     networks:
       - api_bridge
     restart: always
@@ -44,8 +42,8 @@ services:
     deploy:
       replicas: 1
     depends_on:
-      - redis
       - db
+      - redis
 
   migrate:
     image: queds_api
@@ -104,7 +102,7 @@ services:
       - api_bridge
 
   db:
-    image: timescale/timescaledb:2.18.2-pg16
+    image: timescale/timescaledb:2.23.1-pg16
     restart: always
     environment:
       POSTGRES_DB: queds
@@ -115,7 +113,7 @@ services:
     networks:
       - api_bridge
     ports:
-      - 5432:5432
+      - 15432:5432
 
 networks:
   api_bridge:

@@ -21,7 +21,7 @@ export default {
     axios.interceptors.response.use(response => {
       return response;
     }, error => {
-      if (error.response.status === 401 && error.response.config.url != "api/users/logout") {
+      if (error.response.status === 401 && !error.response.config.url.includes("/api/users/logout")) {
         this.$store.dispatch("logout");
       }
       return Promise.reject(error)

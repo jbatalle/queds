@@ -8,7 +8,7 @@ export default {
   methods: {
     /* extract API server validation errors and assigns them to local mixin data */
     setApiValidation(serverErrors, refs = null) {
-        console.log(serverErrors);
+      console.log(serverErrors);
       this.apiValidationErrors = serverErrors.reduce(
         (accumulator, errorObject) => {
           if(typeof errorObject.source === 'undefined')

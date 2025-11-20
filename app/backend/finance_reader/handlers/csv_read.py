@@ -38,7 +38,7 @@ class CSVReader:
             return
 
         account = Account.get_by_account_id(account_id)
-        logger.info("Processing CSV...")
+        logger.info("Processing CSV for account {account.id}...")
 
         orders, transactions = csv_handler.process_csv(content, account)
         logger.info(f"Found {len(orders)} orders in {broker_name}")
