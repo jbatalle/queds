@@ -1,5 +1,5 @@
 # Base stage
-FROM python:3.11-slim-buster AS base
+FROM python:3.12-slim AS base
 
 RUN apt-get update && apt-get -y install libpq-dev gcc
 
