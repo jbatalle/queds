@@ -2,6 +2,10 @@
 
   .navbar {
     padding: 0;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 
     &.navbar-absolute {
       padding-top: 0;
@@ -10,6 +14,16 @@
     .navbar-brand {
       font-size: 16px;
       margin-right: 0;
+    }
+
+    .navbar-collapse {
+      //display: flex !important;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .navbar-toggler {
+      display: block;
     }
   }
 
@@ -264,7 +278,19 @@
         @include transform-translate-x(-260px);
     }
 
+    .navbar-toggler {
+      display: block;
+    }
 
+    .navbar-collapse {
+      display: none;
+      width: 100%;
+    }
+
+    .navbar-collapse.show {
+      display: flex;
+      flex-direction: column;
+    }
 
     .main-panel{
       width: 100%;

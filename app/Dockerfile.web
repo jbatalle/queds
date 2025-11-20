@@ -1,0 +1,27 @@
+FROM python:3.9-slim-buster
+
+RUN apt-get update && apt-get -y install libpq-dev gcc
+# to be used by heroku for demo page
+
+#COPY ./app /usr/src
+COPY requirements.txt /usr/src
+#COPY app/models /user/src/models
+#COPY ./app/config /user/src/config
+# COPY frontend/dist /user/src/dist
+COPY VERSION /usr/VERSION
+
+WORKDIR /usr/src
+
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV BACKEND_SETTINGS config.heroku
+
+# install python dependencies
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r /usr/src/requirements.txt
+
+# gunicorn
+#CMD ["gunicorn", "--config", "gunicorn-cfg.py", "run:app"]
+
+CMD python app.py run -h 0.0.0.0

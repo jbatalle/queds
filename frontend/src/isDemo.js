@@ -1,7 +1,6 @@
-const isDemo = {
-  install: (Vue) => {
-    Vue.prototype.$isDemo = process.env.VUE_APP_IS_DEMO || 0;
+// isDemo.js
+export default {
+  install: (app) => {
+    app.config.globalProperties.$isDemo = import.meta.env.VUE_APP_IS_DEMO == 'true';
   }
 }
-
-export default isDemo

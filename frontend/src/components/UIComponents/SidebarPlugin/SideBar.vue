@@ -1,50 +1,23 @@
 <template>
-  <div
-      class="sidebar"
-      :data-color="backgroundColor"
-      :data-active-color="activeColor"
-  >
+  <div class="sidebar" :data-color="backgroundColor" :data-active-color="activeColor">
     <div class="logo">
-      <a
-          class="simple-text logo-mini"
-          aria-label="sidebar mini logo"
-          href=""
-      >
+      <a class="simple-text logo-mini" aria-label="sidebar mini logo" href="">
         <div class="logo-img">
           <img :src="logo" alt=""/>
         </div>
       </a>
-      <a
-          class="simple-text logo-normal"
-          href=""
-      >
+      <a class="simple-text logo-normal" href="">
         {{ title }}
       </a>
+      <button class="d-lg-none close-sidebar-btn" @click="$emit('toggle-sidebar')">✕</button>
     </div>
     <div class="sidebar-wrapper" ref="sidebarScrollArea">
-      <slot></slot>
-      <ul class="nav">
-        <slot name="links">
-          <sidebar-item
-              v-for="(link, index) in sidebarLinks"
-              :key="link.name + index"
-              :link="link"
-          >
-            <sidebar-item
-                v-for="(subLink, index) in link.children"
-                :key="subLink.name + index"
-                :link="subLink"
-            >
-            </sidebar-item>
-          </sidebar-item>
-        </slot>
-      </ul>
+      <slot class="nav"></slot>
     </div>
   </div>
 </template>
 <script>
 import "perfect-scrollbar/css/perfect-scrollbar.css";
-import Vuex from "vuex";
 
 export default {
   props: {
@@ -80,7 +53,7 @@ export default {
     },
     logo: {
       type: String,
-      default: "/img/laravel-vue.svg",
+      default: "/img/queds.png",
       description: "Sidebar Logo",
     },
     sidebarLinks: {
@@ -110,7 +83,6 @@ export default {
     },
   },
   mounted() {
-    this.initScrollBarAsync();
   },
   beforeDestroy() {
     if (this.$sidebar.showSidebar) {
@@ -123,7 +95,35 @@ export default {
 @media (min-width: 992px) {
   .navbar-search-form-mobile,
   .nav-mobile-menu {
-    display: none;
+    /*display: none;*/
   }
+}
+@media (max-width: 991px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 250px;
+    z-index: 1030;
+    background: #000; /* adjust */
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.show {
+    transform: translateX(0);
+  }
+}
+.close-sidebar-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 1100;
 }
 </style>

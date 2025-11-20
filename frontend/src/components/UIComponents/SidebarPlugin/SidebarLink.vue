@@ -1,4 +1,5 @@
 <template>
+  teasda
   <component
     :is="tag"
     @click.native="hideSidebar"
@@ -6,6 +7,7 @@
     v-bind="$attrs"
     tag="li"
   >
+    linkasd
     <a class="nav-link">
       <slot>
         <i v-if="icon" :class="icon"></i>
@@ -48,6 +50,7 @@ export default {
     },
   },
   mounted() {
+    // console.log("Mounted sidebar link");
     if (this.addLink) {
       this.addLink(this);
     }

@@ -1,37 +1,35 @@
 <template>
-  <div :class="{'nav-open': $sidebar.showSidebar}">
-    <notifications transition-name="notification-list" transition-mode="out-in">
+  <!--div :class="{'nav-open': $sidebar.showSidebar}"-->
+  <div>
+    <!--notifications transition-name="notification-list" transition-mode="out-in">
 
-    </notifications>
+    </notifications-->
     <router-view name="header"></router-view>
-    <transition name="fade" mode="out-in">
+    <!--transition name="fade" mode="out-in"-->
       <router-view></router-view>
-    </transition>
+    <!--/transition-->
     <router-view name="footer"></router-view>
   </div>
 </template>
 
 <script>
 // Loading some plugin css asynchronously
-import 'sweetalert2/dist/sweetalert2.css';
-import 'vue-notifyjs/themes/default.css';
 import axios from "axios";
 
 export default {
   created: function () {
-    this.$http.interceptors.response.use(response => {
-      //this.$store.dispatch(logout)
+    axios.interceptors.response.use(response => {
       return response;
     }, error => {
-      if (error.response.status === 401) {
-        this.$store.dispatch("logout")
+      if (error.response.status === 401 && !error.response.config.url.includes("/api/users/logout")) {
+        this.$store.dispatch("logout");
       }
       return Promise.reject(error)
       //return error;
     })
   },
   mounted() {
-    axios.get(process.env.VUE_APP_BACKEND_URL + "/version").then(function (d) {
+    axios.get(import.meta.env.VITE_APP_BACKEND_URL + "/version").then(function (d) {
       localStorage.setItem("version", d.data);
     });
   },

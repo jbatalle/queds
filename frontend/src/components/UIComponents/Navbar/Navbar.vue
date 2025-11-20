@@ -1,87 +1,107 @@
 <template>
-  <nav :class="classes" class="navbar navbar-expand-lg">
+  <nav :class="classes" class="navbar navbar-expand-lg" >
     <div class="container-fluid">
-      <slot></slot>
-      <slot name="toggle-button">
-        <button aria-controls="navigation-index"
-                @click="toggleMenu"
-                aria-expanded="true" aria-label="Toggle navigation"
-                class="navbar-toggler" data-toggle="collapse" type="button"><span
-          class="navbar-toggler-bar navbar-kebab"></span><span class="navbar-toggler-bar navbar-kebab"></span><span
-          class="navbar-toggler-bar navbar-kebab"></span></button>
-      </slot>
-      <CollapseTransition>
-        <div class="collapse navbar-collapse justify-content-end show"
-             :class="navbarMenuClasses"
-             v-show="showNavbar"
-             id="navigation">
-          <ul class="navbar-nav">
-            <slot name="navbar-menu"></slot>
-          </ul>
-        </div>
-      </CollapseTransition>
+      <div class="navbar-wrapper">
+        <slot></slot>
+      </div>
+
+      <button aria-controls="navigation-index"
+              @click="toggleMenu"
+              aria-label="Toggle navigation"
+              class="navbar-toggler"
+              type="button">
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+        <span class="navbar-toggler-bar navbar-kebab"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-end"
+           :class="{ show: showNavbar }"
+           id="navigation">
+        <ul class="navbar-nav">
+          <slot name="navbar-menu"></slot>
+        </ul>
+      </div>
     </div>
   </nav>
 </template>
-<script>
-  import { CollapseTransition } from 'vue2-transitions';
 
-  export default {
-    name: 'navbar',
-    props: {
-      showNavbar: {
-        type: Boolean,
-        description: "Whether navbar is visible"
-      },
-      navbarMenuClasses: {
-        type: [String, Object],
-        description: 'Navbar menu css classes'
-      },
-      transparent: {
-        type: Boolean,
-        default: true,
-        description: 'Whether navbar is transparent'
-      },
-      position: {
-        type: String,
-        default: 'absolute',
-        description: 'Navbar position (absolute|fixed|relative)'
-      },
-      type: {
-        type: String,
-        default: 'white',
-        validator(value) {
-          return ['white', 'default', 'primary', 'danger', 'success', 'warning', 'info'].includes(value);
-        },
-        description: 'Navbar type (primary|info|danger|default|warning|success)'
-      }
+<script>
+export default {
+  name: 'navbar',
+  props: {
+    navbarMenuClasses: {
+      type: [String, Object],
+      default: ''
     },
-    model: {
-      prop: 'showNavbar',
-      event: 'change'
+    transparent: {
+      type: Boolean,
+      default: true
     },
-    components: {
-      CollapseTransition
+    position: {
+      type: String,
+      default: 'absolute'
     },
-    computed: {
-      classes() {
-        let color = `bg-${this.type}`;
-        let navPosition = `navbar-${this.position}`;
-        return [
-          { 'navbar-transparent': !this.showNavbar && this.transparent },
-          { [color]: this.showNavbar || !this.transparent },
-          navPosition]
-      }
-    },
-    methods: {
-      toggleMenu() {
-        this.$emit('change', !this.showNavbar);
+    type: {
+      type: String,
+      default: 'white',
+      validator(value) {
+        return ['white', 'default', 'primary', 'danger', 'success', 'warning', 'info'].includes(value);
       }
     }
+  },
+  data() {
+    return {
+      showNavbar: false
+    }
+  },
+  computed: {
+    classes() {
+      let color = `bg-${this.type}`;
+      let navPosition = `navbar-${this.position}`;
+      return [
+        {'navbar-transparent': !this.showNavbar && this.transparent},
+        {[color]: this.showNavbar || !this.transparent},
+        {'show': this.showNavbar},
+        navPosition
+      ]
+    }
+  },
+  methods: {
+    toggleMenu() {
+      this.showNavbar = !this.showNavbar;
+    }
   }
+}
 </script>
+
 <style scoped>
-  .navbar-relative {
+.navbar-relative {
+  position: relative;
+}
+
+nav.show {
+  position: relative;
+}
+
+@media (max-width: 991px) {
+  .navbar {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
+  .navbar-toggler {
+    display: block;
+  }
+  .navbar-collapse {
+    display: none;
+    width: 100%;
+  }
+  .navbar-collapse.show {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+}
 </style>
