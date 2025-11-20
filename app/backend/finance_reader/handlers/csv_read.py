@@ -1,5 +1,5 @@
 import logging
-from models.system import Account
+from models.system import Account, Entity
 from models.broker import Ticker, StockTransaction
 from finance_reader.entities.csv_reader import SUPPORTED_CSV_READER
 from finance_reader.handlers.broker_read import BrokerReader
@@ -15,6 +15,11 @@ class CSVReader:
     @staticmethod
     def _validate_data(data):
         logger.info("Validating data...")
+        required_fields = ['account_id', 'entity_name', 'data']
+        for field in required_fields:
+            if field not in data:
+                logger.error(f"Missing required field: {field}")
+                return False
         return True
 
     def process(self, data):
@@ -22,6 +27,7 @@ class CSVReader:
             logger.error("Invalid request data")
             return
 
+        logger.info(f"Starting CSV processing for {data['entity_name']}...")
         account_id = data.get('account_id')
         entity_type = data.get('entity_type')
         broker_name = data.get('entity_name').lower()
@@ -37,10 +43,10 @@ class CSVReader:
         orders, transactions = csv_handler.process_csv(content, account)
         logger.info(f"Found {len(orders)} orders in {broker_name}")
 
-        # TODO: define here the handler reader
-        if entity_type == 'exchange':
+        if entity_type == Entity.Type.EXCHANGE:
             reader = ExchangeReader()
-            reader.parse_read(account_id, [], orders, transactions)
+            orders = reader._join_orders(orders, transactions)
+            reader.parse_read(account_id, [], orders)
         else:
             broker_reader = BrokerReader()
             broker_reader.parse_read(account_id, account, orders)

@@ -109,7 +109,7 @@ class BrokerReader:
                 yahoo_ticker = self.yahoo_client.get_ticker(ticker)
             except:
                 yahoo_ticker = None
-            ticker = Ticker(ticker=ticker.ticker[:8] if ticker.ticker else "notdef",
+            ticker = Ticker(ticker=ticker.ticker[:8] if ticker.ticker else ticker.isin[:8],
                             isin=ticker.isin,
                             name=ticker.name,
                             currency=ticker.currency,

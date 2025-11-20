@@ -5,9 +5,11 @@ import time
 import threading
 from kombu.mixins import ConsumerMixin
 from kombu import Exchange, Queue, Connection
+from kombu.pools import producers
+
 
 logger = logging.getLogger("worker")
-
+MAX_RETRIES = 3
 
 class HandlerType:
     BROKER_READ = 'broker'
@@ -56,7 +58,6 @@ def enqueue_job(delay=0):
     payload = {'args': {}, 'kwargs': {}}
     queue = "alerts"
 
-    from kombu.pools import producers
     task_exchange = Exchange('tasks', type='direct')
     with producers[connection].acquire(block=True) as producer:
         producer.publish(payload, serializer='pickle', compression='bzip2', exchange=task_exchange,
@@ -67,6 +68,7 @@ class Worker(ConsumerMixin):
 
     def __init__(self, connection):
         self.connection = connection
+        self.retry_counts = {}  # Track retries per message
 
     def get_consumers(self, Consumer, channel):
         return [Consumer(queues=task_queues,
@@ -78,25 +80,55 @@ class Worker(ConsumerMixin):
         routing_key = message.delivery_info['routing_key']
         args = body['args']
         kwargs = body['kwargs']
-        logger.info(f"Got task with routing_key: {message.delivery_info['routing_key']}!")
+        logger.info(f"Got task with routing_key: {routing_key}!")
+        msg_id = message.delivery_tag  # Unique per message
 
-        cls_handler = get_request_handler(routing_key)
-        if not cls_handler:
-            logger.error(f"Handler no exists for routing_key: {routing_key}")
-            message.ack()
-            return
+        # Use meta for retry tracking
+        if 'meta' not in body:
+            body['meta'] = {}
+        retries = body['meta'].get('retries', 0)
 
-        handler = cls_handler()
         try:
-            handler.process(args)
-        except Exception as e:
-            # TODO: decide when requeue
-            logger.error(e)
-            logger.exception(e)
-            message.ack()
-            raise (e)
+            cls_handler = get_request_handler(routing_key)
+            if not cls_handler:
+                logger.error(f"Handler no exists for routing_key: {routing_key}")
+                message.ack()
+                return
 
-        message.ack()
+            handler = cls_handler()
+            handler.process(args)
+            message.ack()
+
+            # send wallet processor message in case of read
+            if routing_key in [HandlerType.BROKER_READ, HandlerType.CRYPTO_READ, HandlerType.CSV_READ]:
+                if 'data' in body['args']:
+                    body['args']['data'] = None
+                if routing_key == HandlerType.BROKER_READ or routing_key == HandlerType.CSV_READ:
+                    body['args']["mode"] = "stock"
+                else:
+                    body['args']["mode"] = "crypto"
+
+                task_exchange = Exchange('tasks', type='direct')
+                with producers[self.connection].acquire(block=True) as producer:
+                    producer.publish(body, serializer='pickle', compression='bzip2', exchange=task_exchange,
+                                    declare=[task_exchange], routing_key=HandlerType.WALLET_PROCESS, headers={"delay": 2})
+
+        except Exception as e:
+            logger.error(f"Error processing task {msg_id}: {e}. Retries: {retries}")
+            logger.exception(e)
+            retries += 1
+            body['meta']['retries'] = retries
+            if retries >= MAX_RETRIES:
+                logger.error(f"Max retries ({MAX_RETRIES}) reached for message {msg_id}. Removing from queue.")
+                message.ack()  # Remove from queue
+                # Do NOT re-raise, message is acknowledged and will not be retried
+            else:
+                logger.info(f"Re-publishing message for retry {retries} (routing_key: {routing_key})")
+                task_exchange = Exchange('tasks', type='direct')
+                with producers[self.connection].acquire(block=True) as producer:
+                    producer.publish(body, serializer='pickle', compression='bzip2', exchange=task_exchange,
+                                    declare=[task_exchange], routing_key=routing_key, headers={"delay": 2})
+                message.ack()  # Remove the current message so only the new one is retried
 
 
 def alert_worker(telegram_settings):
@@ -137,3 +169,4 @@ if __name__ == '__main__':
                 logger.error('Keyboard error')
             except Exception as e:
                 logger.exception(e)
+                time.sleep(2)

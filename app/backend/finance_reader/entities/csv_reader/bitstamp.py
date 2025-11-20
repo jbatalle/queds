@@ -41,7 +41,6 @@ class Bitstamp(ExchangeCSVProcessor):
 
         order = Order()
         order.account_id = account.id
-        # account=account,
         order.external_id = data.get("ID")
         order.value_date = datetime.strptime(data.get("Datetime"), "%Y-%m-%dT%H:%M:%SZ")
         order.pair = data.get("Amount currency") + "/" + data.get("Value currency")
@@ -64,7 +63,6 @@ class Bitstamp(ExchangeCSVProcessor):
 
         trans = Transaction()
         trans.account_id = account.id
-        # account=account,
         trans.external_id = data.get("ID")
         trans.value_date = datetime.strptime(data.get("Datetime"), "%Y-%m-%dT%H:%M:%SZ")
         trans.amount = float(data.get("Amount"))
