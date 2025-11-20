@@ -164,59 +164,10 @@ class WalletCollection(Resource):
                 item['open_orders'].append(oo_item)
 
             item['market'] = {}
-            #if r.ticker.ticker in tickers_by_ticker:
-#                item['market'] = tickers_by_ticker[r.ticker.ticker]
-
             item['current_value'] = r.shares * (item['market'].get('price', 0) or 0)
             item['previous_day_value'] = r.shares * (item['market'].get('previous_close', 0) or 0)
 
-#            item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
-            # item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
-#            item['current_benefit'] = item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
-#            item['base_current_value'] += item['current_value'] * item_fx_rate
-#            item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
-
             items.append(item)
-        return jsonify(items)
-
-        items = []
-        for idx, r in enumerate(wallet_items):
-            item = r.json
-            item['ticker'] = r.ticker.to_dict()
-            item['close_fees'] = r.fees/len(r.open_orders) if len(r.open_orders) > 0 else 0
-            item['open_orders'] = []
-            item['base_cost'] = 0  # cost of open orders in user currency
-            item['current_benefit'] = 0  # benefits with current values and with closed orders in user currency
-            item['base_current_value'] = 0  # portfolio value in user currency
-            item['current_value'] = 0  # in ticker currency
-            item['base_previous_value'] = 0  # portfolio value previous day in user currency
-
-            for oo in r.open_orders:
-                oo_item = oo.json
-                oo_item['transaction'] = oo.transaction.json
-                # oo_item['cost'] = oo.shares * oo.transaction.price
-                oo_item['cost'] = oo.shares * oo.price
-                # TODO: transaction fee should be partial in case of partial sell
-                # oo_item['base_cost'] = round(oo_item['cost'] * oo.transaction.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
-                oo_item['base_cost'] = round(oo_item['cost'] * oo.currency_rate - oo.transaction.fee - oo.transaction.exchange_fee, 2)
-                item['base_cost'] += oo_item['base_cost']
-                item['open_orders'].append(oo_item)
-
-            item['market'] = {}
-            if r.ticker.ticker in tickers_by_ticker:
-                item['market'] = tickers_by_ticker[r.ticker.ticker]
-
-            item['current_value'] = r.shares * (item['market'].get('price', 0) or 0)
-            item['previous_day_value'] = r.shares * (item['market'].get('previous_close', 0) or 0)
-
-            item_fx_rate = fx_rate if r.ticker.currency != 'EUR' else 1
-            # item['current_benefit'] = r.benefits + item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
-            item['current_benefit'] = item['close_fees'] + item['current_value'] * item_fx_rate - (item['base_cost'])
-            item['base_current_value'] += item['current_value'] * item_fx_rate
-            item['base_previous_value'] += item['previous_day_value'] * item_fx_rate
-
-            items.append(item)
-
         return jsonify(items)
 
 
@@ -244,9 +195,6 @@ class WalletPrices(Resource):
 
         tickers_by_ticker = {}
         for d in yahoo_prices:
-            # if tickers_yahoo[d.get('ticker_yahoo')] not in tickers_by_ticker:
-            #                log.warning(f"Symbol {d.get('symbol')} not in tickers")
-            #                continue
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
         return jsonify(tickers_by_ticker)
@@ -457,6 +405,7 @@ class FxRate(Resource):
         r = y.get_currency()
         return r, 200
 
+
 @namespace.route('/ticker')
 class TickerClass(Resource):
 
@@ -469,8 +418,8 @@ class TickerClass(Resource):
         content = request.get_json(silent=True)
 
         ticker = Ticker.query.filter(Ticker.id==content['id']).one()
-        ticker.ticker_yahoo = content['ticker_yahoo']
+        ticker.ticker = content.get('ticker', ticker.ticker)
+        ticker.ticker_yahoo = content.get('ticker_yahoo', ticker.ticker_yahoo)
         ticker.save()
 
         return {'message': 'Ticker updated!'}
-

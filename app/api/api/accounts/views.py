@@ -70,6 +70,7 @@ class AccountList(Resource):
         user_id = get_jwt_identity()
 
         content = request.get_json(silent=True)
+        # entity = Entity.query.filter(Entity.id == content['entity_id']).one()
 
         account = Account(
             name=content['name'],
@@ -77,7 +78,8 @@ class AccountList(Resource):
             user_id=user_id,
             currency=content['currency'],
             balance=0,
-            virtual_balance=0
+            virtual_balance=0,
+            allows_csv=content.get('allows_csv', False)
         )
         try:
             account.save()

@@ -36,3 +36,5 @@ pycryptodome==3.22.0
 werkzeug==3.0.4
 
 curl_cffi==0.10.0
+
+python-dateutil==2.9.0

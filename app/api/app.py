@@ -10,6 +10,7 @@ from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_sqlalchemy import SQLAlchemy
 from api import is_token_blacklisted
+from models.sql import db_session
 
 
 # import config and models from main path
@@ -41,6 +42,19 @@ app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 
 jwt = JWTManager(app)
 blacklist = set()  # TODO: move to redis
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    from models.sql import db_session
+
+    if db_session is not None:
+        db_session.remove()
+
+    try:
+        db.session.remove()
+    except:
+        print("Unable to remove session")
+        
 
 log = logging.getLogger(__name__)
 authorizations = {
