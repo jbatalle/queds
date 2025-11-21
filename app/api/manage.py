@@ -31,8 +31,8 @@ def create_db():
 def create_broker_account(user_id):
     from models.system import Entity, Account
 
-    entity = Entity.query.filter(Entity.name == "Degiro").first()
-    accounts = Account.query.filter(Account.entity == entity).first()
+    entity = Entity.query.filter(Entity.name == "Degiro",).first()
+    accounts = Account.query.filter(Account.entity == entity, Account.user_id == user_id).first()
     if accounts:
         return accounts.id
 
@@ -54,7 +54,7 @@ def create_exchange_account(user_id):
     from models.system import Entity, Account
 
     entity = Entity.query.filter(Entity.name == "Bitstamp").first()
-    accounts = Account.query.filter(Account.entity == entity).first()
+    accounts = Account.query.filter(Account.entity == entity, Account.user_id == user_id).first()
     if accounts:
         return accounts.id
 
@@ -139,7 +139,7 @@ def seed_sample_transactions(account_id):
     objects.append(
         StockTransaction(
             account_id=account_id,
-            external_id=f"external_id_sell2",
+            external_id=f"external_id_sell3",
             value_date=datetime(datetime.now().year, 1, 2).strftime("%Y-%m-%d"),
             name="TESLA",
             ticker_id=ticker.id,
@@ -162,8 +162,17 @@ def seed_sample_exchange_order(acc_id):
     objects = [
         CryptoEvent(
             account_id=acc_id,
-            external_id="external_id",
+            external_id="external_id_deposit",
             value_date=datetime(datetime.now().year-1, 1, 1).strftime("%Y-%m-%d"),
+            symbol="EUR",
+            amount=10000,
+            type=CryptoEvent.Type.DEPOSIT,
+            price=0,
+            fee=0),
+        CryptoEvent(
+            account_id=acc_id,
+            external_id="external_id_buy_1",
+            value_date=datetime(datetime.now().year-1, 1, 1, 10).strftime("%Y-%m-%d"),
             symbol="ETH/EUR",
             amount=3,
             type=CryptoEvent.Type.BUY,
@@ -171,7 +180,7 @@ def seed_sample_exchange_order(acc_id):
             fee=-12),
         CryptoEvent(
             account_id=acc_id,
-            external_id="external_id2",
+            external_id="external_id_buy_2",
             value_date=datetime(datetime.now().year-1, 1, 2).strftime("%Y-%m-%d"),
             symbol="ETH/EUR",
             amount=3,
@@ -180,7 +189,7 @@ def seed_sample_exchange_order(acc_id):
             fee=-12),
         CryptoEvent(
             account_id=acc_id,
-            external_id="external_id3",
+            external_id="external_id_sell_1",
             value_date=datetime(datetime.now().year-1, 1, 3).strftime("%Y-%m-%d"),
             symbol="ETH/EUR",
             amount=4,
@@ -189,7 +198,7 @@ def seed_sample_exchange_order(acc_id):
             fee=-13),
         CryptoEvent(
             account_id=acc_id,
-            external_id="external_id4",
+            external_id="external_id_buy_3",
             value_date=datetime(datetime.now().year, 1, 3).strftime("%Y-%m-%d"),
             symbol="ETH/EUR",
             amount=4,
@@ -228,6 +237,7 @@ def seed_db():
         user.save()
 
     user_id = User.query.filter(User.email == 'demo@queds.com').first().id
+    print(f"User id: {user_id}")
     acc_id = create_broker_account(user_id)
     acc_id2 = create_exchange_account(user_id)
     seed_sample_transactions(acc_id)

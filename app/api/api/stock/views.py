@@ -194,7 +194,7 @@ class WalletPrices(Resource):
             log.error(f"Error when retrieving prices from yahoo: {e}")
 
         tickers_by_ticker = {}
-        for d in yahoo_prices:
+        for d in [y for y in yahoo_prices if y.get('symbol') in tickers_yahoo]:
             tickers_by_ticker[tickers_yahoo[d.get('symbol')]] = d
 
         return jsonify(tickers_by_ticker)

@@ -933,13 +933,13 @@ export default {
             console.log("BIG wallet cost", asset.currency, crypto_wallet_cost, order);
           }
           if (!isNaN(price) && price > 0) {
-            if (order.exchange_id === 7 ) {
+            //if (order.exchange_id === 7 ) {
               //console.log("Binance order, ", order.order.symbol, order.amount, (1/price || 0), order.amount * (1/price || 0));
+              //this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (1/price || 0);
+            //} else {
               this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (1/price || 0);
-            } else {
-              this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (price || 0);
            // this.exchangeAccounts.find(e => e.id === order.exchange_id).virtual_balance += order.amount * (price || 0);
-            }
+            //}
           }
         });
         if (asset) this.total_assets.push(asset);
@@ -980,6 +980,7 @@ export default {
               if (order.order && order.exchange_id === account.id) {
                 // Add wallet amount to the virtual_balance of the account
                 if (!isNaN(w.current_price_eur)) {
+                  console.log(order.amount, w.current_price_eur, order.amount * w.current_price_eur);
                   account.virtual_balance += order.amount * w.current_price_eur;
                 }
               }

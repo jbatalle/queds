@@ -30,7 +30,7 @@
       </component>
     </div>
 
-    <div class="card-footer">
+    <!--div class="card-footer">
       <slot name="footer">
         <hr>
         <div class="row">
@@ -46,22 +46,16 @@
           </div>
         </div>
       </slot>
-    </div>
+    </div-->
   </div>
 </template>
 <script>
-  // import BarChart from '../Charts/BarChart'
-  // import LineChart from '../Charts/LineChart'
-  // import DoughNutChart from '../Charts/DoughnutChart'
-  import PieChart from '../Charts/PieChart.vue'
-  import BarChart from '../Charts/BarChart.vue'
-  import LineChart from '../Charts/LineChart.vue'
+  import PieChart from '../Charts/PieChart.vue';
+  import BarChart from '../Charts/BarChart.vue';
+  import LineChart from '../Charts/LineChart.vue';
   export default {
     name: 'chart-card',
     components: {
-      // LineChart,
-      // BarChart,
-      // DoughNutChart,
       PieChart, BarChart, LineChart
     },
     props: {
