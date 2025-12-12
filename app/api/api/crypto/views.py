@@ -82,6 +82,13 @@ class WalletPrices(Resource):
         c = CryptoCompareClient()
         prices_eur = map_currency_names(c.get_prices("EUR", currencies))
         changes_24h = c.get_changes("EUR", currencies)
+        
+        # Use current prices as fallback for missing historical data
+        for currency in currencies:
+            if currency not in changes_24h and currency in prices_eur:
+                # If historical data is missing, use current price as fallback
+                changes_24h[currency] = prices_eur[currency]
+        
         # If you want to populate USD/BTC, do it here
         prices_usd, prices_btc = {}, {}
         return jsonify({
