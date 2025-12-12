@@ -50,7 +50,7 @@
                 {{ $filters.toCurrency(scope.row.base_current_value, base_currency) }}
               </template>
             </el-table-column>
-            <el-table-column label="Percentage" property="percentage" sortable>
+            <el-table-column label="Percentage" property="percentage" sortable :sort-method="sortPercentage">
               <template v-slot:default="scope">
                 {{ scope.row.percentage !== undefined && scope.row.percentage !== null ? Number(scope.row.percentage).toFixed(2) : '0.00' }}%
               </template>
@@ -142,6 +142,11 @@ export default {
           return "red"
       } else
         return "black"
+    },
+    sortPercentage(a, b) {
+      const percentA = a.percentage !== undefined && a.percentage !== null ? Number(a.percentage) : 0;
+      const percentB = b.percentage !== undefined && b.percentage !== null ? Number(b.percentage) : 0;
+      return percentA - percentB;
     },
   },
 }

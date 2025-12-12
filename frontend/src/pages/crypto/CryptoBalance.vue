@@ -225,13 +225,15 @@ export default {
         const priceData = this.calculatePriceData(t, prices_eur, prices_usd, prices_btc);
         const current_value = t.amount * priceData.current_price;
         let previous_day_value = 0;
-        if (changes_24h[t.currency] !== undefined) {
-          previous_day_value = t.amount * (1 / (changes_24h[t.currency]));
+        // changes_24h contains the historical price from 24h ago (in EUR)
+        // If historical data is unavailable, the backend uses current price as fallback
+        if (changes_24h[t.currency] !== undefined && changes_24h[t.currency] > 0) {
+          const previous_price = 1 / changes_24h[t.currency];
+          previous_day_value = t.amount * previous_price;
         }
         const current_benefit = current_value - (t.price * t.amount);
 
         // Update global stats
-        console.log("CAlculating", t.price, t.amount, vm.total_cost);
         vm.total_cost += t.price * t.amount;
         vm.wallet_value += current_value;
         vm.total_benefits += t.benefits || 0;
