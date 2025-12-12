@@ -313,13 +313,35 @@ export default {
   margin: 50px 0;
 }
 
-.el-tabs__item.is-active {
+.demo-tabs > .el-tabs__header {
+  margin-bottom: 0;
+}
+
+.demo-tabs > .el-tabs__header .el-tabs__item {
+  color: #66615B;
+  background-color: #f4f3ef;
+  border: 1px solid #dddddd;
+  border-radius: 8px 8px 0 0;
+  margin-right: 2px;
+}
+
+.demo-tabs > .el-tabs__header .el-tabs__item.is-active {
+  color: #3cab79 !important;
   background-color: #ffffff;
+  border-bottom-color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.demo-tabs > .el-tabs__header .el-tabs__item:hover {
   color: #3cab79 !important;
 }
 
-.el-tabs__item:hover {
+.demo-tabs > .el-tabs__content {
+  border: 1px solid #dddddd;
+  border-top: none;
+  border-radius: 0 8px 8px 8px;
+  padding: 15px;
   background-color: #ffffff;
-  color: #3cab79 !important;
 }
 </style>

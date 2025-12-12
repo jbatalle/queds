@@ -315,14 +315,4 @@ export default {
 .example-showcase .el-loading-mask {
   z-index: 9;
 }
-
-.el-tabs__item.is-active {
-  background-color: #ffffff;
-  color: #3cab79 !important;
-}
-
-.el-tabs__item:hover {
-  background-color: #ffffff;
-  color: #3cab79 !important;
-}
 </style>

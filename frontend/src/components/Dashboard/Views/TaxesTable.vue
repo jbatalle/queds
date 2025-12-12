@@ -7,11 +7,15 @@
       <el-table-column v-if="type==='broker'" label="Symbol">
         <template v-slot:default="scope">
           <el-tooltip :content="scope.row.name" placement="top">
-            <span type="info">{{ scope.row.ticker.ticker }}</span>
+            <span type="info" style="padding-left: 5px;">{{ scope.row.ticker.ticker }}</span>
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column v-else label="Symbol" property="symbol" sortable></el-table-column>
+      <el-table-column v-else label="Symbol" property="symbol" sortable>
+        <template v-slot:default="scope">
+          <span style="padding-left: 5px;">{{ scope.row.symbol }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="account" label="Account">
       </el-table-column>
       <el-table-column v-if="type==='broker'" label="ISIN" property="ticker.isin"></el-table-column>
