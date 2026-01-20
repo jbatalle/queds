@@ -93,34 +93,76 @@
     </template>
     <span slot="footer" class="dialog-footer"></span>
   </el-dialog>
-  <el-dialog title="Read Account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
-             :before-close="handleReadClose">
-    <div v-loading="loading">
-      <div class="card-body">
-        <form>
-          <div class="row">
-            <div class="col-md-12">
-              <div class="form-group2">
-                <div class="sub-title my-2 text-sm text-gray-600">
-                  Insert a passphrase for credential encryption
-                </div>
-                <el-input type="password"
-                          label="Insert a passphrase for credential encryption"
-                          placeholder="passphrase"
-                          v-model="read.encrypt_password">
-                </el-input>
-              </div>
-            </div>
-          </div>
-          <div class="clearfix"></div>
-        </form>
-      </div>
-      <footer class="el-dialog__footer">
-        <el-button @click="readDialogVisible = false">Cancel</el-button>
-        <el-button type="primary" @click="readAccount">Read</el-button>
-      </footer>
-    </div>
-  </el-dialog>
+   <el-dialog title="Read Account" v-model="readDialogVisible" width="60%" :close-on-press-escape="true"
+              :before-close="handleReadClose">
+     <div v-loading="isReading">
+       <div class="card-body">
+         <!-- Initial state: Passphrase input -->
+         <form v-if="readStatus === null">
+           <div class="row">
+             <div class="col-md-12">
+               <div class="form-group2">
+                 <div class="sub-title my-2 text-sm text-gray-600">
+                   Insert a passphrase for credential encryption
+                 </div>
+                 <el-input type="password"
+                           label="Insert a passphrase for credential encryption"
+                           placeholder="passphrase"
+                           v-model="read.encrypt_password">
+                 </el-input>
+               </div>
+             </div>
+           </div>
+           <div class="clearfix"></div>
+         </form>
+
+         <!-- Reading state: Status message -->
+         <div v-if="readStatus === 'reading'" class="reading-status">
+           <p>{{ readStatusMessage }}</p>
+         </div>
+
+         <!-- Validation required: OTP input -->
+         <div v-if="readStatus === 'validation_required'" class="otp-section">
+           <div class="reading-status mb-3">
+             <p>{{ readStatusMessage }}</p>
+           </div>
+           <div class="form-group2">
+             <div class="sub-title my-2 text-sm text-gray-600">
+               Enter validation code
+             </div>
+             <el-input type="text"
+                       placeholder="Enter validation code"
+                       v-model="otpCode"
+                       :disabled="isReading"
+                       @keyup.enter="submitOtp" />
+             <div v-if="otpErrorMessage" class="error-message mt-2">
+               {{ otpErrorMessage }}
+             </div>
+           </div>
+         </div>
+
+         <!-- Success state: Success message -->
+         <div v-if="readStatus === 'success'" class="reading-status success">
+           <p>{{ readStatusMessage }}</p>
+         </div>
+
+         <!-- Error state: Error message -->
+         <div v-if="readStatus === 'error'" class="reading-status error">
+           <p>{{ readStatusMessage }}</p>
+         </div>
+       </div>
+       <footer class="el-dialog__footer">
+         <el-button v-if="readStatus === null" @click="readDialogVisible = false">Cancel</el-button>
+         <el-button v-if="readStatus === null" type="primary" @click="readAccount">Read</el-button>
+         
+         <el-button v-if="readStatus === 'validation_required'" @click="submitOtp" :disabled="isReading">
+           {{ isReading ? 'Verifying...' : 'Verify' }}
+         </el-button>
+         
+         <el-button @click="handleReadClose">Close</el-button>
+       </footer>
+     </div>
+   </el-dialog>
   <el-dialog title="Delete account" v-model="deleteDialogVisible" width="60%" :close-on-press-escape="true"
              :before-close="handleDeleteClose">
     <div class="card-body">
@@ -224,72 +266,103 @@ export default {
     StatsCard,
     AccountTable
   },
-  data() {
-    return {
-      tableColumns: [
-        {label: "Name", prop: "name"},
-        {label: "Type", prop: "entity_name"},
-        {label: "Fiat", prop: "balance", slot: "balance"},
-        {label: "Value", prop: "virtual_balance", slot: "virtual_balance"},
-        {label: "Last update", prop: "updated_on"}
-      ],
-      credential: {
-        "currency": "EUR",
-        "parameters": {},
-        "entity": {}
-      },
-      errors: {},
-      dialogVisible: false,
-      readDialogVisible: false,
-      deleteDialogVisible: false,
-      uploadDialogVisible: false,
-      delete_account: undefined,
-      read: {
-        account_id: undefined,
-        encrypt_password: "",
-      },
-      upload: {
-        account: undefined,
-        file: null
-      },
-      upload_ko: false,
-      upload_ok: false,
-      exchangeAccounts: [],
-      brokerAccounts: [],
-      crowdAccounts: [],
-      selectedEntityAllowsCsv: false,
-      entities: [],
-      entity_credentials: [],
-      loading: false,
-      inputMethod: 'api'
-    }
-  },
+   data() {
+     return {
+       tableColumns: [
+         {label: "Name", prop: "name"},
+         {label: "Type", prop: "entity_name"},
+         {label: "Fiat", prop: "balance", slot: "balance"},
+         {label: "Value", prop: "virtual_balance", slot: "virtual_balance"},
+         {label: "Last update", prop: "updated_on"}
+       ],
+       credential: {
+         "currency": "EUR",
+         "parameters": {},
+         "entity": {}
+       },
+       errors: {},
+       dialogVisible: false,
+       readDialogVisible: false,
+       deleteDialogVisible: false,
+       uploadDialogVisible: false,
+       delete_account: undefined,
+       read: {
+         account_id: undefined,
+         encrypt_password: "",
+       },
+       upload: {
+         account: undefined,
+         file: null
+       },
+       upload_ko: false,
+       upload_ok: false,
+       exchangeAccounts: [],
+       brokerAccounts: [],
+       crowdAccounts: [],
+       selectedEntityAllowsCsv: false,
+       entities: [],
+       entity_credentials: [],
+       loading: false,
+       inputMethod: 'api',
+       // OTP/Polling state
+       readStatus: null,                    // null | 'reading' | 'validation_required' | 'success' | 'error'
+       readStatusMessage: '',               // Display message
+       readingAccountId: null,              // Track which account is being processed
+       otpCode: '',                         // OTP input field
+       otpErrorMessage: '',                 // OTP error feedback
+       statusPollInterval: null,            // Polling timer reference
+       encryptPassword: '',                 // Persist passphrase during polling
+       pollStartTime: null                  // Track polling start time for 5-minute timeout
+     }
+   },
   created() {
     this.getData()
-  },
-  watch: {
+   },
+    computed: {
+      isReading() {
+        return this.readingAccountId === this.read.account_id && 
+               this.readStatus === 'reading';
+      }
+    },
+   watch: {
     credential: {
       handler(val, oldVal) {
         this.errors = {};
       },
       deep: true
     },
-    "credential.entity": {
-      handler(entity) {
-        if (entity !== undefined) {
-          this.getAccountCredentialTypes(entity);
-            // Find the selected entity and update allows_csv
-            const selected = this.entities.find(e => e.id === entity);
-            this.selectedEntityAllowsCsv = selected ? !!selected.allows_csv : false;
-            // If allows_csv is false and inputMethod is manual, force API
-            if (!this.selectedEntityAllowsCsv && this.inputMethod === 'manual') {
-              this.inputMethod = 'api';
-            }
-        }
-      },
-      deep: true
-    },
-  },
+     "credential.entity": {
+       handler(entity) {
+         if (entity !== undefined) {
+           this.getAccountCredentialTypes(entity);
+             // Find the selected entity and update allows_csv
+             const selected = this.entities.find(e => e.id === entity);
+             this.selectedEntityAllowsCsv = selected ? !!selected.allows_csv : false;
+             // If allows_csv is false and inputMethod is manual, force API
+             if (!this.selectedEntityAllowsCsv && this.inputMethod === 'manual') {
+               this.inputMethod = 'api';
+             }
+         }
+       },
+       deep: true
+     },
+     readDialogVisible(val) {
+       // Clean up polling when dialog closes
+       if (!val && this.statusPollInterval) {
+         clearInterval(this.statusPollInterval);
+         this.statusPollInterval = null;
+         // Reset state when dialog closes
+         this.readStatus = null;
+         this.readStatusMessage = '';
+         this.readingAccountId = null;
+         this.otpCode = '';
+         this.otpErrorMessage = '';
+         this.encryptPassword = '';
+         this.pollStartTime = null;
+         this.read.encrypt_password = '';
+       }
+     }
+   },
   methods: {
     async deleteAccount() {
       let vm = this;
@@ -313,6 +386,21 @@ export default {
       this.delete_account = account;
     },
     async openReadDialog(id, account) {
+      // Reset state FIRST before opening dialog for new account
+      if (this.statusPollInterval) {
+        clearInterval(this.statusPollInterval);
+        this.statusPollInterval = null;
+      }
+      this.readStatus = null;
+      this.readStatusMessage = '';
+      this.readingAccountId = null;
+      this.otpCode = '';
+      this.otpErrorMessage = '';
+      this.encryptPassword = '';
+      this.pollStartTime = null;
+      this.read.encrypt_password = '';
+      
+      // Then set account and open dialog
       this.readDialogVisible = true;
       this.read.account_id = account.id;
     },
@@ -322,28 +410,129 @@ export default {
       this.uploadDialogVisible = true;
       this.upload.account = account;
     },
-    async readAccount() {
-      this.loading = true;
-      let data = {
-        "encrypt_password": this.read.encrypt_password
-      }
-      this.read.encrypt_password = undefined;
-      var vm = this;
-      await axios.post(import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.read.account_id + "/read", data).then(function (d) {
-        vm.$notify({
-          message: 'Reading account!',
-          type: 'info',
-        });
-      }).catch(function (error) {
-        console.log("Error reading the account!");
-        vm.$notify({
-          message: 'Unable to read the account',
-          type: 'warning',
-        });
-      });
-      this.loading = false;
-      this.readDialogVisible = false;
-    },
+     async readAccount() {
+       this.encryptPassword = this.read.encrypt_password;
+       let data = {
+         "encrypt_password": this.read.encrypt_password
+       }
+       this.read.encrypt_password = '';
+       var vm = this;
+       
+       try {
+         const response = await axios.post(
+           import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.read.account_id + "/read", 
+           data
+         );
+         
+         this.$notify({
+           message: 'Reading account!',
+           type: 'info',
+         });
+         
+         // Set initial state and start polling
+         this.readingAccountId = this.read.account_id;
+         this.readStatus = 'reading';
+         this.readStatusMessage = 'Reading account...';
+         this.pollStartTime = Date.now();
+         this.startStatusPolling(this.read.account_id);
+         
+       } catch (error) {
+         console.log("Error reading the account!", error);
+         this.$notify({
+           message: error.response?.data?.message || 'Unable to read the account',
+           type: 'warning',
+         });
+         this.readStatus = 'error';
+         this.readStatusMessage = error.response?.data?.message || 'Unable to read the account';
+       }
+     },
+
+      startStatusPolling(accountId) {
+        // Clear any existing polling interval to prevent duplicates
+        if (this.statusPollInterval) {
+          clearInterval(this.statusPollInterval);
+          this.statusPollInterval = null;
+        }
+
+        const POLL_INTERVAL = 1000; // 1 second
+        const MAX_POLL_TIME = 5 * 60 * 1000; // 5 minutes
+        
+        this.statusPollInterval = setInterval(async () => {
+          try {
+            // Check if we've exceeded the 5-minute timeout
+            if (Date.now() - this.pollStartTime > MAX_POLL_TIME) {
+              clearInterval(this.statusPollInterval);
+              this.statusPollInterval = null;
+              this.readStatus = 'error';
+              this.readStatusMessage = 'Read operation timed out after 5 minutes';
+              return;
+            }
+
+            const response = await axios.get(
+              import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + accountId + "/read-status"
+            );
+            const status = response.data;
+
+            if (status.status === 'validation_required') {
+              clearInterval(this.statusPollInterval);
+              this.statusPollInterval = null;
+              this.readStatus = 'validation_required';
+              this.readStatusMessage = status.message || 'Device validation required';
+              this.otpErrorMessage = '';
+            } else if (status.status === 'success') {
+              clearInterval(this.statusPollInterval);
+              this.statusPollInterval = null;
+              this.readStatus = 'success';
+              this.readStatusMessage = status.message || 'Account read successfully!';
+              this.getData();
+            } else if (status.status === 'error') {
+              clearInterval(this.statusPollInterval);
+              this.statusPollInterval = null;
+              this.readStatus = 'error';
+              this.readStatusMessage = status.message || 'Error reading account';
+            }
+            // For 'reading' status, keep polling without changing state
+          } catch (error) {
+            console.error('Status poll error:', error);
+            // Continue polling on network errors
+          }
+        }, POLL_INTERVAL);
+      },
+
+     async submitOtp() {
+       if (!this.otpCode.trim()) {
+         this.otpErrorMessage = 'Validation code is required';
+         return;
+       }
+
+       this.readStatus = 'reading';
+       this.readStatusMessage = 'Verifying code...';
+       this.otpErrorMessage = '';
+
+       try {
+         const data = {
+           "encrypt_password": this.encryptPassword,
+           "validation_code": this.otpCode
+         };
+
+         const response = await axios.post(
+           import.meta.env.VITE_APP_BACKEND_URL + "/entities/accounts/" + this.read.account_id + "/validate",
+           data
+         );
+
+         // OTP submitted successfully, resume polling
+         this.otpCode = '';
+         this.readStatus = 'reading';
+         this.readStatusMessage = 'Reading account...';
+         this.startStatusPolling(this.read.account_id);
+
+       } catch (error) {
+         console.error('OTP validation error:', error);
+         this.readStatus = 'validation_required';
+         this.readStatusMessage = 'Device validation required';
+         this.otpErrorMessage = error.response?.data?.message || 'Validation failed. Please try again.';
+       }
+     },
     async addAccount(done) {
       this.errors = {};
       if (!this.credential.entity) {
@@ -526,5 +715,54 @@ export default {
 
 .text-green {
   color: #2ecc71;
-  }
+}
+
+.reading-status {
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin: 16px 0;
+  text-align: center;
+}
+
+.reading-status p {
+  margin: 0;
+  font-size: 14px;
+  color: #606266;
+}
+
+.reading-status.success {
+  background-color: #f0f9ff;
+  border-left: 4px solid #67c23a;
+}
+
+.reading-status.success p {
+  color: #67c23a;
+  font-weight: 500;
+}
+
+.reading-status.error {
+  background-color: #fef0f0;
+  border-left: 4px solid #f56c6c;
+}
+
+.reading-status.error p {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.otp-section {
+  margin: 16px 0;
+}
+
+.error-message {
+  color: #f56c6c;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.form-group2 .el-input {
+  width: 100%;
+  margin-top: 8px;
+}
 </style>

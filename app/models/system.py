@@ -4,7 +4,7 @@ from datetime import datetime
 from models.sql import Base, CRUD, db_session
 from enum import unique, Enum as pEnum
 from sqlalchemy import Enum, Column, Integer, String, func, UniqueConstraint, ForeignKey, Boolean, Float, DateTime, \
-    Unicode
+    Unicode, Text
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 
@@ -100,6 +100,8 @@ class EntityCredentialType(Base, CRUD):
         USERNAME = 'username'
         USER_ID = 'user_id'
         PASSWORD = 'password'
+        DEVICE_TOKEN = 'device_token'
+        COOKIE_TOKEN = 'cookie_token'
 
     @unique
     class Mode(pEnum):
@@ -174,7 +176,7 @@ class AccountCredentialParam(Base, CRUD):
     __table_args__ = (UniqueConstraint('credential_type_id', 'account_id', name='cred_type_account_uc'),)
 
     id = Column(Integer, primary_key=True)
-    value = Column(String(250))
+    value = Column(Text)
     credential_type_id = Column(Integer, ForeignKey('entity_credential_types.id'))
     credential_type = relationship("EntityCredentialType")
 

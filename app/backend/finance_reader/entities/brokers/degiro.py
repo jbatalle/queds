@@ -24,49 +24,66 @@ class Degiro(AbstractBroker):
         self.account_id = None
         self.session_id = None
 
-    def login(self, data):
+    def login(self, parameters):
+        data = parameters
         url = "https://trader.degiro.nl/login/secure/login"
         username = data.get('username')
         password = data.get('password')
-        token = data.get('token')
-        device_token = data.get('device_token')
-        params = {
-            "username": username,
-            "password": password,
-            "queryParams": {}
-        }
-        if token and device_token:
-            # data.update({"userTokens": [{"token": token, "ttl": "2025-04-11T15:14:52+02:00" } ]})
-            self._client.cookies.set("deviceToken", device_token)
-            params.update({"userTokens": [{"token": "", "ttl": "2025-04-11T15:14:52+02:00"}]})
-            self._client.cookies.set("deviceToken", "")
-        r = self._client.post(url, json=params)
-        data2 = r.json()
-        if data['status'] == 6 or data['statusText'] == "totpNeeded":
-            self._logger.info("OTP required")
+        totp_code = data.get('totp_code')
+        token = data.get('device_token')
+        cookie_token = data.get('cookie_token')
+        device_token_from_cookies = None
+
+        if totp_code:
+            self._logger.info("TOTP code provided, attempting direct login with OTP")
             url = "https://trader.degiro.nl/login/secure/login/totp"
-            data = {
+            params = {
                 "username": username,
                 "password": password,
-                "queryParams": {},
-                "oneTimePassword": data.get('otp'),
-                "saveDevice": True
+                "oneTimePassword": totp_code,
+                "saveDevice": True,
+                "queryParams": {}
             }
-            r = self._client.post(url, json=data)
-            data = r.json()
+            r = self._client.post(url, json=params)
+            response_data = r.json()
+            
+            if response_data.get('status') != 0 or response_data.get('statusText') != "success":
+                self._logger.error(f"OTP login failed: {response_data}")
+                raise Exception("Invalid OTP code")
+            
+            session_id = response_data.get('sessionId')
+            device_token_from_cookies = r.cookies.get('deviceToken')
+            token = response_data.get('userTokens')
+        else:
+            params = {
+                "username": username,
+                "password": password,
+                "queryParams": {}
+            }
+            if token and cookie_token:
+                self._client.cookies.set("deviceToken", cookie_token)
+                # ttl = datetime.now().strftime("%Y/%m/%dT%H:%M:%S+02:00")
+                params.update({"userTokens": token})
+            
+            r = self._client.post(url, json=params)
+            response_data = r.json()
+            
+            if response_data.get('status') == 6 or response_data.get('statusText') == "totpNeeded":
+                self._logger.info("OTP required for login")
+                return {
+                    'status': 'device_validation_required',
+                    'requires_otp': True,
+                    'message': 'Device validation required'
+                }
+            
+            if response_data.get('status') != 0 or response_data.get('statusText') != "success":
+                self._logger.error(f"Login failed: {response_data}")
+                raise Exception("Invalid credentials!")
+            
+            session_id = response_data.get('sessionId')
+            device_token_from_cookies = r.cookies.get('deviceToken')
 
-            if 'deviceToken' in r.cookies.get_dict():
-                # TODO: save device_token and token
-                token = r.cookies.get_dict()['deviceToken']
-                device_token = self._client.cookies._cookies['']["/"]['deviceToken']
-                print("Token: ", token)
-                print("Device Token: ", device_token)
-
-        if data['status'] != 0 or data['statusText'] != "success":
-            self._logger.error("Login error: ", data)
-            raise Exception("Invalid credentials!")
-
-        self.session_id = data['sessionId']
+        self.session_id = session_id
         self.account_id = self.get_account_id()
         url = "https://trader.degiro.nl/trading/secure/v5/update/{};jsessionid={}"
         payload = {
@@ -110,7 +127,13 @@ class Degiro(AbstractBroker):
         entity_account.currency = base_currency
         entity_account.balance = cashfund[base_currency]
         entity_account.virtual_balance = sum
-        return entity_account
+        
+        return {
+            'status': 'success',
+            'cookie_token': device_token_from_cookies,
+            'token': token,
+            'account': entity_account
+        }
 
     def get_account_id(self):
         url = 'https://trader.degiro.nl/pa/secure/client'
@@ -130,7 +153,8 @@ class Degiro(AbstractBroker):
         return response.json().get('data')
 
     def _get_exchanges(self):
-        url = "https://trader.degiro.nl/product_search/config/dictionary/"
+        # url = "https://trader.degiro.nl/product_search/config/dictionary/"
+        url = "https://trader.degiro.nl/productsearch/secure/v1/config/dictionary"
         response = self._client.get(url)
         if response.status_code != 200:
             self._logger.error(response.text)
@@ -139,7 +163,7 @@ class Degiro(AbstractBroker):
         return exchanges
 
     def read_transactions(self, start_date):
-        url = "https://trader.degiro.nl/reporting/secure/v4/transactions?fromDate={}&toDate={}&groupTransactionsByOrder=true&intAccount={}&sessionId={}"
+        # url = "https://trader.degiro.nl/reporting/secure/v4/transactions?fromDate={}&toDate={}&groupTransactionsByOrder=true&intAccount={}&sessionId={}"
         url = "https://trader.degiro.nl/portfolio-reports/secure/v4/transactions?fromDate={}&toDate={}&groupTransactionsByOrder=true&intAccount={}&sessionId={}"
         end_date = datetime.now().strftime("%d/%m/%Y")  # "12/01/2019"
         r = self._client.get(url.format(start_date, end_date, self.account_id, self.session_id))
@@ -166,11 +190,12 @@ class Degiro(AbstractBroker):
             try:
                 ticker.exchange = exchanges[product.get('exchangeId')]['micCode']
             except:
-                self._logger.warning(f"Unable to detect the exchange for ticker {product_name} - {product_isin}")
+                self._logger.warning(f"Unable to detect exchange for ticker {product_name} - {product_isin}")
 
-            # value_date = datetime.fromisoformat(d.get('date')).replace(hour=0, minute=0)
-            value_date = datetime.strptime(d.get('date'), "%Y-%m-%dT%H:%M:%SZ")
-            # value_date = value_date.replace(tzinfo=tz.timezone("America/Los_Angeles"))
+            try:
+                value_date = datetime.strptime(d.get('date'), "%Y-%m-%dT%H:%M:%SZ")
+            except:
+                value_date = datetime.fromisoformat(d.get('date'))
             fee = d.get('feeInBaseCurrency', 0)  # in €
             rate = 1
             exchange_fee = 0

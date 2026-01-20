@@ -16,6 +16,9 @@ def list_entities():
             }, {
                 "cred_type": EntityCredentialType.Type.PASSWORD.name,
                 "mode": EntityCredentialType.Mode.PASSWORD.name
+            }, {
+                "cred_type": EntityCredentialType.Type.DEVICE_TOKEN.name,
+                "mode": EntityCredentialType.Mode.PASSWORD.name
             }]
         }, {
             "name": "ClickTrade", "type": Entity.Type.BROKER, "active": True, "allows_csv": False,

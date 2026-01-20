@@ -1,12 +1,24 @@
 import logging
+import time
 from flask_restx import Resource, fields, Namespace
-from models.system import Account, Entity, User, EntityCredentialType, AccountCredentialParam
+from models.system import (
+    Account,
+    Entity,
+    User,
+    EntityCredentialType,
+    AccountCredentialParam,
+)
 from flask import request, jsonify, render_template, make_response
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from api import filter_by_username, demo_check
 from services.queue import queue_read
 from models.cryptography import AESCipher
 from sqlalchemy.dialects.postgresql import insert
+from config import settings
+from services.redis import RedisClient as RedisClientClass
+
+redisClient = RedisClientClass()
+import json
 
 
 log = logging.getLogger(__name__)
@@ -32,6 +44,14 @@ credentials_registration = namespace.model('AccountCredentialParams', {
 account_reader = namespace.model('AccountReader', {
     "encrypt_password": fields.String(required=True, min_length=1, max_length=32),
 })
+
+account_validation = namespace.model(
+    "AccountValidation",
+    {
+        "encrypt_password": fields.String(required=True, min_length=1, max_length=32),
+        "validation_code": fields.String(required=True, min_length=1, max_length=32),
+    },
+)
 
 
 @namespace.route('/')
@@ -199,8 +219,11 @@ class AccountReader(Resource):
     @demo_check
     @jwt_required()
     def post(self, id):
+        user_id = get_jwt_identity()
         account = filter_by_username(Account).filter(Account.id == id).one()
-        credentials = AccountCredentialParam.query.filter(AccountCredentialParam.account_id==id).all()
+        credentials = AccountCredentialParam.query.filter(
+            AccountCredentialParam.account_id == id
+        ).all()
 
         if not credentials:
             return {'message': 'Account without credentials!'}, 400
@@ -223,7 +246,16 @@ class AccountReader(Resource):
                 log.warning("Decrypted value is empty!")
                 return {'message': 'Invalid passphrase!'}, 400
 
-            data[c.credential_type.cred_type.lower()] = decrypted_value
+            # Deserialize JSON if the credential type is one that stores JSON
+            credential_type_name = c.credential_type.cred_type.lower()
+            if credential_type_name in ['device_token', 'cookie_token']:
+                try:
+                    decrypted_value = json.loads(decrypted_value)
+                except (json.JSONDecodeError, ValueError):
+                    # If it's not valid JSON, keep it as string (backward compatibility)
+                    pass
+
+            data[credential_type_name] = decrypted_value
 
         queue_name = None
         if account.entity.type == Entity.Type.BROKER:
@@ -236,28 +268,177 @@ class AccountReader(Resource):
         if not read_data:
             return {'message': 'Unable to enqueue the read!'}, 400
 
+        # Store "reading" status immediately so frontend knows the read started
+        try:
+            status_key = f"validation_status:account_{id}"
+            import time
+            status_json = json.dumps({
+                "status": "reading",
+                "message": f"Reading account {account.name}...",
+                "account_id": id,
+                "timestamp": time.time()
+            })
+            redisClient.client.set(status_key, status_json, ex=300)  # Expire after 5 minutes
+            log.info(f"Stored reading status for account {id}")
+        except Exception as e:
+            log.warning(f"Failed to store reading status: {e}")
+
         log.debug("Account credential check")
-        return {'message': f'Reading account {account.name}!'}
+
+        return {
+            "status": "processing",
+            "message": f"Reading account {account.name}...",
+            "account_id": account.id,
+        }
 
 
-@namespace.route('/stats')
+@namespace.route("/accounts/<int:id>/read-status")
+class AccountReadStatus(Resource):
+    @jwt_required()
+    def get(self, id):
+        """Poll endpoint to check read status and validation requirements"""
+        current_user_id = get_jwt_identity()
+
+        # Verify account belongs to user
+        account = filter_by_username(Account).filter(Account.id == id).first()
+        # account = Account.query.filter(Account.id == id).one()
+        if not account:
+            return {"error": "Account not found"}, 404
+
+        # Check Redis for validation status
+        try:
+            status_key = f"validation_status:account_{id}"
+            status_data = redisClient.get(status_key)
+
+            if status_data:
+                status = status_data
+                log.info(f"Validation status for account {id}: {status.get('status')}")
+
+                # If validation completed successfully, return it and clear the status
+                if status.get("status") == "success":
+                    # Return success status, but delete it immediately so next poll gets "reading"
+                    redisClient.delete(status_key)
+                    log.info(f"Deleted success status for account {id} after returning it")
+                    return jsonify(status)
+                
+                # If validation_required status is older than 30 seconds, consider it stale
+                # and return 'reading' instead (in case worker is processing)
+                if status.get("status") == "validation_required":
+                    timestamp = status.get("timestamp", 0)
+                    age_seconds = time.time() - timestamp
+                    if age_seconds > 30:
+                        log.info(f"Validation status for account {id} is stale ({age_seconds:.1f}s old), returning 'reading'")
+                        return jsonify({"status": "reading", "message": "Reading account..."})
+
+                return jsonify(status)
+
+            # No validation status in Redis - read is either in progress or completed successfully
+            # Return 'reading' status to indicate no validation requirement yet
+            return jsonify({"status": "reading", "message": "Reading account..."})
+
+        except Exception as e:
+            log.error(f"Error checking validation status for account {id}: {e}")
+            return jsonify(
+                {"status": "error", "message": "Unable to check status"}
+            ), 500
+
+
+@namespace.route("/accounts/<int:id>/validate")
+class AccountValidation(Resource):
+    @namespace.expect(account_validation, validate=True)
+    @demo_check
+    @jwt_required()
+    def post(self, id):
+        """Handle device validation for broker accounts"""
+        current_user_id = get_jwt_identity()
+        account = filter_by_username(Account).filter(Account.id == id).one()
+        credentials = AccountCredentialParam.query.filter(
+            AccountCredentialParam.account_id == id
+        ).all()
+
+        if not credentials:
+            return {"message": "Account without credentials!"}, 400
+
+        content = request.get_json(silent=True)
+        encrypt_password = content["encrypt_password"]
+        validation_code = content["validation_code"]
+        cipher = AESCipher(encrypt_password)
+        data = {
+            "entity_type": account.entity.type,
+            "entity_name": account.entity.name,
+            "account_id": account.id,
+            "totp_code": validation_code,
+            "encrypt_password": encrypt_password,
+            "user_id": current_user_id,
+        }
+
+        for c in credentials:
+            try:
+                decrypted_value = cipher.decrypt(c.value)
+            except:
+                return {"message": "Invalid passphrase!"}, 400
+
+            if not decrypted_value:
+                log.warning("Decrypted value is empty!")
+                return {"message": "Invalid passphrase!"}, 400
+
+            # Deserialize JSON if the credential type is one that stores JSON
+            credential_type_name = c.credential_type.cred_type.lower()
+            if credential_type_name in ['device_token', 'cookie_token']:
+                try:
+                    decrypted_value = json.loads(decrypted_value)
+                except (json.JSONDecodeError, ValueError):
+                    # If it's not valid JSON, keep it as string (backward compatibility)
+                    pass
+
+            data[credential_type_name] = decrypted_value
+
+        queue_name = None
+        if account.entity.type == Entity.Type.BROKER:
+            queue_name = "broker_validation"
+        elif account.entity.type == Entity.Type.EXCHANGE:
+            queue_name = "crypto_validation"
+
+        log.info(f"Queuing validation to queue {queue_name}")
+        read_data = queue_read(data, queue_name)
+        if not read_data:
+            return {"message": "Unable to enqueue the validation!"}, 400
+
+        # Store "reading" status immediately with fresh timestamp and new message
+        try:
+            status_key = f"validation_status:account_{id}"
+            import time
+            status_json = json.dumps({
+                "status": "reading",
+                "message": "Validating OTP code...",
+                "account_id": id,
+                "timestamp": time.time()
+            })
+            redisClient.client.set(status_key, status_json, ex=300)  # Expire after 5 minutes
+            log.info(f"Stored reading status for account {id} after OTP submission")
+        except Exception as e:
+            log.warning(f"Failed to store reading status after OTP submission: {e}")
+
+        log.debug("Account validation submitted")
+        return {"message": f"Validating account {account.name}!"}
+
+
+@namespace.route("/stats")
 class AccountStats(Resource):
-
     @jwt_required()
     def get(self):
         user_id = get_jwt_identity()
-        accounts = Account.query.with_entities(Account.id).filter(Account.user_id == user_id).all()
+        accounts = (
+            Account.query.with_entities(Account.id)
+            .filter(Account.user_id == user_id)
+            .all()
+        )
 
         # TODO:
         # values required: current portfolio wallet, current gain, total_invested
         # call stock and crypto wallet
 
-        stats = {
-            "portfolio_value": 0,
-            "buy": 0,
-            "sell": 0,
-            "gain": 0
-        }
+        stats = {"portfolio_value": 0, "buy": 0, "sell": 0, "gain": 0}
 
         return stats
 
@@ -268,12 +449,19 @@ class UploadCSV(Resource):
     def get(self):
         accounts = Account.query.all()
         # TODO: create templates models, return fields for each entity
-        return make_response(render_template('upload_csv.html', fields=["amount", "price"], accounts=accounts), 200)
+        return make_response(
+            render_template(
+                "upload_csv.html", fields=["amount", "price"], accounts=accounts
+            ),
+            200,
+        )
 
     @jwt_required()
     def post(self):
         user_id = get_jwt_identity()
-        account_id = request.form.get("account_id")  # Adjust key based on your form field name
+        account_id = request.form.get(
+            "account_id"
+        )  # Adjust key based on your form field name
         log.info(f"Processing CSV file. Account ID: {account_id}")
         uploaded_file = request.files.get("file")
 

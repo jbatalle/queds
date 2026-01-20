@@ -32,5 +32,9 @@ class RedisClient:
     def exists(self, key):
         return self.client.exists(key)
 
+    def delete(self, key):
+        """Delete a key from Redis"""
+        return self.client.delete(key)
+
 
 
