@@ -163,7 +163,13 @@ class CredentialList(Resource):
 
     def get(self, id):
         """Returns credentials by entity."""
-        result = EntityCredentialType.query.filter(EntityCredentialType.entity_id == id).all()
+        result = EntityCredentialType.query.filter(
+            EntityCredentialType.entity_id == id,
+            EntityCredentialType.cred_type.notin_([
+                'DEVICE_TOKEN',
+                'COOKIE_TOKEN'
+            ])
+        ).all()
         items = []
         for r in result:
             item = r.json
